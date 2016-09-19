@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+girdir=@libdir@/mutter
+typelibdir=@libdir@/mutter
+
+Name: libmutter
+Description: Mutter window manager library
+Requires: gsettings-desktop-schemas gtk+-3.0 mutter-clutter-1.0 x11
+Version: @VERSION@
+Libs: -L${libdir} -lmutter
+Cflags: -I${includedir}/mutter
