@@ -1,0 +1,64 @@
+Description: Raspbian related hacks
+  * Comment out #include <cogl/winsys/cogl-winsys-egl-private.h> in
+     cogl/cogl/cogl-mutter.h
+  * Make further hacks to make non-egl build succeed (and probablly break egl builds in the process).
+Author: Peter Michael Green <plugwash@raspbian.org>
+
+Index: mutter-3.21.92/cogl/cogl/cogl-mutter.h
+===================================================================
+--- mutter-3.21.92.orig/cogl/cogl/cogl-mutter.h
++++ mutter-3.21.92/cogl/cogl/cogl-mutter.h
+@@ -39,7 +39,7 @@
+ #include <cogl/cogl-error-private.h>
+ #include <cogl/cogl-frame-info-private.h>
+ #include <cogl/cogl-renderer-private.h>
+-#include <cogl/winsys/cogl-winsys-egl-private.h>
++//#include <cogl/winsys/cogl-winsys-egl-private.h>
+ #include <cogl/winsys/cogl-winsys-private.h>
+ 
+ void cogl_renderer_set_custom_winsys (CoglRenderer          *renderer,
+Index: mutter-3.21.92/src/backends/meta-barrier.c
+===================================================================
+--- mutter-3.21.92.orig/src/backends/meta-barrier.c
++++ mutter-3.21.92/src/backends/meta-barrier.c
+@@ -12,8 +12,8 @@
+ 
+ #include <meta/util.h>
+ #include <meta/barrier.h>
+-#include "backends/native/meta-backend-native.h"
+-#include "backends/native/meta-barrier-native.h"
++//#include "backends/native/meta-backend-native.h"
++//#include "backends/native/meta-barrier-native.h"
+ #include "backends/x11/meta-backend-x11.h"
+ #include "backends/x11/meta-barrier-x11.h"
+ #include <meta/meta-enum-types.h>
+Index: mutter-3.21.92/src/backends/x11/meta-renderer-x11.c
+===================================================================
+--- mutter-3.21.92.orig/src/backends/x11/meta-renderer-x11.c
++++ mutter-3.21.92/src/backends/x11/meta-renderer-x11.c
+@@ -49,9 +49,9 @@ G_DEFINE_TYPE (MetaRendererX11, meta_ren
+ static const CoglWinsysVtable *
+ get_x11_cogl_winsys_vtable (void)
+ {
+-  if (meta_is_wayland_compositor ())
+-    return _cogl_winsys_egl_xlib_get_vtable ();
+-  else
++  //if (meta_is_wayland_compositor ())
++    //return _cogl_winsys_egl_xlib_get_vtable ();
++  //else
+     return _cogl_winsys_glx_get_vtable ();
+ }
+ 
+Index: mutter-3.21.92/src/core/display.c
+===================================================================
+--- mutter-3.21.92.orig/src/core/display.c
++++ mutter-3.21.92/src/core/display.c
+@@ -50,7 +50,7 @@
+ #include "meta-idle-monitor-dbus.h"
+ #include "meta-cursor-tracker-private.h"
+ #include <meta/meta-backend.h>
+-#include "backends/native/meta-backend-native.h"
++//#include "backends/native/meta-backend-native.h"
+ #include "backends/x11/meta-backend-x11.h"
+ #include "backends/meta-stage.h"
+ #include "backends/meta-input-settings-private.h"
