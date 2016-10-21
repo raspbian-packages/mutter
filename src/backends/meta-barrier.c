@@ -12,8 +12,8 @@
 
 #include <meta/util.h>
 #include <meta/barrier.h>
-#include "backends/native/meta-backend-native.h"
-#include "backends/native/meta-barrier-native.h"
+//#include "backends/native/meta-backend-native.h"
+//#include "backends/native/meta-barrier-native.h"
 #include "backends/x11/meta-backend-x11.h"
 #include "backends/x11/meta-barrier-x11.h"
 #include <meta/meta-enum-types.h>

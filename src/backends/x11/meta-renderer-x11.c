@@ -49,9 +49,9 @@ G_DEFINE_TYPE (MetaRendererX11, meta_renderer_x11, META_TYPE_RENDERER)
 static const CoglWinsysVtable *
 get_x11_cogl_winsys_vtable (void)
 {
-  if (meta_is_wayland_compositor ())
-    return _cogl_winsys_egl_xlib_get_vtable ();
-  else
+  //if (meta_is_wayland_compositor ())
+    //return _cogl_winsys_egl_xlib_get_vtable ();
+  //else
     return _cogl_winsys_glx_get_vtable ();
 }
 
