@@ -73,6 +73,9 @@ typedef struct _MetaOnscreenNative
 
   gboolean pending_set_crtc;
 
+  int64_t pending_queue_swap_notify_frame_count;
+  int64_t pending_swap_notify_frame_count;
+
   MetaRendererView *view;
   int pending_flips;
 } MetaOnscreenNative;
@@ -124,16 +127,19 @@ flush_pending_swap_notify (CoglFramebuffer *framebuffer)
 
       if (onscreen_native->pending_swap_notify)
         {
-          CoglFrameInfo *info =
-            g_queue_pop_head (&onscreen->pending_frame_infos);
+          CoglFrameInfo *info;
 
-          _cogl_onscreen_notify_frame_sync (onscreen, info);
-          _cogl_onscreen_notify_complete (onscreen, info);
+          while ((info = g_queue_peek_head (&onscreen->pending_frame_infos)) &&
+                 info->global_frame_counter <= onscreen_native->pending_swap_notify_frame_count)
+            {
+              _cogl_onscreen_notify_frame_sync (onscreen, info);
+              _cogl_onscreen_notify_complete (onscreen, info);
+              cogl_object_unref (info);
+              g_queue_pop_head (&onscreen->pending_frame_infos);
+            }
 
           onscreen_native->pending_swap_notify = FALSE;
           cogl_object_unref (onscreen);
-
-          cogl_object_unref (info);
         }
     }
 }
@@ -199,6 +205,9 @@ meta_onscreen_native_queue_swap_notify (CoglOnscreen *onscreen)
   CoglRenderer *cogl_renderer = cogl_context->display->renderer;
   CoglRendererEGL *egl_renderer = cogl_renderer->winsys;
   MetaRendererNative *renderer_native = egl_renderer->platform;
+
+  onscreen_native->pending_swap_notify_frame_count =
+    onscreen_native->pending_queue_swap_notify_frame_count;
 
   /* We only want to notify that the swap is complete when the
    * application calls cogl_context_dispatch so instead of
@@ -466,16 +475,19 @@ meta_onscreen_native_set_crtc_modes (MetaOnscreenNative *onscreen_native)
   monitor_info = meta_renderer_view_get_monitor_info (view);
   if (monitor_info)
     {
-      int i;
+      unsigned int i;
 
-      for (i = 0; i < monitor_info->n_outputs; i++)
+      for (i = 0; i < monitor_manager->n_crtcs; i++)
         {
-          MetaOutput *output = monitor_info->outputs[i];
-          int x = output->crtc->rect.x - monitor_info->rect.x;
-          int y = output->crtc->rect.y - monitor_info->rect.y;
+          MetaCRTC *crtc = &monitor_manager->crtcs[i];
+          int x = crtc->rect.x - monitor_info->rect.x;
+          int y = crtc->rect.y - monitor_info->rect.y;
+
+          if (crtc->logical_monitor != monitor_info)
+            continue;
 
           meta_monitor_manager_kms_apply_crtc_mode (monitor_manager_kms,
-                                                    output->crtc,
+                                                    crtc,
                                                     x, y,
                                                     next_fb_id);
         }
@@ -530,16 +542,19 @@ meta_onscreen_native_flip_crtcs (CoglOnscreen *onscreen)
   monitor_info = meta_renderer_view_get_monitor_info (view);
   if (monitor_info)
     {
-      int i;
+      unsigned int i;
 
-      for (i = 0; i < monitor_info->n_outputs; i++)
+      for (i = 0; i < monitor_manager->n_crtcs; i++)
         {
-          MetaOutput *output = monitor_info->outputs[i];
-          int x = output->crtc->rect.x - monitor_info->rect.x;
-          int y = output->crtc->rect.y - monitor_info->rect.y;
+          MetaCRTC *crtc = &monitor_manager->crtcs[i];
+          int x = crtc->rect.x - monitor_info->rect.x;
+          int y = crtc->rect.y - monitor_info->rect.y;
+
+          if (crtc->logical_monitor != monitor_info)
+            continue;
 
           meta_onscreen_native_flip_crtc (onscreen_native, flip_closure,
-                                          output->crtc, x, y,
+                                          crtc, x, y,
                                           &fb_in_use);
         }
     }
@@ -634,6 +649,7 @@ meta_onscreen_native_swap_buffers_with_damage (CoglOnscreen *onscreen,
       onscreen_native->pending_set_crtc = FALSE;
     }
 
+  onscreen_native->pending_queue_swap_notify_frame_count = renderer_native->frame_counter;
   meta_onscreen_native_flip_crtcs (onscreen);
 }
 
@@ -1235,7 +1251,6 @@ meta_renderer_native_initable_init (GInitable     *initable,
                                     GError       **error)
 {
   MetaRendererNative *renderer_native = META_RENDERER_NATIVE (initable);
-  drmModeRes *resources;
 
   renderer_native->gbm = gbm_create_device (renderer_native->kms_fd);
   if (!renderer_native->gbm)
@@ -1243,25 +1258,10 @@ meta_renderer_native_initable_init (GInitable     *initable,
       g_set_error (error, G_IO_ERROR,
                    G_IO_ERROR_FAILED,
                    "Failed to create gbm device");
-      goto err;
-    }
-
-  resources = drmModeGetResources (renderer_native->kms_fd);
-  if (!resources)
-    {
-      g_set_error (error, G_IO_ERROR,
-                   G_IO_ERROR_FAILED,
-                   "drmModeGetResources failed");
-      goto err_resources;
+      return FALSE;
     }
 
   return TRUE;
-
-err_resources:
-  g_clear_pointer (&renderer_native->gbm, gbm_device_destroy);
-
-err:
-  return FALSE;
 }
 
 static void

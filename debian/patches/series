@@ -1,6 +1,4 @@
-wayland-xdg-popup-Always-use-monitor-of-toplevel.patch
-wayland-xdg-shell-Scale-configure-relative-popup-coo.patch
-wayland-xdg-popup-Force-monitor-of-the-top-level.patch
-wayland-xdg-shell-update-popup-window-monitor-early.patch
-wayland-xdg-shell-Scale-positioner-coordinates.patch
+git_dont_set_unavailable_scroll_methods.patch
+git_flush_all_swap_notifies_on_idle.patch
+bgo768531_workaround-startup-notifications.patch
 raspbian.diff

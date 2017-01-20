@@ -1,4 +1,4 @@
-mutter (3.22.1-2+rpi1) stretch-staging; urgency=medium
+mutter (3.22.2-3+rpi1) stretch-staging; urgency=medium
 
   [changes brought forward from 3.14.4-2+rpi1 by Peter Michael Green <plugwash@raspbian.org> at Mon, 25 May 2015 01:53:01 +0000]
   * Move libsystemd-dev from build-depends to build-conflicts and add
@@ -16,7 +16,43 @@ mutter (3.22.1-2+rpi1) stretch-staging; urgency=medium
   [changes introduced in 3.22.1-2+rpi1 by Peter Michael Green]
   * Remove build-dependency on libegl1-mesa-dev
 
- -- Peter Michael Green <plugwash@raspbian.org>  Fri, 21 Oct 2016 23:24:13 +0000
+ -- Raspbian forward porter <root@raspbian.org>  Fri, 20 Jan 2017 02:27:05 +0000
+
+mutter (3.22.2-3) unstable; urgency=medium
+
+  [ Jeremy Bicha ]
+  * Add git_flush_all_swap_notifies_on_idle.patch:
+    - Add patch from 3.22 branch that fixes freezes with multiple monitors
+      on Wayland
+
+  [ Andreas Henriksson ]
+  * Add debian/patches/bgo768531_workaround-startup-notifications.patch
+    - temporary workaround used in both Fedora and Arch for getting
+      working application startup notifications under Wayland.
+    - See bgo#768531 for when a real solution is ready to replace this.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Sun, 08 Jan 2017 03:12:13 +0100
+
+mutter (3.22.2-2) unstable; urgency=critical
+
+  [ Raphaël Hertzog ]
+  * Team upload.
+  * Urgency critical as gnome-shell is entirely broken in testing
+    for many users.
+
+  [ Jeremy Bicha ]
+  * Add git_dont_set_unavailable_scroll_methods.patch:
+    - Add patch from 3.22 branch that prevented logging into GNOME on X
+      for some users (LP: #1643370, Closes: #846898)
+
+ -- Raphaël Hertzog <hertzog@debian.org>  Tue, 06 Dec 2016 17:35:40 +0100
+
+mutter (3.22.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Drop patches, all merged upstream.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 10 Nov 2016 19:17:32 +0100
 
 mutter (3.22.1-2) unstable; urgency=medium
 
