@@ -1,4 +1,4 @@
-mutter (3.22.2-3+rpi1) stretch-staging; urgency=medium
+mutter (3.22.3-1+rpi1) stretch-staging; urgency=medium
 
   [changes brought forward from 3.14.4-2+rpi1 by Peter Michael Green <plugwash@raspbian.org> at Mon, 25 May 2015 01:53:01 +0000]
   * Move libsystemd-dev from build-depends to build-conflicts and add
@@ -16,7 +16,14 @@ mutter (3.22.2-3+rpi1) stretch-staging; urgency=medium
   [changes introduced in 3.22.1-2+rpi1 by Peter Michael Green]
   * Remove build-dependency on libegl1-mesa-dev
 
- -- Raspbian forward porter <root@raspbian.org>  Fri, 20 Jan 2017 02:27:05 +0000
+ -- Raspbian forward porter <root@raspbian.org>  Thu, 02 Mar 2017 16:03:25 +0000
+
+mutter (3.22.3-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Drop patches which have been merged upstream.
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 17 Feb 2017 18:17:07 +0100
 
 mutter (3.22.2-3) unstable; urgency=medium
 
