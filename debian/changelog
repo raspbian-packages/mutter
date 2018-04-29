@@ -3,7 +3,8 @@ mutter (3.28.1-1+rpi1) buster-staging; urgency=medium
   [changes brought forward from 3.28.0-2+rpi1 by Peter Michael Green <plugwash@raspbian.org> at Wed, 04 Apr 2018 10:10:12 +0000]
   * Add build-depends on libmtdev-dev.
   * Disable parallel building.
-  * 
+  [changes introduced in 3.28.1-1+rpi1 by Peter Michael Green]
+  * Add build-depends on libgles2-mesa-dev
 
  -- Raspbian forward porter <root@raspbian.org>  Thu, 26 Apr 2018 03:52:55 +0000
 
