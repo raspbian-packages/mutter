@@ -1,4 +1,4 @@
-mutter (3.28.1-1+rpi1) buster-staging; urgency=medium
+mutter (3.28.1-2+rpi1) buster-staging; urgency=medium
 
   [changes brought forward from 3.28.0-2+rpi1 by Peter Michael Green <plugwash@raspbian.org> at Wed, 04 Apr 2018 10:10:12 +0000]
   * Add build-depends on libmtdev-dev.
@@ -6,7 +6,16 @@ mutter (3.28.1-1+rpi1) buster-staging; urgency=medium
   [changes introduced in 3.28.1-1+rpi1 by Peter Michael Green]
   * Add build-depends on libgles2-mesa-dev
 
- -- Raspbian forward porter <root@raspbian.org>  Thu, 26 Apr 2018 03:52:55 +0000
+ -- Raspbian forward porter <root@raspbian.org>  Wed, 02 May 2018 04:41:07 +0000
+
+mutter (3.28.1-2) unstable; urgency=medium
+
+  * Add xwayland-use-g_autoptr-for-GError-in-xserver_died.patch,
+    xwayland-Don-t-abort-if-Xwayland-crashes.patch:
+    - Cherry picked from upstream, to reduce noise of mutter on crashes
+      which are actually caused by XWayland (LP: #1748450)
+
+ -- Marco Trevisan (Treviño) <marco@ubuntu.com>  Mon, 23 Apr 2018 10:46:57 -0500
 
 mutter (3.28.1-1) unstable; urgency=medium
 
