@@ -1,0 +1,40 @@
+From: Peter Michael Green <plugwash@raspbian.org>
+Date: Sun, 23 Sep 2018 16:48:47 +0000
+X-Dgit-Generated: 3.30.0-1+rpi1 1c35db523471108e343f628e29236dde0ceaae94
+Subject: Further hacks to test program to make it build with non-wayland gtk/gdk.
+
+
+---
+
+--- mutter-3.30.0.orig/src/tests/test-client.c
++++ mutter-3.30.0/src/tests/test-client.c
+@@ -39,9 +39,9 @@ window_export_handle_cb (GdkWindow  *win
+ {
+   GdkWindow *gdk_window = gtk_widget_get_window (GTK_WIDGET (user_data));
+ 
+-  if (!gdk_wayland_window_set_transient_for_exported (gdk_window,
+-                                                      (gchar *) handle_str))
+-    g_print ("Fail to set transient_for exported window handle %s", handle_str);
++//  if (!gdk_wayland_window_set_transient_for_exported (gdk_window,
++//                                                        (gchar *) handle_str))
++//    g_print ("Fail to set transient_for exported window handle %s", handle_str);
+   gdk_window_set_modal_hint (gdk_window, TRUE);
+ }
+ 
+@@ -188,11 +188,11 @@ process_line (const char *line)
+         }
+ 
+       GdkWindow *parent_gdk_window = gtk_widget_get_window (parent_window);
+-      if (!gdk_wayland_window_export_handle (parent_gdk_window,
+-                                             window_export_handle_cb,
+-                                             window,
+-                                             NULL))
+-        g_print ("Fail to export handle for window id %s", argv[2]);
++      //if (!gdk_wayland_window_export_handle (parent_gdk_window,
++    //                                         window_export_handle_cb,
++    //                                         window,
++    //                                         NULL))
++    //    g_print ("Fail to export handle for window id %s", argv[2]);
+     }
+   else if (strcmp (argv[0], "show") == 0)
+     {
