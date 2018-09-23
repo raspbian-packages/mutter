@@ -6,6 +6,8 @@ mutter (3.30.0-1+rpi1) buster-staging; urgency=medium
   * Fix clean target
   [changes introduced in 3.28.1-1+rpi1 by Peter Michael Green]
   * Add build-depends on libgles2-mesa-dev
+  [changes introduce in 3.30.0-1+rpi1 by Peter Michael Green]
+  * Hack one of the test programs to build with non wayland gtk/gdk
 
  -- Peter Michael Green <plugwash@raspbian.org>  Sat, 22 Sep 2018 11:59:57 +0000
 

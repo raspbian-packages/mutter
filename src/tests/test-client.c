@@ -20,7 +20,7 @@
 #include <gio/gunixinputstream.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
-#include <gdk/gdkwayland.h>
+//#include <gdk/gdkwayland.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
