@@ -1,0 +1,19 @@
+From: Peter Michael Green <plugwash@raspbian.org>
+Date: Sun, 23 Sep 2018 15:39:44 +0000
+X-Dgit-Generated: 3.30.0-1+rpi1 56f308467b94e943ef2b32a78affe8e6a21c56bd
+Subject: Hack one of the test programs to build with non wayland gtk/gdk
+
+
+---
+
+--- mutter-3.30.0.orig/src/tests/test-client.c
++++ mutter-3.30.0/src/tests/test-client.c
+@@ -20,7 +20,7 @@
+ #include <gio/gunixinputstream.h>
+ #include <gtk/gtk.h>
+ #include <gdk/gdkx.h>
+-#include <gdk/gdkwayland.h>
++//#include <gdk/gdkwayland.h>
+ #include <stdarg.h>
+ #include <stdlib.h>
+ #include <string.h>
