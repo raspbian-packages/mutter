@@ -39,9 +39,9 @@ window_export_handle_cb (GdkWindow  *window,
 {
   GdkWindow *gdk_window = gtk_widget_get_window (GTK_WIDGET (user_data));
 
-  if (!gdk_wayland_window_set_transient_for_exported (gdk_window,
-                                                      (gchar *) handle_str))
-    g_print ("Fail to set transient_for exported window handle %s", handle_str);
+//  if (!gdk_wayland_window_set_transient_for_exported (gdk_window,
+//                                                        (gchar *) handle_str))
+//    g_print ("Fail to set transient_for exported window handle %s", handle_str);
   gdk_window_set_modal_hint (gdk_window, TRUE);
 }
 
@@ -188,11 +188,11 @@ process_line (const char *line)
         }
 
       GdkWindow *parent_gdk_window = gtk_widget_get_window (parent_window);
-      if (!gdk_wayland_window_export_handle (parent_gdk_window,
-                                             window_export_handle_cb,
-                                             window,
-                                             NULL))
-        g_print ("Fail to export handle for window id %s", argv[2]);
+      //if (!gdk_wayland_window_export_handle (parent_gdk_window,
+    //                                         window_export_handle_cb,
+    //                                         window,
+    //                                         NULL))
+    //    g_print ("Fail to export handle for window id %s", argv[2]);
     }
   else if (strcmp (argv[0], "show") == 0)
     {
