@@ -1,0 +1,80 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+
+%:
+	dh $@ --with gir,gnome
+
+override_dh_autoreconf:
+	dh_autoreconf --as-needed
+
+ifeq ($(DEB_HOST_ARCH_OS),linux)
+CONFFLAGS = \
+	--enable-egl-device \
+	--enable-wayland \
+	--enable-native-backend
+else
+CONFFLAGS += \
+	--disable-wayland-egl-platform \
+	--disable-wayland-egl-server \
+	--disable-kms-egl-platform \
+	--disable-wayland \
+	--disable-native-backend
+endif
+
+ifeq ($(DEB_HOST_ARCH),$(findstring $(DEB_HOST_ARCH),armel armhf))
+CONFFLAGS += \
+	--with-default-driver=gles2
+else
+CONFFLAGS += \
+	--with-default-driver=gl
+endif
+
+# pipewire is not in Ubuntu main yet
+ifneq ($(shell dpkg-vendor --query vendor),Ubuntu)
+ifeq ($(DEB_HOST_ARCH_OS),linux)
+	CONFFLAGS += --enable-remote-desktop
+endif
+endif
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		--libexecdir="\$${prefix}/lib/mutter" \
+		--enable-startup-notification \
+		--enable-compile-warnings \
+		--disable-cogl-gles2 \
+		--enable-gles2 \
+		--with-gles2-libname=libGLESv2.so.2 \
+		$(CONFFLAGS)
+
+# Ignore test failures on hurd & kfreebsd. Although the test results
+# indicate there may be a serious issue, the port maintainers may
+# prefer we do the build anyway. I plan to file a bug for this later.
+# Don't run the tests on mips since they either time out or fail too much,
+# blocking migration to testing
+override_dh_auto_test:
+ifneq (,$(filter hurd-i386 kfreebsd-i386 kfreebsd-amd64,$(DEB_HOST_ARCH)))
+	-xvfb-run -a dh_auto_test
+else ifeq (,$(filter mips mipsel,$(DEB_HOST_ARCH)))
+	xvfb-run -a dh_auto_test
+endif
+
+override_dh_install:
+	find debian/tmp -name '*.la' -print -delete
+	dh_install
+
+override_dh_missing:
+	dh_missing --fail-missing
+
+override_dh_girepository:
+	dh_girepository /usr/lib/$(DEB_HOST_MULTIARCH)/mutter
+
+override_dh_makeshlibs:
+	dh_makeshlibs -V
+
+override_dh_shlibdeps:
+	dh_shlibdeps -Llibmutter-3-0 -l/usr/lib/$(DEB_HOST_MULTIARCH)/mutter
+
+override_dh_strip:
+	dh_strip --dbgsym-migration='mutter-dbg (<< 3.18.3-2~)'
