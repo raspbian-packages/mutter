@@ -75,6 +75,12 @@ option('wayland_eglstream',
   description: 'Enable Wayland EGLStream support client support'
 )
 
+option('default_driver',
+  type: 'combo',
+  choices: ['auto', 'gl', 'gl3', 'gles2', 'nop'],
+  value: 'auto'
+)
+
 option('udev',
   type: 'boolean',
   value: true,
