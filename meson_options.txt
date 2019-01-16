@@ -176,3 +176,9 @@ option('xwayland_ignore_executables',
   value: 'gsd-xsettings,ibus-x11,pulseaudio,Xwayland',
   description: 'Comma delimited list of executable names to ignore when terminating Xwayland'
 )
+
+option('default_driver',
+  type: 'combo',
+  choices: ['auto', 'gl', 'gl3', 'gles2', 'nop'],
+  value: 'auto'
+)
