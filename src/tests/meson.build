@@ -195,6 +195,7 @@ test_cases += [
   },
   {
     'name': 'stage-views',
+    'flaky': true,
     'suite': 'compositor',
     'sources': [ 'stage-view-tests.c', ],
   },
@@ -322,7 +323,8 @@ if have_native_tests
     )
 
     test(test_case['name'], test_executable,
-      suite: ['core', 'mutter/' + test_case['suite']],
+      suite: ['core', 'mutter/' + test_case['suite']]
+        + (test_case.get('flaky', false) ? ['flaky'] : []),
       env: test_env,
       is_parallel: false,
       timeout: 60,
