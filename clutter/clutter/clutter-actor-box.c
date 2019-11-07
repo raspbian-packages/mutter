@@ -1,6 +1,4 @@
-#ifdef HAVE_CONFIG_H
 #include "clutter-build-config.h"
-#endif
 
 #include <math.h>
 
@@ -594,6 +592,27 @@ _clutter_actor_box_enlarge_for_effects (ClutterActorBox *box)
    */
   box->x1 = box->x2 - width - 3;
   box->y1 = box->y2 - height - 3;
+}
+
+/**
+ * clutter_actor_box_scale:
+ * @box: a #ClutterActorBox
+ * @scale: scale factor for resizing this box
+ *
+ * Rescale the @box by provided @scale factor.
+ *
+ * Since: 1.6
+ */
+void
+clutter_actor_box_scale (ClutterActorBox *box,
+                         gfloat           scale)
+{
+  g_return_if_fail (box != NULL);
+
+  box->x1 *= scale;
+  box->x2 *= scale;
+  box->y1 *= scale;
+  box->y2 *= scale;
 }
 
 G_DEFINE_BOXED_TYPE_WITH_CODE (ClutterActorBox, clutter_actor_box,

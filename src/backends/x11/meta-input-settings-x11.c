@@ -23,20 +23,22 @@
 
 #include "config.h"
 
-#include "meta-backend-x11.h"
-#include "meta-input-settings-x11.h"
+#include "backends/x11/meta-input-settings-x11.h"
 
-#include <string.h>
 #include <gdk/gdkx.h>
+#include <string.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/XInput2.h>
 #include <X11/XKBlib.h>
+
 #ifdef HAVE_LIBGUDEV
 #include <gudev/gudev.h>
 #endif
 
-#include <meta/meta-x11-errors.h>
 #include "backends/meta-logical-monitor.h"
+#include "backends/x11/meta-backend-x11.h"
+#include "core/display-private.h"
+#include "meta/meta-x11-errors.h"
 
 typedef struct _MetaInputSettingsX11Private
 {
@@ -48,7 +50,8 @@ typedef struct _MetaInputSettingsX11Private
 G_DEFINE_TYPE_WITH_PRIVATE (MetaInputSettingsX11, meta_input_settings_x11,
                             META_TYPE_INPUT_SETTINGS)
 
-enum {
+enum
+{
   SCROLL_METHOD_FIELD_2FG,
   SCROLL_METHOD_FIELD_EDGE,
   SCROLL_METHOD_FIELD_BUTTON,
@@ -608,7 +611,14 @@ has_udev_property (MetaInputSettings  *settings,
   g_object_unref (parent_udev_device);
   return FALSE;
 #else
-  g_warning ("Failed to set acceleration profile: no udev support");
+  static gboolean warned_once = FALSE;
+
+  if (!warned_once)
+    {
+      g_warning ("Failed to set acceleration profile: no udev support");
+      warned_once = TRUE;
+    }
+
   return FALSE;
 #endif
 }
