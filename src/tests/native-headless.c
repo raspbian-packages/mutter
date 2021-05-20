@@ -28,7 +28,8 @@ static void
 init_tests (MetaContext *context)
 {
   init_virtual_monitor_tests (context);
-  init_screen_cast_tests ();
+  // init_screen_cast_tests ();
+  (void) init_screen_cast_tests;
 }
 
 int
