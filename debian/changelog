@@ -1,3 +1,9 @@
+mutter (3.38.6-2~deb11u1) bullseye; urgency=medium
+
+  * Rebuild for bullseye
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 01 Sep 2021 21:25:34 +0100
+
 mutter (3.38.6-2) unstable; urgency=medium
 
   * Team upload
