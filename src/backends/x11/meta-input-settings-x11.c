@@ -975,7 +975,7 @@ meta_input_settings_x11_set_mouse_middle_click_emulation (MetaInputSettings  *se
   if (!is_mouse (settings, device))
     return;
 
-  change_property (device, "libinput Middle Click Emulation Enabled",
+  change_property (device, "libinput Middle Emulation Enabled",
                    XA_INTEGER, 8, &value, 1);
 }
 
@@ -989,7 +989,7 @@ meta_input_settings_x11_set_touchpad_middle_click_emulation (MetaInputSettings  
   if (!meta_input_settings_x11_is_touchpad_device (settings, device))
     return;
 
-  change_property (device, "libinput Middle Click Emulation Enabled",
+  change_property (device, "libinput Middle Emulation Enabled",
                    XA_INTEGER, 8, &value, 1);
 }
 
@@ -1003,7 +1003,7 @@ meta_input_settings_x11_set_trackball_middle_click_emulation (MetaInputSettings 
   if (!meta_input_settings_x11_is_trackball_device (settings, device))
     return;
 
-  change_property (device, "libinput Middle Click Emulation Enabled",
+  change_property (device, "libinput Middle Emulation Enabled",
                    XA_INTEGER, 8, &value, 1);
 }
 
