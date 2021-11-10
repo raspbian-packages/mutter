@@ -1259,10 +1259,24 @@ meta_kms_impl_device_init_mode_setting (MetaKmsImplDevice  *impl_device,
   return TRUE;
 }
 
+static void
+release_buffers (gpointer data,
+                 gpointer user_data)
+{
+  MetaKmsCrtc *crtc = data;
+  MetaSwapChain *swap_chain = meta_kms_crtc_get_swap_chain (crtc);
+
+  meta_swap_chain_release_buffers (swap_chain);
+}
+
 void
 meta_kms_impl_device_prepare_shutdown (MetaKmsImplDevice *impl_device)
 {
+  MetaKmsImplDevicePrivate *priv =
+    meta_kms_impl_device_get_instance_private (impl_device);
   MetaKmsImplDeviceClass *klass = META_KMS_IMPL_DEVICE_GET_CLASS (impl_device);
+
+  g_list_foreach (priv->crtcs, release_buffers, NULL);
 
   if (klass->prepare_shutdown)
     klass->prepare_shutdown (impl_device);

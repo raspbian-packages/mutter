@@ -708,12 +708,18 @@ static gboolean
 dummy_power_save_page_flip_cb (gpointer user_data)
 {
   MetaRendererNative *renderer_native = user_data;
+  GList *old_list =
+    g_steal_pointer (&renderer_native->power_save_page_flip_onscreens);
 
-  g_list_foreach (renderer_native->power_save_page_flip_onscreens,
+  g_list_foreach (old_list,
                   (GFunc) meta_onscreen_native_dummy_power_save_page_flip,
                   NULL);
-  g_clear_list (&renderer_native->power_save_page_flip_onscreens,
+  g_clear_list (&old_list,
                 g_object_unref);
+
+  if (renderer_native->power_save_page_flip_onscreens != NULL)
+    return G_SOURCE_CONTINUE;
+
   renderer_native->power_save_page_flip_source_id = 0;
 
   return G_SOURCE_REMOVE;
@@ -724,6 +730,9 @@ meta_renderer_native_queue_power_save_page_flip (MetaRendererNative *renderer_na
                                                  CoglOnscreen       *onscreen)
 {
   const unsigned int timeout_ms = 100;
+
+  if (g_list_find (renderer_native->power_save_page_flip_onscreens, onscreen))
+    return;
 
   if (!renderer_native->power_save_page_flip_source_id)
     {
@@ -1474,6 +1483,26 @@ detach_onscreens (MetaRenderer *renderer)
 }
 
 static void
+discard_pending_swaps (MetaRenderer *renderer)
+{
+  GList *views = meta_renderer_get_views (renderer);;
+  GList *l;
+
+  for (l = views; l; l = l->next)
+    {
+      ClutterStageView *stage_view = l->data;
+      CoglFramebuffer *fb = clutter_stage_view_get_onscreen (stage_view);
+      CoglOnscreen *onscreen;
+
+      if (!COGL_IS_ONSCREEN (fb))
+        continue;
+
+      onscreen = COGL_ONSCREEN (fb);
+      meta_onscreen_native_discard_pending_swaps (onscreen);
+    }
+}
+
+static void
 meta_renderer_native_rebuild_views (MetaRenderer *renderer)
 {
   MetaRendererNative *renderer_native = META_RENDERER_NATIVE (renderer);
@@ -1483,6 +1512,7 @@ meta_renderer_native_rebuild_views (MetaRenderer *renderer)
   MetaRendererClass *parent_renderer_class =
     META_RENDERER_CLASS (meta_renderer_native_parent_class);
 
+  discard_pending_swaps (renderer);
   meta_kms_discard_pending_page_flips (kms);
   g_hash_table_remove_all (renderer_native->mode_set_updates);
 
