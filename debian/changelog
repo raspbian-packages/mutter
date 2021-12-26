@@ -1,3 +1,21 @@
+mutter (3.38.6-2~deb11u2) UNRELEASED; urgency=medium
+
+  * d/patches: Update to commit 3.38.6-9-g0b26ad635 from gnome-3-38 branch
+    (Closes: #1002651)
+    - Fix a crash involving Wayland subsurfaces, which can be triggered by
+      Firefox in Wayland mode (fix backported from 41~beta and 40.5)
+    - Avoid flooding Xwayland clients (X11 apps under Wayland) with window
+      management events (fix backported from 41.1 and 40.6)
+    - Fix protocol error during Alt + drag-and-drop from Firefox in
+      Wayland mode (fix backported from 41.1 and 40.6)
+    - When an app/game using VSync is full-screen in a multi-monitor setup,
+      use the refresh rate of the correct monitor
+      (fix backported from 41.2-1, expected to be included in 41.3)
+    - Fix Wayland viewport surface damage calculations
+      (fix backported from 41.2-2, expected to be included in 41.3)
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 26 Dec 2021 19:53:41 +0000
+
 mutter (3.38.6-2~deb11u1) bullseye; urgency=medium
 
   * Rebuild for bullseye
