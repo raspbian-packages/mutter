@@ -7,6 +7,7 @@ for the parent to get destroyed.
 
 Part-of: <https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1958>
 
+Bug: https://gitlab.gnome.org/GNOME/mutter/-/issues/1892
 Origin: upstream, 3.38.7, commit:60afd63ef581b11b7cd8483d4a83ce24480ed8e8
 ---
  src/wayland/meta-wayland-subsurface.c |  1 +

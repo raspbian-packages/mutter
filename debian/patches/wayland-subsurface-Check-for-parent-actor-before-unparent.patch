@@ -7,6 +7,7 @@ in normal builds and prevents a crash in fully optimized ones.
 
 Part-of: <https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1958>
 
+Bug: https://gitlab.gnome.org/GNOME/mutter/-/issues/1892
 Origin: upstream, 3.38.7, commit:0db4ac7373965011a0fb2d3ff0465c227333d4c3
 ---
  src/wayland/meta-wayland-subsurface.c | 3 ++-
