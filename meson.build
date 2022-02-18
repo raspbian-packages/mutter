@@ -354,7 +354,7 @@ if have_tests
     ],
     exe_wrapper: [
       default_test_wrappers,
-      find_program('xvfb-run'), '-a', '-s', '+iglx -noreset',
+      find_program('xvfb-run', required: false), '-a', '-s', '+iglx -noreset',
     ],
     timeout_multiplier: 10,
   )
