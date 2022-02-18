@@ -381,7 +381,7 @@ if have_tests
 
   add_test_setup('plain')
 
-  xvfb = find_program('xvfb-run')
+  xvfb = find_program('xvfb-run', required: false)
   xvfb_args = [
     '-a',
     '-s',
