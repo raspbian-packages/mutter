@@ -11,11 +11,9 @@ assert_size w/1 500 400
 
 maximize w/1
 wait_reconfigure
-assert_size w/1 MONITOR_WIDTH MONITOR_HEIGHT
 
 resize w/1 300 500
 wait_reconfigure
-assert_size w/1 MONITOR_WIDTH MONITOR_HEIGHT
 
 unmaximize w/1
 wait_reconfigure
