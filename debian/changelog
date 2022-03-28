@@ -1,15 +1,71 @@
-mutter (41.4-1) unstable; urgency=medium
-
-  * Team upload
+mutter (42.0-3) unstable; urgency=medium
 
   [ Marco Trevisan (Treviño) ]
-  * debian: Prepare for unstable branching
-  * debian/watch: Only monitor 41 releases
+  * debian/patches: Cherry-pick upstream fixes targeting 42.1
+  * debian/patches: Ensure repick happens on actors visibility changed
+    (LP: #1964545)
 
-  [ Simon McVittie ]
+  [ Jeremy Bicha ]
+  * Release to unstable
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Mon, 28 Mar 2022 09:34:27 -0400
+
+mutter (42.0-1) experimental; urgency=medium
+
+  [ Jeremy Bicha ]
   * New upstream release
 
- -- Simon McVittie <smcv@debian.org>  Sat, 19 Feb 2022 19:14:01 +0000
+  [ Marco Trevisan (Treviño) ]
+  * debian/patches: Skip monitor-size tests that may fail on autopkgtest
+
+ -- Jeremy Bicha <jeremy.bicha@canonical.com>  Mon, 14 Mar 2022 09:28:30 -0400
+
+mutter (42~rc-1) experimental; urgency=medium
+
+  * New upstream release
+  * debian/control.in: Add Breaks: gnome-shell (<< 42~rc)
+  * debian/control.in: Bump minimum meson, libwayland-dev & wayland-protocols
+  * debian/libmutter-10-0.symbols: Add new symbols
+  * Refresh patches
+
+ -- Jeremy Bicha <jeremy.bicha@canonical.com>  Wed, 09 Mar 2022 13:11:43 -0500
+
+mutter (42~beta-1) experimental; urgency=medium
+
+  [ Marco Trevisan (Treviño) ]
+  * New upstream release:
+    - Implement a new Clutter grab API
+    - Support KMS testing via QEMU
+    - Add support for privacy screen
+    - Allow changing monitor configuration policy
+    - Fix possible missed clicks on menus
+    - Place popups on the same monitor as the anchor rect (LP: #1930567)
+    - Announce DMA-BUF support via pipewire
+    - Raise the file descriptor limit of the wayland compositor
+    - Fix resetting idle time on lid open
+    - Reset idletime when unplugging the power cable
+    - Keep a single cursor sprite visible with tablets
+    - Sync keyboard LEDs after layout changes (LP: #1830637)
+    - Honor window input area in picking
+    - Handle mixture of keycombo/no action in pad rings/strips
+    - Fix videos in Firefox stuttering in overview
+    - Fix X11 middle button emulation setting
+    - Fix crash on empty frame info queue (LP: #1960585)
+    - Fix window size after returning from fullscreen (LP: #1947467)
+    - Don't change workspaces of unmanaged windows (LP: #1933996)
+    - Ensure constraints after client resize (LP: #1917939)
+  * debian/watch: Accept pre-release version
+    Can still use gbp import --upstream-version=XX.Y to get stable only
+  * debian: Rename packages to use mutter-10 API
+  * debian/rules: Compute mutter API version on unstable releases too
+  * debian/control: Update dependencies
+  * debian/patches: Refresh and update to latest code
+  * debian/libmutter-(test-)10.symbols: Update
+
+  [ Jeremy Bicha ]
+  * Update autopkgtest & lintian override for new version
+
+ -- Jeremy Bicha <jeremy.bicha@canonical.com>  Fri, 18 Feb 2022 07:32:24 -0500
 
 mutter (41.3-3) unstable; urgency=medium
 

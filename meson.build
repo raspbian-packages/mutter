@@ -1,15 +1,13 @@
 project('mutter', 'c',
-  version: '41.4',
-  meson_version: '>= 0.53.0',
+  version: '42.0',
+  meson_version: '>= 0.55.0',
   license: 'GPLv2+'
 )
 
 split_version = meson.project_version().split('.')
 
-# Automatically increase API version each development cycle,
-# starting with 0 in 3.23.x
-api_version = split_version[0].to_int() - 32
-libmutter_api_version = '@0@'.format(api_version)
+# API version, bump each development cycle
+libmutter_api_version = '10'
 
 mutter_srcdir = meson.current_source_dir()
 mutter_builddir = meson.current_build_dir()
@@ -27,10 +25,9 @@ cairo_req = '>= 1.10.0'
 pangocairo_req = '>= 1.20'
 gsettings_desktop_schemas_req = '>= 40.alpha'
 json_glib_req = '>= 0.12.0'
-upower_glib_req = '>= 0.99.0'
 xcomposite_req = '>= 0.4'
 xkbcommon_req = '>= 0.4.3'
-xfixes_req = '>= 3'
+xfixes_req = '>= 6'
 xi_req = '>= 1.7.4'
 xrandr_req = '>= 1.5.0'
 libstartup_notification_req = '>= 0.7'
@@ -43,15 +40,15 @@ udev_req = '>= 228'
 gudev_req = '>= 232'
 
 # wayland version requirements
-wayland_server_req = '>= 1.18'
-wayland_protocols_req = '>= 1.21'
+wayland_server_req = '>= 1.20'
+wayland_protocols_req = '>= 1.25'
 
 # native backend version requirements
-libinput_req = '>= 1.18.0'
+libinput_req = '>= 1.19.0'
 gbm_req = '>= 17.3'
 
 # screen cast version requirements
-libpipewire_req = '>= 0.3.21'
+libpipewire_req = '>= 0.3.33'
 
 # profiler requirements
 sysprof_req = '>= 3.37.2'
@@ -59,7 +56,22 @@ sysprof_req = '>= 3.37.2'
 gnome = import('gnome')
 pkg = import('pkgconfig')
 i18n  = import('i18n')
+fs = import('fs')
 cc = meson.get_compiler('c')
+
+add_project_link_arguments(
+  cc.get_supported_link_arguments(
+    # meson automatically adds -rpath to targets and strips them when they
+    # are installed. ld adds a RUNPATH tag for -rpath arguments by default.
+    # This makes ld add a RPATH tag instead (as it did some time ago).
+    # The reason why we want RPATH and not RUNPATH is that LD_LIBRARY_PATH
+    # takes precedence over RUNPATH but not over RPATH. Since we usually run
+    # development builds in jhbuild which sets up LD_LIBRARY_PATH this can
+    # result in wrong dependencies being picked up by the linker.
+    '-Wl,--disable-new-dtags',
+  ),
+  language : 'c',
+)
 
 prefix = get_option('prefix')
 
@@ -85,7 +97,6 @@ libmutter_name = 'mutter-' + libmutter_api_version
 
 mutter_installed_tests_datadir = join_paths(
   datadir, 'installed-tests', libmutter_name)
-
 mutter_installed_tests_libexecdir = join_paths(
   libexecdir, 'installed-tests', libmutter_name)
 
@@ -109,7 +120,6 @@ gthread_dep = dependency('gobject-2.0', version: glib_req)
 gmodule_no_export_dep = dependency('gmodule-no-export-2.0', version: glib_req)
 gnome_settings_daemon_dep = dependency('gnome-settings-daemon')
 json_glib_dep = dependency('json-glib-1.0', version: json_glib_req)
-gnome_desktop_dep = dependency('gnome-desktop-3.0')
 xcomposite_dep = dependency('xcomposite', version: xcomposite_req)
 xcursor_dep = dependency('xcursor')
 xdamage_dep = dependency('xdamage')
@@ -135,6 +145,12 @@ dbus_dep = dependency('dbus-1')
 
 # For now always require X11 support
 have_x11 = true
+
+
+have_gnome_desktop = get_option('libgnome_desktop')
+if have_gnome_desktop
+  gnome_desktop_dep = dependency('gnome-desktop-3.0')
+endif
 
 have_gl = get_option('opengl')
 if have_gl
@@ -269,11 +285,19 @@ if have_introspection
   ]
 endif
 
+have_documentation = get_option('docs')
+if have_documentation
+  gidocgen_dep = dependency('gi-docgen', version: '>= 2021.1',
+                            fallback: ['gi-docgen', 'dummy_dep'])
+endif
+
 have_tests = get_option('tests')
 have_core_tests = false
 have_cogl_tests = false
 have_clutter_tests = false
 have_native_tests = false
+have_kvm_tests = false
+have_tty_tests = false
 have_installed_tests = false
 
 if have_tests
@@ -292,6 +316,21 @@ if have_tests
       error('Native tests require remote desktop')
     endif
   endif
+  have_kvm_tests = get_option('kvm_tests')
+  if have_kvm_tests
+    if not have_native_backend
+      error('KVM tests need the native backend tests')
+    endif
+    if host_machine.cpu_family() != 'x86_64'
+      error('KVM tests are only supported on x86_64')
+    endif
+  endif
+  have_tty_tests = get_option('tty_tests')
+  if have_tty_tests
+    if not have_native_backend
+      error('TTY tests need the native backend tests')
+    endif
+  endif
 
   have_cogl_tests = get_option('cogl_tests')
   have_clutter_tests = get_option('clutter_tests')
@@ -307,14 +346,15 @@ if have_tests
     exe_wrapper: default_test_wrappers,
   )
 
+  add_test_setup('plain')
+
   add_test_setup('CI',
     env: [
       'MUTTER_DEBUG_DUMMY_MODE_SPECS=800x600@10.0',
     ],
     exe_wrapper: [
       default_test_wrappers,
-      find_program('catchsegv'),
-      find_program('xvfb-run'), '-a', '-s', '+iglx -noreset',
+      find_program('xvfb-run', required: false), '-a', '-s', '+iglx -noreset',
     ],
     timeout_multiplier: 10,
   )
@@ -360,10 +400,7 @@ if buildtype != 'plain'
     '-fno-strict-aliasing',
     '-Wpointer-arith',
     '-Wmissing-declarations',
-    '-Wimplicit-function-declaration',
     '-Wformat=2',
-    '-Wformat-nonliteral',
-    '-Wformat-security',
     '-Wstrict-prototypes',
     '-Wmissing-prototypes',
     '-Wnested-externs',
@@ -392,6 +429,11 @@ if buildtype != 'plain'
     '-Werror=pointer-to-int-cast',
     '-Werror=empty-body',
     '-Werror=write-strings',
+    '-Wno-sign-compare',
+    '-Wno-cast-function-type',
+    '-Wno-unused-parameter',
+    '-Wno-missing-field-initializers',
+    '-Wno-type-limits',
   ]
   supported_warnings = cc.get_supported_arguments(all_warnings)
   add_project_arguments(supported_warnings, language: 'c')
@@ -418,6 +460,7 @@ cdata.set('HAVE_WAYLAND', have_wayland)
 cdata.set('HAVE_LIBSYSTEMD', have_libsystemd)
 cdata.set('HAVE_NATIVE_BACKEND', have_native_backend)
 cdata.set('HAVE_REMOTE_DESKTOP', have_remote_desktop)
+cdata.set('HAVE_GNOME_DESKTOP', have_gnome_desktop)
 cdata.set('HAVE_EGL_DEVICE', have_egl_device)
 cdata.set('HAVE_WAYLAND_EGLSTREAM', have_wayland_eglstream)
 cdata.set('HAVE_LIBGUDEV', have_libgudev)
@@ -436,6 +479,7 @@ endif
 
 have_xwayland_initfd = false
 have_xwayland_listenfd = false
+have_xwayland_terminate_delay = false
 if have_wayland
   xwayland_dep = dependency('xwayland', required: false)
 
@@ -488,6 +532,15 @@ if have_wayland
   if (have_xwayland_listenfd)
     cdata.set('HAVE_XWAYLAND_LISTENFD', 1)
   endif
+
+  # For Xwayland -listenfd usage
+  if xwayland_dep.found()
+    have_xwayland_terminate_delay = xwayland_dep.get_pkgconfig_variable('have_terminate_delay') == 'true'
+  endif
+
+  if (have_xwayland_terminate_delay)
+    cdata.set('HAVE_XWAYLAND_TERMINATE_DELAY', 1)
+  endif
 endif
 
 have_xsetioerrorexithandler = false
@@ -515,10 +568,6 @@ xwayland_grab_default_access_rules = get_option('xwayland_grab_default_access_ru
 cdata.set_quoted('XWAYLAND_GRAB_DEFAULT_ACCESS_RULES',
                  xwayland_grab_default_access_rules)
 
-xwayland_ignore_executables = get_option('xwayland_ignore_executables')
-cdata.set_quoted('XWAYLAND_IGNORE_EXECUTABLES',
-                 xwayland_ignore_executables)
-
 cdata.set_quoted('MUTTER_PLUGIN_DIR', join_paths(pkglibdir, 'plugins'))
 cdata.set_quoted('MUTTER_LOCALEDIR', localedir)
 cdata.set_quoted('MUTTER_LIBEXECDIR', libexecdir)
@@ -538,6 +587,9 @@ subdir('data')
 subdir('src')
 subdir('po')
 subdir('doc/man')
+if have_documentation
+  subdir('doc/reference')
+endif
 
 meson.add_install_script('meson/meson-postinstall.sh')
 meson.add_dist_script('meson/check-version.py', meson.project_version(), 'NEWS')
@@ -560,15 +612,18 @@ summary('Native Backend', have_native_backend, section: 'Options')
 summary('EGL Device', have_egl_device, section: 'Options')
 summary('Default driver', default_driver, section: 'Options')
 summary('Remote desktop', have_remote_desktop, section: 'Options')
+summary('libgnome-desktop', have_gnome_desktop, section: 'Options')
 summary('gudev', have_libgudev, section: 'Options')
 summary('Wacom', have_libwacom, section: 'Options')
 summary('SM', have_sm, section: 'Options')
 summary('Startup notification', have_startup_notification, section: 'Options')
 summary('Introspection', have_introspection, section: 'Options')
+summary('Documentation', have_documentation, section: 'Options')
 summary('Profiler', have_profiler, section: 'Options')
 summary('Xwayland initfd', have_xwayland_initfd, section: 'Options')
 summary('Xwayland listenfd', have_xwayland_listenfd, section: 'Options')
 summary('Safe X11 I/O errors', have_xsetioerrorexithandler, section: 'Options')
+summary('Xwayland terminate delay', have_xwayland_terminate_delay, section: 'Options')
 
 summary('Enabled', have_tests, section: 'Tests')
 summary('Core tests', have_core_tests, section: 'Tests')

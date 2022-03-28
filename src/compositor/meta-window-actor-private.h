@@ -3,8 +3,6 @@
 #ifndef META_WINDOW_ACTOR_PRIVATE_H
 #define META_WINDOW_ACTOR_PRIVATE_H
 
-#include <X11/extensions/Xdamage.h>
-
 #include "compositor/meta-plugin-manager.h"
 #include "compositor/meta-surface-actor.h"
 #include "meta/compositor-mutter.h"
@@ -16,6 +14,8 @@ struct _MetaWindowActorClass
   void (*frame_complete) (MetaWindowActor  *actor,
                           ClutterFrameInfo *frame_info,
                           int64_t           presentation_time);
+
+  MetaSurfaceActor * (*get_topmost_surface) (MetaWindowActor *actor);
 
   void (*assign_surface_actor) (MetaWindowActor  *actor,
                                 MetaSurfaceActor *surface_actor);
@@ -80,11 +80,15 @@ void meta_window_actor_effect_completed (MetaWindowActor  *actor,
 
 MetaSurfaceActor *meta_window_actor_get_surface (MetaWindowActor *self);
 
+MetaSurfaceActor * meta_window_actor_get_topmost_surface (MetaWindowActor *self);
+
 void meta_window_actor_assign_surface_actor (MetaWindowActor  *self,
                                              MetaSurfaceActor *surface_actor);
 
 META_EXPORT_TEST
 MetaWindowActor *meta_window_actor_from_window (MetaWindow *window);
+
+META_EXPORT_TEST
 MetaWindowActor *meta_window_actor_from_actor (ClutterActor *actor);
 
 void meta_window_actor_set_geometry_scale (MetaWindowActor *window_actor,

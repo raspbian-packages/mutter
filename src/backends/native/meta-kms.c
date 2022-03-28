@@ -247,35 +247,12 @@ meta_kms_take_pending_update (MetaKms       *kms,
   return NULL;
 }
 
-typedef struct
-{
-  MetaKmsUpdate *update;
-  MetaKmsUpdateFlag flags;
-} PostUpdateData;
-
-static gpointer
-meta_kms_process_update_in_impl (MetaKmsImpl  *impl,
-                                 gpointer      user_data,
-                                 GError      **error)
-{
-  PostUpdateData *data = user_data;
-  MetaKmsUpdate *update = data->update;
-  MetaKmsFeedback *feedback;
-
-  feedback = meta_kms_impl_process_update (impl, data->update, data->flags);
-  meta_kms_device_predict_states_in_impl (meta_kms_update_get_device (update),
-                                          update);
-
-  return feedback;
-}
-
 MetaKmsFeedback *
 meta_kms_post_pending_update_sync (MetaKms           *kms,
                                    MetaKmsDevice     *device,
                                    MetaKmsUpdateFlag  flags)
 {
   MetaKmsUpdate *update;
-  PostUpdateData data;
   MetaKmsFeedback *feedback;
   GList *result_listeners;
   GList *l;
@@ -289,14 +266,7 @@ meta_kms_post_pending_update_sync (MetaKms           *kms,
 
   meta_kms_update_lock (update);
 
-  data = (PostUpdateData) {
-    .update = update,
-    .flags = flags,
-  };
-  feedback = meta_kms_run_impl_task_sync (kms,
-                                          meta_kms_process_update_in_impl,
-                                          &data,
-                                          NULL);
+  feedback = meta_kms_device_process_update_sync (device, update, flags);
 
   result_listeners = meta_kms_update_take_result_listeners (update);
 
@@ -333,6 +303,23 @@ meta_kms_post_pending_update_sync (MetaKms           *kms,
   g_list_free (result_listeners);
 
   return feedback;
+}
+
+MetaKmsFeedback *
+meta_kms_post_test_update_sync (MetaKms       *kms,
+                                MetaKmsUpdate *update)
+{
+  MetaKmsDevice *device = meta_kms_update_get_device (update);
+  MetaKmsUpdateFlag flags;
+
+  g_assert (!meta_kms_update_get_page_flip_listeners (update));
+  g_assert (!meta_kms_update_get_mode_sets (update));
+  g_assert (!meta_kms_update_get_connector_updates (update));
+
+  meta_kms_update_lock (update);
+
+  flags = META_KMS_UPDATE_FLAG_TEST_ONLY;
+  return meta_kms_device_process_update_sync (device, update, flags);
 }
 
 static gpointer
@@ -486,6 +473,7 @@ meta_kms_add_source_in_impl (MetaKms        *kms,
 
   source = g_source_new (&simple_impl_source_funcs,
                          sizeof (MetaKmsSimpleImplSource));
+  g_source_set_name (source, "[mutter] KMS simple impl");
   simple_impl_source = (MetaKmsSimpleImplSource *) source;
   simple_impl_source->kms = kms;
 
@@ -547,6 +535,7 @@ meta_kms_register_fd_in_impl (MetaKms             *kms,
   meta_assert_in_kms_impl (kms);
 
   source = g_source_new (&fd_impl_source_funcs, sizeof (MetaKmsFdImplSource));
+  g_source_set_name (source, "[mutter] KMS fd impl");
   fd_impl_source = (MetaKmsFdImplSource *) source;
   fd_impl_source->dispatch = dispatch;
   fd_impl_source->user_data = user_data;
@@ -631,7 +620,7 @@ update_states_in_impl (MetaKmsImpl  *impl,
   return GUINT_TO_POINTER (meta_kms_update_states_in_impl (kms, data));
 }
 
-static MetaKmsUpdateChanges
+MetaKmsUpdateChanges
 meta_kms_update_states_sync (MetaKms     *kms,
                              GUdevDevice *udev_device)
 {

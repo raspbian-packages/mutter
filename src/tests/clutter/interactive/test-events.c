@@ -105,28 +105,6 @@ get_event_state_string (const ClutterEvent *event)
 }
 
 static gboolean
-red_button_cb (ClutterActor *actor,
-               ClutterEvent *event,
-               gpointer      data)
-{
-  ClutterActor *stage;
-
-  if (IsMotion)
-    IsMotion = FALSE;
-  else
-    IsMotion = TRUE;
-
-  stage = clutter_actor_get_stage (actor);
-  clutter_stage_set_motion_events_enabled (CLUTTER_STAGE (stage),
-                                           IsMotion);
-
-  g_print ("*** Per actor motion events %s ***\n",
-           IsMotion ? "enabled" : "disabled");
-
-  return FALSE;
-}
-
-static gboolean
 capture_cb (ClutterActor *actor,
 	    ClutterEvent *event,
 	    gpointer      data)
@@ -207,7 +185,7 @@ input_cb (ClutterActor *actor,
 	  gpointer      data)
 {
   ClutterActor *stage = clutter_actor_get_stage (actor); 
-  ClutterActor *source_actor = clutter_event_get_source (event);
+  ClutterActor *source_actor;
   graphene_point_t position;
   gchar *state;
   gchar keybuf[128];
@@ -216,6 +194,18 @@ input_cb (ClutterActor *actor,
 
   device = clutter_event_get_device (event);
   device_name = clutter_input_device_get_device_name (device);
+
+  if (event->type == CLUTTER_KEY_PRESS ||
+      event->type == CLUTTER_KEY_RELEASE)
+    {
+      source_actor = clutter_stage_get_key_focus (CLUTTER_STAGE (stage));
+    }
+  else
+    {
+      source_actor = clutter_stage_get_device_actor (CLUTTER_STAGE (stage),
+                                                     device,
+                                                     clutter_event_get_event_sequence (event));
+    }
 
   source = clutter_event_get_source_device (event);
   if (source)
@@ -263,19 +253,17 @@ input_cb (ClutterActor *actor,
       break;
     case CLUTTER_BUTTON_PRESS:
       clutter_event_get_position (event, &position);
-      g_print ("[%s] BUTTON PRESS (button:%i, click count:%i coords:%.02f,%.02f device:%s/%s, state:%s)",
+      g_print ("[%s] BUTTON PRESS (button:%i, coords:%.02f,%.02f device:%s/%s, state:%s)",
                clutter_actor_get_name (source_actor),
                clutter_event_get_button (event),
-               clutter_event_get_click_count (event),
                position.x, position.y,
                device_name, source_name, state);
       break;
     case CLUTTER_BUTTON_RELEASE:
       clutter_event_get_position (event, &position);
-      g_print ("[%s] BUTTON RELEASE (button:%i, click count:%i coords:%.02f,%.02f device:%s/%s state:%s)",
+      g_print ("[%s] BUTTON RELEASE (button:%i, coords:%.02f,%.02f device:%s/%s state:%s)",
                clutter_actor_get_name (source_actor),
                clutter_event_get_button (event),
-               clutter_event_get_click_count (event),
                position.x, position.y,
                device_name, source_name, state);
 
@@ -344,6 +332,9 @@ input_cb (ClutterActor *actor,
     case CLUTTER_TOUCHPAD_SWIPE:
       g_print ("[%s] TOUCHPAD SWIPE", clutter_actor_get_name (source_actor));
       break;
+    case CLUTTER_TOUCHPAD_HOLD:
+      g_print ("[%s] TOUCHPAD HOLD", clutter_actor_get_name (source_actor));
+      break;
     case CLUTTER_PROXIMITY_IN:
       g_print ("[%s] PROXIMITY IN", clutter_actor_get_name (source_actor));
       break;
@@ -396,22 +387,6 @@ test_events_main (int argc, char *argv[])
   clutter_container_add (CLUTTER_CONTAINER(stage), focus_box, NULL);
 
   actor = clutter_actor_new ();
-  clutter_actor_set_background_color (actor, CLUTTER_COLOR_Red);
-  clutter_actor_set_name (actor, "Red Box");
-  clutter_actor_set_size (actor, 100, 100);
-  clutter_actor_set_position (actor, 100, 100);
-  clutter_actor_set_reactive (actor, TRUE);
-  clutter_container_add (CLUTTER_CONTAINER (stage), actor, NULL);
-  g_signal_connect (actor, "event", G_CALLBACK (input_cb), (char *) "red box");
-  g_signal_connect (actor, "key-focus-in", G_CALLBACK (key_focus_in_cb),
-		    focus_box);
-  /* Toggle motion - enter/leave capture */
-  g_signal_connect (actor, "button-press-event",
-                    G_CALLBACK (red_button_cb), NULL);
-
-  clutter_stage_set_key_focus (CLUTTER_STAGE (stage), actor);
-
-  actor = clutter_actor_new ();
   clutter_actor_set_background_color (actor, CLUTTER_COLOR_Green);
   clutter_actor_set_name (actor, "Green Box");
   clutter_actor_set_size (actor, 100, 100);
@@ -422,6 +397,8 @@ test_events_main (int argc, char *argv[])
   g_signal_connect (actor, "key-focus-in", G_CALLBACK (key_focus_in_cb),
 		    focus_box);
   g_signal_connect (actor, "captured-event", G_CALLBACK (capture_cb), NULL);
+
+  clutter_stage_set_key_focus (CLUTTER_STAGE (stage), actor);
 
   /* non reactive */
   actor = clutter_actor_new ();

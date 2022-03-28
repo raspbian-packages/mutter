@@ -25,9 +25,11 @@
 #include "core/events.h"
 
 #include "backends/meta-cursor-tracker-private.h"
+#include "backends/meta-dnd-private.h"
 #include "backends/meta-idle-manager.h"
 #include "backends/x11/meta-backend-x11.h"
 #include "backends/x11/meta-input-device-x11.h"
+#include "compositor/compositor-private.h"
 #include "compositor/meta-window-actor-private.h"
 #include "core/display-private.h"
 #include "core/window-private.h"
@@ -43,6 +45,7 @@
 
 #define IS_GESTURE_EVENT(e) ((e)->type == CLUTTER_TOUCHPAD_SWIPE || \
                              (e)->type == CLUTTER_TOUCHPAD_PINCH || \
+                             (e)->type == CLUTTER_TOUCHPAD_HOLD || \
                              (e)->type == CLUTTER_TOUCH_BEGIN || \
                              (e)->type == CLUTTER_TOUCH_UPDATE || \
                              (e)->type == CLUTTER_TOUCH_END || \
@@ -66,23 +69,32 @@ stage_has_key_focus (void)
   return clutter_stage_get_key_focus (CLUTTER_STAGE (stage)) == stage;
 }
 
+static gboolean
+stage_has_grab (MetaDisplay *display)
+{
+  MetaContext *context = meta_display_get_context (display);
+  MetaBackend *backend = meta_context_get_backend (context);
+  ClutterActor *stage = meta_backend_get_stage (backend);
+
+  return clutter_stage_get_grab_actor (CLUTTER_STAGE (stage)) != NULL;
+}
+
 static MetaWindow *
 get_window_for_event (MetaDisplay        *display,
-                      const ClutterEvent *event)
+                      const ClutterEvent *event,
+                      ClutterActor       *event_actor)
 {
   switch (display->event_route)
     {
     case META_EVENT_ROUTE_NORMAL:
       {
-        ClutterActor *source;
         MetaWindowActor *window_actor;
 
         /* Always use the key focused window for key events. */
         if (IS_KEY_EVENT (event))
             return stage_has_key_focus () ? display->focus_window : NULL;
 
-        source = clutter_event_get_source (event);
-        window_actor = meta_window_actor_from_actor (source);
+        window_actor = meta_window_actor_from_actor (event_actor);
         if (window_actor)
           return meta_window_actor_get_meta_window (window_actor);
         else
@@ -198,14 +210,46 @@ maybe_unfreeze_pointer_events (MetaBackend          *backend,
 
 static gboolean
 meta_display_handle_event (MetaDisplay        *display,
-                           const ClutterEvent *event)
+                           const ClutterEvent *event,
+                           ClutterActor       *event_actor)
 {
   MetaBackend *backend = meta_get_backend ();
-  MetaWindow *window;
+  MetaWindow *window = NULL;
   gboolean bypass_clutter = FALSE;
   G_GNUC_UNUSED gboolean bypass_wayland = FALSE;
   MetaGestureTracker *gesture_tracker;
   ClutterEventSequence *sequence;
+  gboolean has_grab;
+
+#ifdef HAVE_WAYLAND
+  MetaWaylandCompositor *wayland_compositor = NULL;
+  if (meta_is_wayland_compositor ())
+    wayland_compositor = meta_wayland_compositor_get_default ();
+#endif
+
+  has_grab = stage_has_grab (display);
+
+  if (display->grabbed_in_clutter != has_grab)
+    {
+      MetaCompositor *compositor = meta_display_get_compositor (display);
+
+#ifdef HAVE_WAYLAND
+      if (wayland_compositor)
+        meta_display_sync_wayland_input_focus (display);
+#endif
+
+      if (!display->grabbed_in_clutter && has_grab)
+        {
+          display->grabbed_in_clutter = TRUE;
+          meta_display_cancel_touch (display);
+          meta_compositor_grab_begin (compositor);
+        }
+      else if (display->grabbed_in_clutter && !has_grab)
+        {
+          display->grabbed_in_clutter = FALSE;
+          meta_compositor_grab_end (compositor);
+        }
+    }
 
   sequence = clutter_event_get_event_sequence (event);
 
@@ -231,12 +275,8 @@ meta_display_handle_event (MetaDisplay        *display,
     }
 
 #ifdef HAVE_WAYLAND
-  MetaWaylandCompositor *compositor = NULL;
-  if (meta_is_wayland_compositor ())
-    {
-      compositor = meta_wayland_compositor_get_default ();
-      meta_wayland_compositor_update (compositor, event);
-    }
+  if (wayland_compositor)
+    meta_wayland_compositor_update (wayland_compositor, event);
 #endif
 
   if (event->type == CLUTTER_PAD_BUTTON_PRESS ||
@@ -272,18 +312,10 @@ meta_display_handle_event (MetaDisplay        *display,
 
   if (event->type != CLUTTER_DEVICE_ADDED &&
       event->type != CLUTTER_DEVICE_REMOVED)
-    {
-      ClutterInputDevice *source;
-
-      handle_idletime_for_event (event);
-      source = clutter_event_get_source_device (event);
-
-      if (source)
-        meta_backend_update_last_device (backend, source);
-    }
+    handle_idletime_for_event (event);
 
 #ifdef HAVE_WAYLAND
-  if (meta_is_wayland_compositor () && event->type == CLUTTER_MOTION)
+  if (wayland_compositor && event->type == CLUTTER_MOTION)
     {
       MetaCursorRenderer *cursor_renderer;
       ClutterInputDevice *device;
@@ -304,7 +336,7 @@ meta_display_handle_event (MetaDisplay        *display,
     }
 #endif
 
-  window = get_window_for_event (display, event);
+  window = get_window_for_event (display, event, event_actor);
 
   display->current_time = event->any.time;
 
@@ -393,6 +425,18 @@ meta_display_handle_event (MetaDisplay        *display,
       goto out;
     }
 
+  if (stage_has_grab (display))
+    {
+#ifdef HAVE_WAYLAND
+      if (wayland_compositor)
+        meta_dnd_wayland_maybe_handle_event (meta_backend_get_dnd (backend), event);
+#endif
+
+      bypass_wayland = TRUE;
+      bypass_clutter = FALSE;
+      goto out;
+    }
+
   if (window)
     {
       /* Events that are likely to trigger compositor gestures should
@@ -419,10 +463,15 @@ meta_display_handle_event (MetaDisplay        *display,
        * See: https://gitlab.gnome.org/GNOME/mutter/issues/88
        */
       if (meta_window_handle_ui_frame_event (window, event))
-        bypass_wayland = (event->type == CLUTTER_BUTTON_PRESS ||
-                          event->type == CLUTTER_TOUCH_BEGIN);
+        {
+          bypass_wayland = (event->type == CLUTTER_BUTTON_PRESS ||
+                            event->type == CLUTTER_TOUCH_BEGIN);
+        }
       else
-        meta_window_handle_ungrabbed_event (window, event);
+        {
+          bypass_wayland = meta_window_has_modals (window);
+          meta_window_handle_ungrabbed_event (window, event);
+        }
 
       /* This might start a grab op. If it does, then filter out the
        * event, and if it doesn't, replay the event to release our
@@ -469,12 +518,16 @@ meta_display_handle_event (MetaDisplay        *display,
 
   /* If a Wayland client has a grab, don't pass that through to Clutter */
   if (display->event_route == META_EVENT_ROUTE_WAYLAND_POPUP)
-    bypass_clutter = TRUE;
+    bypass_clutter = !bypass_wayland;
 
 #ifdef HAVE_WAYLAND
-  if (compositor && !bypass_wayland)
+  if (wayland_compositor && !bypass_wayland)
     {
-      if (meta_wayland_compositor_handle_event (compositor, event))
+      if (window && event->type == CLUTTER_MOTION &&
+          event->any.time != CLUTTER_CURRENT_TIME)
+        meta_window_check_alive_on_event (window, event->any.time);
+
+      if (meta_wayland_compositor_handle_event (wayland_compositor, event))
         bypass_clutter = TRUE;
     }
 #endif
@@ -485,11 +538,12 @@ meta_display_handle_event (MetaDisplay        *display,
 
 static gboolean
 event_callback (const ClutterEvent *event,
+                ClutterActor       *event_actor,
                 gpointer            data)
 {
   MetaDisplay *display = data;
 
-  return meta_display_handle_event (display, event);
+  return meta_display_handle_event (display, event, event_actor);
 }
 
 void

@@ -64,6 +64,14 @@ typedef enum
   META_CONNECTOR_TYPE_META = 1000,
 } MetaConnectorType;
 
+typedef enum
+{
+  META_PRIVACY_SCREEN_UNAVAILABLE = 0,
+  META_PRIVACY_SCREEN_ENABLED = 1 << 0,
+  META_PRIVACY_SCREEN_DISABLED = 1 << 1,
+  META_PRIVACY_SCREEN_LOCKED = 1 << 2,
+} MetaPrivacyScreenState;
+
 typedef struct _MetaOutputInfo
 {
   grefcount ref_count;
@@ -138,6 +146,11 @@ G_DECLARE_DERIVABLE_TYPE (MetaOutput, meta_output, META, OUTPUT, GObject)
 struct _MetaOutputClass
 {
   GObjectClass parent_class;
+
+  MetaPrivacyScreenState (* get_privacy_screen_state) (MetaOutput *output);
+  gboolean (* set_privacy_screen_enabled) (MetaOutput  *output,
+                                           gboolean     enabled,
+                                           GError     **error);
 };
 
 META_EXPORT_TEST
@@ -170,6 +183,12 @@ void meta_output_set_backlight (MetaOutput *output,
 
 int meta_output_get_backlight (MetaOutput *output);
 
+MetaPrivacyScreenState meta_output_get_privacy_screen_state (MetaOutput *output);
+
+gboolean meta_output_set_privacy_screen_enabled (MetaOutput  *output,
+                                                 gboolean     enabled,
+                                                 GError     **error);
+
 void meta_output_add_possible_clone (MetaOutput *output,
                                      MetaOutput *possible_clone);
 
@@ -192,5 +211,10 @@ MetaMonitorTransform meta_output_logical_to_crtc_transform (MetaOutput          
 
 MetaMonitorTransform meta_output_crtc_to_logical_transform (MetaOutput           *output,
                                                             MetaMonitorTransform  transform);
+
+void meta_output_update_modes (MetaOutput    *output,
+                               MetaCrtcMode  *preferred_mode,
+                               MetaCrtcMode **modes,
+                               int            n_modes);
 
 #endif /* META_OUTPUT_H */

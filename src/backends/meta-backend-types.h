@@ -29,6 +29,8 @@ typedef struct _MetaMonitorConfigManager MetaMonitorConfigManager;
 typedef struct _MetaMonitorConfigStore MetaMonitorConfigStore;
 typedef struct _MetaMonitorsConfig MetaMonitorsConfig;
 
+typedef enum _MetaMonitorsConfigFlag MetaMonitorsConfigFlag;
+
 typedef struct _MetaMonitor MetaMonitor;
 typedef struct _MetaMonitorNormal MetaMonitorNormal;
 typedef struct _MetaMonitorTiled MetaMonitorTiled;
@@ -59,6 +61,7 @@ typedef struct _MetaScreenCastStream MetaScreenCastStream;
 
 typedef struct _MetaVirtualMonitor MetaVirtualMonitor;
 typedef struct _MetaVirtualMonitorInfo MetaVirtualMonitorInfo;
+typedef struct _MetaVirtualModeInfo MetaVirtualModeInfo;
 
 typedef struct _MetaIdleManager MetaIdleManager;
 

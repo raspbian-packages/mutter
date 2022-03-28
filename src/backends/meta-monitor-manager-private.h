@@ -26,7 +26,10 @@
 
 #include <cogl/cogl.h>
 #include <graphene.h>
+
+#ifdef HAVE_GNOME_DESKTOP
 #include <libgnome-desktop/gnome-pnp-ids.h>
+#endif
 
 #include "backends/meta-backend-private.h"
 #include "backends/meta-cursor.h"
@@ -35,6 +38,7 @@
 #include "backends/meta-viewport-info.h"
 #include "core/util-private.h"
 #include "meta/display.h"
+#include "meta/meta-enum-types.h"
 #include "meta/meta-monitor-manager.h"
 
 #define META_MONITOR_MANAGER_MIN_SCREEN_WIDTH 640
@@ -61,6 +65,14 @@ typedef enum _MetaLogicalMonitorLayoutMode
   META_LOGICAL_MONITOR_LAYOUT_MODE_LOGICAL = 1,
   META_LOGICAL_MONITOR_LAYOUT_MODE_PHYSICAL = 2
 } MetaLogicalMonitorLayoutMode;
+
+/* The source the privacy screen change has been triggered */
+typedef enum
+{
+  META_PRIVACY_SCREEN_CHANGE_STATE_NONE,
+  META_PRIVACY_SCREEN_CHANGE_STATE_PENDING_HOTKEY,
+  META_PRIVACY_SCREEN_CHANGE_STATE_PENDING_SETTING,
+} MetaPrivacyScreenChangeState;
 
 /*
  * MetaCrtcAssignment:
@@ -146,9 +158,13 @@ struct _MetaMonitorManager
 
   MetaMonitorConfigManager *config_manager;
 
+#ifdef HAVE_GNOME_DESKTOP
   GnomePnpIds *pnp_ids;
+#endif
 
   MetaMonitorSwitchConfigType current_switch_config;
+
+  MetaPrivacyScreenChangeState privacy_screen_change_state;
 };
 
 /**
@@ -229,6 +245,9 @@ struct _MetaMonitorManagerClass
                            unsigned short     *green,
                            unsigned short     *blue);
 
+  gboolean (* set_privacy_screen_enabled) (MetaMonitorManager *manager,
+                                           gboolean            enabled);
+
   void (* tiled_monitor_added) (MetaMonitorManager *manager,
                                 MetaMonitor        *monitor);
 
@@ -288,6 +307,7 @@ GList *             meta_monitor_manager_get_logical_monitors (MetaMonitorManage
 MetaLogicalMonitor *meta_monitor_manager_get_logical_monitor_from_number (MetaMonitorManager *manager,
                                                                           int                 number);
 
+META_EXPORT_TEST
 MetaLogicalMonitor *meta_monitor_manager_get_primary_logical_monitor (MetaMonitorManager *manager);
 
 MetaLogicalMonitor *meta_monitor_manager_get_logical_monitor_at (MetaMonitorManager *manager,
@@ -436,5 +456,7 @@ void meta_monitor_manager_post_init (MetaMonitorManager *manager);
 MetaViewportInfo * meta_monitor_manager_get_viewports (MetaMonitorManager *manager);
 
 GList * meta_monitor_manager_get_virtual_monitors (MetaMonitorManager *manager);
+
+void meta_monitor_manager_maybe_emit_privacy_screen_change (MetaMonitorManager *manager);
 
 #endif /* META_MONITOR_MANAGER_PRIVATE_H */

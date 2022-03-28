@@ -133,8 +133,7 @@ _cogl_driver_pixel_format_to_gl (CoglContext     *context,
           required_format = format;
           break;
         }
-      /* flow through */
-
+      G_GNUC_FALLTHROUGH;
       /* Just one 24-bit ordering supported */
     case COGL_PIXEL_FORMAT_RGB_888:
     case COGL_PIXEL_FORMAT_BGR_888:
@@ -155,6 +154,7 @@ _cogl_driver_pixel_format_to_gl (CoglContext     *context,
           gltype = GL_UNSIGNED_INT_2_10_10_10_REV_EXT;
           break;
         }
+      G_GNUC_FALLTHROUGH;
 #endif
     case COGL_PIXEL_FORMAT_BGRA_1010102:
     case COGL_PIXEL_FORMAT_BGRA_1010102_PRE:
@@ -348,6 +348,7 @@ _cogl_driver_update_features (CoglContext *context,
                        COGL_DRIVER_ERROR,
                        COGL_DRIVER_ERROR_INVALID_VERSION,
                        "OpenGL ES 2.0 or better is required");
+      g_strfreev (gl_extensions);
       return FALSE;
     }
 
@@ -436,11 +437,8 @@ _cogl_driver_update_features (CoglContext *context,
                     COGL_FEATURE_ID_TEXTURE_RG,
                     TRUE);
 
-  if (context->glGenQueries && context->glQueryCounter)
+  if (context->glGenQueries && context->glQueryCounter && context->glGetInteger64v)
     COGL_FLAGS_SET (context->features, COGL_FEATURE_ID_TIMESTAMP_QUERY, TRUE);
-
-  if (context->glGetInteger64v)
-    COGL_FLAGS_SET (context->features, COGL_FEATURE_ID_GET_GPU_TIME, TRUE);
 
   /* Cache features */
   for (i = 0; i < G_N_ELEMENTS (private_features); i++)

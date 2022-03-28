@@ -15,6 +15,7 @@ debug_event_cb (ClutterActor *actor,
                 gpointer      data)
 {
   gchar keybuf[9], *source = (gchar*)data;
+  ClutterActor *target;
   int   len = 0;
 
   switch (event->type)
@@ -41,8 +42,7 @@ debug_event_cb (ClutterActor *actor,
       printf("[%s] LEAVE", source);
       break;
     case CLUTTER_BUTTON_PRESS:
-      printf("[%s] BUTTON PRESS (click count:%i)", 
-	     source, event->button.click_count);
+      printf("[%s] BUTTON PRESS", source);
       break;
     case CLUTTER_BUTTON_RELEASE:
       printf("[%s] BUTTON RELEASE", source);
@@ -68,6 +68,9 @@ debug_event_cb (ClutterActor *actor,
     case CLUTTER_TOUCHPAD_SWIPE:
       g_print ("[%s] TOUCHPAD SWIPE", source);
       break;
+    case CLUTTER_TOUCHPAD_HOLD:
+      g_print ("[%s] TOUCHPAD HOLD", source);
+      break;
     case CLUTTER_PROXIMITY_IN:
       g_print ("[%s] PROXIMITY IN", source);
       break;
@@ -91,9 +94,12 @@ debug_event_cb (ClutterActor *actor,
       return FALSE;
     }
 
-  if (clutter_event_get_source (event) == actor)
-    printf(" *source*");
-  
+  target = clutter_stage_get_device_actor (clutter_event_get_stage (event),
+                                           clutter_event_get_device (event),
+                                           clutter_event_get_event_sequence (event));
+  if (target == actor)
+    printf(" *target*");
+
   printf("\n");
 
   return FALSE;
@@ -104,9 +110,12 @@ grab_pointer_cb (ClutterActor    *actor,
                  ClutterEvent    *event,
                  gpointer         data)
 {
-  ClutterInputDevice *device = clutter_event_get_device (event);
+  ClutterStage *stage = CLUTTER_STAGE (clutter_actor_get_stage (actor));
+  ClutterGrab *grab;
 
-  clutter_input_device_grab (device, actor);
+  grab = clutter_stage_grab (stage, actor);
+  g_object_set_data (G_OBJECT (actor), "grab-data", grab);
+
   return FALSE;
 }
 
@@ -115,9 +124,11 @@ red_release_cb (ClutterActor    *actor,
                 ClutterEvent    *event,
                 gpointer         data)
 {
-  ClutterInputDevice *device = clutter_event_get_device (event);
+  ClutterGrab *grab;
 
-  clutter_input_device_ungrab (device);
+  grab = g_object_steal_data (G_OBJECT (actor), "grab-data");
+  clutter_grab_dismiss (grab);
+
   return FALSE;
 }
 
@@ -131,38 +142,30 @@ blue_release_cb (ClutterActor    *actor,
 }
 
 static gboolean
-green_press_cb (ClutterActor    *actor,
-                ClutterEvent    *event,
-                gpointer         data)
-{
-  ClutterActor *stage;
-  gboolean enabled;
-
-  stage = clutter_actor_get_stage (actor);
-  enabled = !clutter_stage_get_motion_events_enabled (CLUTTER_STAGE (stage));
-
-  clutter_stage_set_motion_events_enabled (CLUTTER_STAGE (stage), enabled);
-
-  g_print ("per actor motion events are now %s\n",
-           enabled ? "enabled" : "disabled");
-
-  return FALSE;
-}
-
-static gboolean
 toggle_grab_pointer_cb (ClutterActor    *actor,
                         ClutterEvent    *event,
                         gpointer         data)
 {
-  ClutterInputDevice *device = clutter_event_get_device (event);
+  ClutterActor *target;
 
   /* we only deal with the event if the source is ourself */
-  if (event->button.source == actor)
+  target = clutter_stage_get_device_actor (clutter_event_get_stage (event),
+                                           clutter_event_get_device (event),
+                                           clutter_event_get_event_sequence (event));
+
+  if (target == actor)
     {
-      if (clutter_input_device_get_grabbed_actor (device) != NULL)
-        clutter_input_device_ungrab (device);
+      ClutterStage *stage = CLUTTER_STAGE (clutter_actor_get_stage (actor));
+      ClutterGrab *grab;
+
+      grab = g_object_get_data (G_OBJECT (actor), "grab-data");
+
+      if (grab)
+        g_clear_pointer (&grab, clutter_grab_dismiss);
       else
-        clutter_input_device_grab (device, actor);
+        grab = clutter_stage_grab (stage, actor);
+
+      g_object_set_data (G_OBJECT (actor), "grab-data", grab);
     }
 
   return FALSE;
@@ -173,14 +176,17 @@ cyan_press_cb (ClutterActor    *actor,
                ClutterEvent    *event,
                gpointer         data)
 {
-  ClutterBackend *backend = clutter_get_default_backend ();
-  ClutterSeat *seat = clutter_backend_get_default_seat (backend);
-  ClutterInputDevice *device = clutter_seat_get_pointer (seat);
+  ClutterStage *stage = CLUTTER_STAGE (clutter_actor_get_stage (actor));
+  ClutterGrab *grab;
 
-  if (clutter_input_device_get_grabbed_actor (device) != NULL)
-    clutter_input_device_ungrab (device);
+  grab = g_object_get_data (G_OBJECT (actor), "grab-data");
+
+  if (grab)
+    g_clear_pointer (&grab, clutter_grab_dismiss);
   else
-    clutter_input_device_grab (device, actor);
+    grab = clutter_stage_grab (stage, actor);
+
+  g_object_set_data (G_OBJECT (actor), "grab-data", grab);
 
   return FALSE;
 }
@@ -193,7 +199,6 @@ test_grab_main (int argc, char *argv[])
   ClutterActor   *stage, *actor;
   ClutterColor    rcol = { 0xff, 0, 0, 0xff}, 
                   bcol = { 0, 0, 0xff, 0xff },
-		  gcol = { 0, 0xff, 0, 0xff },
 		  ccol = { 0, 0xff, 0xff, 0xff },
 		  ycol = { 0xff, 0xff, 0, 0xff };
 
@@ -245,18 +250,6 @@ test_grab_main (int argc, char *argv[])
                     G_CALLBACK (grab_pointer_cb), NULL);
   g_signal_connect (actor, "button-release-event",
                     G_CALLBACK (blue_release_cb), NULL);
-
-  actor = clutter_actor_new ();
-  clutter_actor_set_background_color (actor, &gcol);
-  clutter_actor_set_size (actor, 100, 100);
-  clutter_actor_set_position (actor, 300, 300);
-  clutter_actor_set_reactive (actor, TRUE);
-  clutter_container_add (CLUTTER_CONTAINER (stage), actor, NULL);
-  g_signal_connect (actor, "event",
-                    G_CALLBACK (debug_event_cb), (char *) "green box");
-  g_signal_connect (actor, "button-press-event",
-                    G_CALLBACK (green_press_cb), NULL);
-
 
   actor = clutter_actor_new ();
   clutter_actor_set_background_color (actor, &ccol);
