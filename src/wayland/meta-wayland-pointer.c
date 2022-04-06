@@ -714,6 +714,9 @@ notify_motion (MetaWaylandPointer *pointer,
                const ClutterEvent *event)
 {
   pointer->grab->interface->motion (pointer->grab, event);
+
+  if (pointer->grab_times)
+    g_array_append_val (pointer->grab_times, event->any.time);
 }
 
 static void
@@ -734,7 +737,13 @@ handle_button_event (MetaWaylandPointer *pointer,
     {
       pointer->grab_button = clutter_event_get_button (event);
       pointer->grab_time = clutter_event_get_time (event);
+      pointer->grab_times = g_array_new (FALSE, TRUE, sizeof (uint32_t));
+      g_array_append_val (pointer->grab_times, event->any.time);
       clutter_event_get_coords (event, &pointer->grab_x, &pointer->grab_y);
+    }
+  else if (event->type == CLUTTER_BUTTON_RELEASE && pointer->button_count == 0)
+    {
+      g_clear_pointer (&pointer->grab_times, g_array_unref);
     }
 
   pointer->grab->interface->button (pointer->grab, event);
