@@ -697,6 +697,15 @@ meta_wayland_data_device_end_drag (MetaWaylandDataDevice *data_device)
     data_device_end_drag_grab (data_device->current_grab);
 }
 
+static int
+compare_times (gconstpointer a, gconstpointer b)
+{
+  const uint32_t *_a = a;
+  const uint32_t *_b = b;
+
+  return *_a - *_b;
+}
+
 static void
 data_device_start_drag (struct wl_client  *client,
                         struct wl_resource *resource,
@@ -718,7 +727,11 @@ data_device_start_drag (struct wl_client  *client,
     return;
 
   if (seat->pointer->button_count == 0 ||
-      seat->pointer->grab_serial != serial ||
+      (seat->pointer->grab_serial != serial &&
+       !g_array_binary_search (seat->pointer->grab_times,
+                               &serial,
+                               compare_times,
+                               NULL)) ||
       !seat->pointer->focus_surface ||
       seat->pointer->focus_surface != surface)
     return;
