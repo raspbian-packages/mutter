@@ -123,6 +123,13 @@ read_gamma_state (MetaKmsCrtc       *crtc,
   crtc_state->gamma.green = g_new0 (uint16_t, drm_crtc->gamma_size);
   crtc_state->gamma.blue = g_new0 (uint16_t, drm_crtc->gamma_size);
 
+      memset (crtc_state->gamma.red, 0,
+              crtc_state->gamma.size * sizeof (uint16_t));
+      memset (crtc_state->gamma.green, 0,
+              crtc_state->gamma.size * sizeof (uint16_t));
+      memset (crtc_state->gamma.blue, 0,
+              crtc_state->gamma.size * sizeof (uint16_t));
+
   drmModeCrtcGetGamma (meta_kms_impl_device_get_fd (impl_device),
                        crtc->id,
                        crtc_state->gamma.size,
