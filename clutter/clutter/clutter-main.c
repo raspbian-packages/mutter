@@ -724,6 +724,30 @@ update_device_for_event (ClutterStage *stage,
                                                time_ms);
 }
 
+static void
+remove_device_for_event (ClutterStage *stage,
+                         ClutterEvent *event,
+                         gboolean      emit_crossing)
+{
+  ClutterInputDevice *device = clutter_event_get_device (event);
+  ClutterEventSequence *sequence = clutter_event_get_event_sequence (event);
+  graphene_point_t point;
+  uint32_t time;
+
+  clutter_event_get_coords (event, &point.x, &point.y);
+  time = clutter_event_get_time (event);
+
+  clutter_stage_update_device (stage,
+                               device, sequence,
+                               point,
+                               time,
+                               NULL,
+                               NULL,
+                               TRUE);
+
+  clutter_stage_remove_device_entry (stage, device, sequence);
+}
+
 /**
  * clutter_do_event:
  * @event: a #ClutterEvent.
@@ -741,6 +765,7 @@ update_device_for_event (ClutterStage *stage,
 void
 clutter_do_event (ClutterEvent *event)
 {
+  ClutterContext *context = _clutter_context_get_default();
   ClutterActor *event_actor = NULL;
 
   /* we need the stage for the event */
@@ -775,8 +800,24 @@ clutter_do_event (ClutterEvent *event)
       event_actor = clutter_stage_get_event_actor (event->any.stage, event);
     }
 
+  context->current_event = g_slist_prepend (context->current_event, event);
+
   if (_clutter_event_process_filters (event, event_actor))
-    return;
+    {
+      context->current_event =
+        g_slist_delete_link (context->current_event, context->current_event);
+
+      if (event->type == CLUTTER_TOUCH_END ||
+          event->type == CLUTTER_TOUCH_CANCEL)
+        {
+          _clutter_stage_process_queued_events (event->any.stage);
+          remove_device_for_event (event->any.stage, event, TRUE);
+        }
+
+      return;
+    }
+
+  context->current_event = g_slist_delete_link (context->current_event, context->current_event);
 
   /* Instead of processing events when received, we queue them up to
    * handle per-frame before animations, layout, and drawing.
@@ -789,43 +830,13 @@ clutter_do_event (ClutterEvent *event)
 }
 
 static void
-remove_device_for_event (ClutterStage *stage,
-                         ClutterEvent *event,
-                         gboolean      emit_crossing)
-{
-  ClutterInputDevice *device = clutter_event_get_device (event);
-  ClutterEventSequence *sequence = clutter_event_get_event_sequence (event);
-  graphene_point_t point;
-  uint32_t time;
-
-  clutter_event_get_coords (event, &point.x, &point.y);
-  time = clutter_event_get_time (event);
-
-  clutter_stage_update_device (stage,
-                               device, sequence,
-                               point,
-                               time,
-                               NULL,
-                               NULL,
-                               TRUE);
-
-  clutter_stage_remove_device_entry (stage, device, sequence);
-}
-
-
-static void
 _clutter_process_event_details (ClutterActor        *stage,
                                 ClutterMainContext  *context,
                                 ClutterEvent        *event)
 {
   ClutterInputDevice *device = clutter_event_get_device (event);
   ClutterEventSequence *sequence = clutter_event_get_event_sequence (event);
-  ClutterMainContext *clutter_context;
-  ClutterBackend *backend;
   ClutterActor *target;
-
-  clutter_context = _clutter_context_get_default ();
-  backend = clutter_context->backend;
 
   switch (event->type)
     {
@@ -868,31 +879,8 @@ _clutter_process_event_details (ClutterActor        *stage,
         break;
 
       case CLUTTER_MOTION:
-        if (clutter_backend_is_display_server (backend) &&
-            !(event->any.flags & CLUTTER_EVENT_FLAG_SYNTHETIC))
-          {
-            if (_clutter_is_input_pointer_a11y_enabled (device))
-              {
-                gfloat x, y;
-
-                clutter_event_get_coords (event, &x, &y);
-                _clutter_input_pointer_a11y_on_motion_event (device, x, y);
-              }
-          }
-        G_GNUC_FALLTHROUGH;
       case CLUTTER_BUTTON_PRESS:
       case CLUTTER_BUTTON_RELEASE:
-        if (clutter_backend_is_display_server (backend))
-          {
-            if (_clutter_is_input_pointer_a11y_enabled (device) && (event->type != CLUTTER_MOTION))
-              {
-                _clutter_input_pointer_a11y_on_button_event (device,
-                                                             event->button.button,
-                                                             event->type == CLUTTER_BUTTON_PRESS);
-              }
-          }
-
-        G_GNUC_FALLTHROUGH;
       case CLUTTER_SCROLL:
       case CLUTTER_TOUCHPAD_PINCH:
       case CLUTTER_TOUCHPAD_SWIPE:

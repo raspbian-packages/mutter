@@ -49,6 +49,8 @@ void                clutter_stage_paint_view             (ClutterStage          
 
 void                clutter_stage_emit_before_update     (ClutterStage          *stage,
                                                           ClutterStageView      *view);
+void                clutter_stage_emit_prepare_frame     (ClutterStage          *stage,
+                                                          ClutterStageView      *view);
 void                clutter_stage_emit_before_paint      (ClutterStage          *stage,
                                                           ClutterStageView      *view);
 void                clutter_stage_emit_after_paint       (ClutterStage          *stage,
@@ -154,8 +156,11 @@ ClutterActor * clutter_stage_pick_and_update_device (ClutterStage             *s
 void clutter_stage_unlink_grab (ClutterStage *self,
                                 ClutterGrab  *grab);
 
-void clutter_stage_pointer_actor_unreactive (ClutterStage *self,
-                                             ClutterActor *actor);
+void clutter_stage_invalidate_focus (ClutterStage *self,
+                                     ClutterActor *actor);
+
+void clutter_stage_maybe_invalidate_focus (ClutterStage *self,
+                                           ClutterActor *actor);
 
 G_END_DECLS
 

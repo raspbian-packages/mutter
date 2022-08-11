@@ -36,6 +36,8 @@ struct _MetaCompositorNative
 G_DEFINE_TYPE (MetaCompositorNative, meta_compositor_native,
                META_TYPE_COMPOSITOR_SERVER)
 
+#ifdef HAVE_WAYLAND
+
 static MetaRendererView *
 get_window_view (MetaRenderer *renderer,
                  MetaWindow   *window)
@@ -112,13 +114,11 @@ maybe_assign_primary_plane (MetaCompositor *compositor)
   if (!COGL_IS_ONSCREEN (framebuffer))
     goto done;
 
-  surface_actor = meta_window_actor_get_topmost_surface (window_actor);
-  if (!surface_actor ||
-      CLUTTER_ACTOR (surface_actor) !=
-      clutter_actor_get_last_child (CLUTTER_ACTOR (window_actor)))
+  surface_actor = meta_window_actor_get_scanout_candidate (window_actor);
+  if (!surface_actor)
     goto done;
-  surface_actor_wayland = META_SURFACE_ACTOR_WAYLAND (surface_actor);
 
+  surface_actor_wayland = META_SURFACE_ACTOR_WAYLAND (surface_actor);
   surface = meta_surface_actor_wayland_get_surface (surface_actor_wayland);
   if (!surface)
     goto done;
@@ -153,6 +153,7 @@ done:
                           surface);
     }
 }
+#endif /* HAVE_WAYLAND */
 
 static void
 meta_compositor_native_before_paint (MetaCompositor   *compositor,
@@ -160,7 +161,9 @@ meta_compositor_native_before_paint (MetaCompositor   *compositor,
 {
   MetaCompositorClass *parent_class;
 
+#ifdef HAVE_WAYLAND
   maybe_assign_primary_plane (compositor);
+#endif
 
   parent_class = META_COMPOSITOR_CLASS (meta_compositor_native_parent_class);
   parent_class->before_paint (compositor, stage_view);

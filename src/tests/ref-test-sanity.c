@@ -111,7 +111,7 @@ meta_test_ref_test_sanity (void)
   return;
 #endif
 
-  g_test_expect_message (G_LOG_DOMAIN,
+  g_test_expect_message ("libmutter-test",
                          G_LOG_LEVEL_CRITICAL,
                          "Pixel difference exceeds limits*");
 

@@ -1,3 +1,87 @@
+42.4
+====
+* screencast: Set correct stride when using dmabufs [Pascal; !2514]
+* Fix glitches in apps using subsurfaces [Robert; !2501, !2530]
+* Reduce client work when entering overview [Robert; !2502]
+* Highlight actors becoming reactive under the pointer [Carlos; !2533]
+* Fall back to ARGB if XRGB is not supported [Daniel; !2519]
+* Support direct scanout on GPUs without modifiers support [Dor; !2510]
+* Fix registering as X11 window manager if GDK_BACKEND is set [Michel; !2496]
+* Fixed crash [Jonas Å.; !2554]
+* Plugged leak [Sebastian; !2497]
+* Misc. bug fixes and cleanups [Jonas D., Dor; !2348, !2406]
+
+Contributors:
+  Dor Askayo, Jonas Dreßler, Michel Dänzer, Carlos Garnacho, Sebastian Keller,
+  Robert Mader, Pascal Nowack, Daniel van Vugt, Jonas Ådahl
+
+42.3
+====
+* wayland: Fix rotation transform [Robert; !1055]
+* Fix dma-buf screencast regression [Jonas; !2462]
+* Fix monitor mirroring in some cases [Jonas; !2492]
+* Fixed crash [Jonas; !2364]
+* Plugged leak [Michel; !2469]
+
+Contributors:
+  Michel Dänzer, Robert Mader, Jonas Ådahl
+
+42.2
+====
+* Don't use direct scanout for transparent windows [Sebastian; !2409]
+* Fix initialization of privacy mode in displays that support it [Marco; !2372]
+* Fix --replace again [Jonas; !2432]
+* Improve picking a window for direct scanout [Sebastian; !2413]
+* Do not allow windows to steal focus when the shell has a grab [Carlos; !2433]
+* Fix night light without GAMMA_LUT property [Jonas; !2435]
+* Fixed crash [Jonas; !2415]
+* Misc. bug fixes [Jonas, Kazuki, Sebastian, Florian; !2403, !2405,
+  !2414, !2436]
+
+Contributors:
+  Marco Trevisan (Treviño), Carlos Garnacho, Kazuki Hashimoto, Sebastian Keller,
+  Florian Müllner, Jonas Ådahl
+
+Translators:
+  Pawan Chitrakar [ne]
+
+42.1
+====
+* Send correct LEAVE events when entering windows [Jonas D.; !2321]
+* Be more forgiving with wrongly sized clients [Robert; !2335]
+* Add ClutterInputCapabilities enum and device property [Carlos; !2331]
+* Fall back if COPY_MODE_SECONDARY_GPU fails to init [Daniel; !2341]
+* Fix missing root window properties after XWayland start [Olivier; !2336]
+* wayland/shm: Add support for ABGR8888 and XBGR8888 formats [Jonas Å.; !2352]
+* Keep actors dirty if a redraw was queued up during paint() [Carlos; !2353]
+* Fix overview painting of shaped texture with layer snippets [Jonas Å.; !2278]
+* Survive missing GAMMA_LUT KMS property [Daniel; !2360]
+* Record current event when going through event filters [Jonas D.; !2327]
+* Pass events to pointer a11y before going through filters [Jonas D.; !2332]
+* Update cursor when scaled or transformed [Sebastian W.; !2363]
+* Fix screen cast when DMA buffer fails or can't be used [Jonas Å.; !2383]
+* Repick when pointer actor goes unmapped [Jonas D.; !2333]
+* Improve IM support [Carlos; !2365, !2384]
+* Allow using dumb buffers for cursor sprites [Jonas Å.; !2275]
+* wayland/dma-buf: Only advertise supported formats [Robert; !2386]
+* Fix screen cast cursor metadata with unthrottled input [Jonas Å.; !2393]
+* Fixed crashes [Olivier Daniel, Łukasz, Jonas D.; !2339, !2359, !2347, !2299]
+* Plugged memory leak [Sebastian K.; !2345]
+* Misc. bug fixes and cleanups [Christian, Jonas Å., Bartłomiej, Carlos, Daniel,
+  Sebastian W., Corentin, Jonas D., Sebastian K.; !2316, !2152, !2334, !2349,
+  !2325, !2357, !2362, !2373, !2374, !2361, !2366, !2350, !2377, !2382, !2391,
+  !2395, !2387, !2400, !2397, !2378]
+
+Contributors:
+  Jonas Dreßler, Bilal Elmoussaoui, Olivier Fourdan, Carlos Garnacho,
+  Christian Hergert, Sebastian Keller, Robert Mader, Florian Müllner,
+  Corentin Noël, Bartłomiej Piotrowski, Łukasz Spintzyk, Daniel van Vugt,
+  Sebastian Wick, Jonas Ådahl
+
+Translators:
+  Balázs Úr [hu], Charles Monzat [fr], Milo Casagrande [it], Марко Костић [sr],
+  Nathan Follens [nl], Jordi Mas [ca], Ngọc Quân Trần [vi]
+
 42.0
 ====
 

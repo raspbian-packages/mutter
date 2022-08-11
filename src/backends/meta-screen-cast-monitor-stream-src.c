@@ -48,6 +48,7 @@ struct _MetaScreenCastMonitorStreamSrc
 
   gulong position_invalidated_handler_id;
   gulong cursor_changed_handler_id;
+  gulong stage_prepare_frame_handler_id;
 
   guint maybe_record_idle_id;
 };
@@ -269,7 +270,9 @@ static void
 pointer_position_invalidated (MetaCursorTracker              *cursor_tracker,
                               MetaScreenCastMonitorStreamSrc *monitor_src)
 {
-  sync_cursor_state (monitor_src);
+  ClutterStage *stage = get_stage (monitor_src);
+
+  clutter_stage_schedule_update (stage);
 }
 
 static void
@@ -277,6 +280,14 @@ cursor_changed (MetaCursorTracker              *cursor_tracker,
                 MetaScreenCastMonitorStreamSrc *monitor_src)
 {
   monitor_src->cursor_bitmap_invalid = TRUE;
+  sync_cursor_state (monitor_src);
+}
+
+static void
+on_prepare_frame (ClutterStage                   *stage,
+                  ClutterStageView               *stage_view,
+                  MetaScreenCastMonitorStreamSrc *monitor_src)
+{
   sync_cursor_state (monitor_src);
 }
 
@@ -402,6 +413,7 @@ meta_screen_cast_monitor_stream_src_enable (MetaScreenCastStreamSrc *src)
   MetaMonitorManager *monitor_manager =
     meta_backend_get_monitor_manager (backend);
   MetaCursorTracker *cursor_tracker = meta_backend_get_cursor_tracker (backend);
+  ClutterStage *stage = get_stage (monitor_src);
   MetaScreenCastStream *stream;
 
   stream = meta_screen_cast_stream_src_get_stream (src);
@@ -416,6 +428,10 @@ meta_screen_cast_monitor_stream_src_enable (MetaScreenCastStreamSrc *src)
       monitor_src->cursor_changed_handler_id =
         g_signal_connect_after (cursor_tracker, "cursor-changed",
                                 G_CALLBACK (cursor_changed),
+                                monitor_src);
+      monitor_src->stage_prepare_frame_handler_id =
+        g_signal_connect_after (stage, "prepare-frame",
+                                G_CALLBACK (on_prepare_frame),
                                 monitor_src);
       meta_cursor_tracker_track_position (cursor_tracker);
       break;
@@ -465,6 +481,8 @@ meta_screen_cast_monitor_stream_src_disable (MetaScreenCastStreamSrc *src)
                           cursor_tracker);
   g_clear_signal_handler (&monitor_src->cursor_changed_handler_id,
                           cursor_tracker);
+  g_clear_signal_handler (&monitor_src->stage_prepare_frame_handler_id,
+                          stage);
 
   g_clear_handle_id (&monitor_src->maybe_record_idle_id, g_source_remove);
 
@@ -534,13 +552,13 @@ meta_screen_cast_monitor_stream_src_record_to_framebuffer (MetaScreenCastStreamS
 {
   MetaScreenCastMonitorStreamSrc *monitor_src =
     META_SCREEN_CAST_MONITOR_STREAM_SRC (src);
-  MetaBackend *backend = get_backend (monitor_src);
-  MetaRenderer *renderer = meta_backend_get_renderer (backend);
+  MetaScreenCastStream *stream = meta_screen_cast_stream_src_get_stream (src);
+  ClutterStage *stage = get_stage (monitor_src);
   MetaMonitor *monitor;
   MetaLogicalMonitor *logical_monitor;
   MetaRectangle logical_monitor_layout;
-  GList *l;
   float view_scale;
+  ClutterPaintFlag paint_flags = CLUTTER_PAINT_FLAG_CLEAR;
 
   monitor = get_monitor (monitor_src);
   logical_monitor = meta_monitor_get_logical_monitor (monitor);
@@ -551,44 +569,22 @@ meta_screen_cast_monitor_stream_src_record_to_framebuffer (MetaScreenCastStreamS
   else
     view_scale = 1.0;
 
-  for (l = meta_renderer_get_views (renderer); l; l = l->next)
+  switch (meta_screen_cast_stream_get_cursor_mode (stream))
     {
-      ClutterStageView *view = CLUTTER_STAGE_VIEW (l->data);
-      CoglFramebuffer *view_framebuffer;
-      CoglScanout *scanout;
-      MetaRectangle view_layout;
-      int x, y;
-
-      clutter_stage_view_get_layout (view, &view_layout);
-
-      if (!meta_rectangle_overlap (&logical_monitor_layout, &view_layout))
-        continue;
-
-      x = (int) roundf ((view_layout.x - logical_monitor_layout.x) * view_scale);
-      y = (int) roundf ((view_layout.y - logical_monitor_layout.y) * view_scale);
-
-      scanout = clutter_stage_view_peek_scanout (view);
-      if (scanout)
-        {
-          if (!cogl_scanout_blit_to_framebuffer (scanout,
-                                                 framebuffer,
-                                                 x, y,
-                                                 error))
-            return FALSE;
-        }
-      else
-        {
-          view_framebuffer = clutter_stage_view_get_framebuffer (view);
-          if (!cogl_blit_framebuffer (view_framebuffer,
-                                      framebuffer,
-                                      0, 0,
-                                      x, y,
-                                      cogl_framebuffer_get_width (view_framebuffer),
-                                      cogl_framebuffer_get_height (view_framebuffer),
-                                      error))
-            return FALSE;
-        }
+    case META_SCREEN_CAST_CURSOR_MODE_METADATA:
+    case META_SCREEN_CAST_CURSOR_MODE_HIDDEN:
+      paint_flags |= CLUTTER_PAINT_FLAG_NO_CURSORS;
+      break;
+    case META_SCREEN_CAST_CURSOR_MODE_EMBEDDED:
+      paint_flags |= CLUTTER_PAINT_FLAG_FORCE_CURSORS;
+      break;
     }
+
+  clutter_stage_paint_to_framebuffer (stage,
+                                      framebuffer,
+                                      &logical_monitor_layout,
+                                      view_scale,
+                                      paint_flags);
 
   cogl_framebuffer_flush (framebuffer);
 

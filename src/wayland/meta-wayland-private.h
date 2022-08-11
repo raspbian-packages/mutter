@@ -52,8 +52,10 @@ typedef struct
   char *name;
 } MetaXWaylandConnection;
 
-typedef struct
+struct _MetaXWaylandManager
 {
+  MetaWaylandCompositor *compositor;
+
   MetaXWaylandConnection private_connection;
   MetaXWaylandConnection public_connection;
 
@@ -73,7 +75,7 @@ typedef struct
   gboolean has_xrandr;
   int rr_event_base;
   int rr_error_base;
-} MetaXWaylandManager;
+};
 
 struct _MetaWaylandCompositor
 {
@@ -103,5 +105,7 @@ struct _MetaWaylandCompositor
 #define META_TYPE_WAYLAND_COMPOSITOR (meta_wayland_compositor_get_type ())
 G_DECLARE_FINAL_TYPE (MetaWaylandCompositor, meta_wayland_compositor,
                       META, WAYLAND_COMPOSITOR, GObject)
+
+gboolean meta_wayland_compositor_is_egl_display_bound (MetaWaylandCompositor *compositor);
 
 #endif /* META_WAYLAND_PRIVATE_H */

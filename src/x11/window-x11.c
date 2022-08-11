@@ -1308,11 +1308,8 @@ meta_window_x11_current_workspace_changed (MetaWindow *window)
    */
   unsigned long data[1];
 
-  if (window->workspace == NULL)
-    {
-      /* this happens when unmanaging windows */
-      return;
-    }
+  if (window->unmanaging)
+    return;
 
   data[0] = meta_window_get_net_wm_desktop (window);
 
@@ -1863,7 +1860,7 @@ static void
 meta_window_x11_update_main_monitor (MetaWindow                   *window,
                                      MetaWindowUpdateMonitorFlags  flags)
 {
-  window->monitor = meta_window_calculate_main_logical_monitor (window);
+  window->monitor = meta_window_find_monitor_from_frame_rect (window);
 }
 
 static void

@@ -934,7 +934,7 @@ meta_window_main_monitor_changed (MetaWindow               *window,
 }
 
 MetaLogicalMonitor *
-meta_window_calculate_main_logical_monitor (MetaWindow *window)
+meta_window_find_monitor_from_frame_rect (MetaWindow *window)
 {
   MetaBackend *backend = meta_get_backend ();
   MetaMonitorManager *monitor_manager =
@@ -1160,7 +1160,7 @@ _meta_window_shared_new (MetaDisplay         *display,
   window->compositor_private = NULL;
 
   if (window->rect.width > 0 && window->rect.height > 0)
-    window->monitor = meta_window_calculate_main_logical_monitor (window);
+    window->monitor = meta_window_find_monitor_from_frame_rect (window);
   else
     window->monitor = meta_backend_get_current_logical_monitor (backend);
 
@@ -1800,11 +1800,13 @@ meta_window_flush_calc_showing (MetaWindow *window)
 {
   MetaWindowPrivate *priv = meta_window_get_instance_private (window);
 
-  if (priv->queued_types & META_QUEUE_CALC_SHOWING)
-    {
-      meta_window_unqueue (window, META_QUEUE_CALC_SHOWING);
-      meta_window_update_visibility (window);
-    }
+  if (!(priv->queued_types & META_QUEUE_CALC_SHOWING))
+    return;
+
+  meta_display_flush_queued_window (window->display, window,
+                                    META_QUEUE_CALC_SHOWING);
+
+  priv->queued_types &= ~META_QUEUE_CALC_SHOWING;
 }
 
 void
@@ -3644,12 +3646,38 @@ find_monitor_by_winsys_id (MetaWindow *window,
   return NULL;
 }
 
+MetaLogicalMonitor *
+meta_window_find_monitor_from_id (MetaWindow *window)
+{
+  MetaContext *context = meta_display_get_context (window->display);
+  MetaBackend *backend = meta_context_get_backend (context);
+  MetaMonitorManager *monitor_manager =
+    meta_backend_get_monitor_manager (backend);
+  MetaLogicalMonitor *old_monitor = window->monitor;
+  MetaLogicalMonitor *new_monitor;
+
+  new_monitor = find_monitor_by_winsys_id (window,
+                                           window->preferred_output_winsys_id);
+
+  if (old_monitor && !new_monitor)
+    new_monitor = find_monitor_by_winsys_id (window, old_monitor->winsys_id);
+
+  if (!new_monitor)
+    {
+      new_monitor =
+        meta_monitor_manager_get_primary_logical_monitor (monitor_manager);
+    }
+
+  return new_monitor;
+}
+
 /* This is called when the monitor setup has changed. The window->monitor
  * reference is still "valid", but refer to the previous monitor setup */
 void
 meta_window_update_for_monitors_changed (MetaWindow *window)
 {
-  MetaBackend *backend = meta_get_backend ();
+  MetaContext *context = meta_display_get_context (window->display);
+  MetaBackend *backend = meta_context_get_backend (context);
   MetaMonitorManager *monitor_manager =
     meta_backend_get_monitor_manager (backend);
   const MetaLogicalMonitor *old, *new;
@@ -3665,17 +3693,7 @@ meta_window_update_for_monitors_changed (MetaWindow *window)
     }
 
   old = window->monitor;
-
-  /* Try the preferred output first */
-  new = find_monitor_by_winsys_id (window, window->preferred_output_winsys_id);
-
-  /* Otherwise, try to find the old output on a new monitor */
-  if (old && !new)
-    new = find_monitor_by_winsys_id (window, old->winsys_id);
-
-  /* Fall back to primary if everything else failed */
-  if (!new)
-    new = meta_monitor_manager_get_primary_logical_monitor (monitor_manager);
+  new = meta_window_find_monitor_from_id (window);
 
   if (window->tile_mode != META_TILE_NONE)
     {
@@ -4500,6 +4518,8 @@ meta_window_focus (MetaWindow  *window,
 {
   MetaWorkspaceManager *workspace_manager = window->display->workspace_manager;
   MetaWindow *modal_transient;
+  MetaBackend *backend;
+  ClutterStage *stage;
 
   g_return_if_fail (!window->override_redirect);
 
@@ -4546,12 +4566,12 @@ meta_window_focus (MetaWindow  *window,
 
   META_WINDOW_GET_CLASS (window)->focus (window, timestamp);
 
-  if (window->display->event_route == META_EVENT_ROUTE_NORMAL)
-    {
-      MetaBackend *backend = meta_get_backend ();
-      ClutterStage *stage = CLUTTER_STAGE (meta_backend_get_stage (backend));
-      clutter_stage_set_key_focus (stage, NULL);
-    }
+  backend = meta_get_backend ();
+  stage = CLUTTER_STAGE (meta_backend_get_stage (backend));
+
+  if (window->display->event_route == META_EVENT_ROUTE_NORMAL &&
+      clutter_stage_get_grab_actor (stage) == NULL)
+    clutter_stage_set_key_focus (stage, NULL);
 
   if (window->close_dialog &&
       meta_close_dialog_is_visible (window->close_dialog))
