@@ -1,0 +1,31 @@
+From: Sebastian Wick <sebastian.wick@redhat.com>
+Date: Fri, 16 Sep 2022 15:48:17 +0200
+Subject: color-device: Return early if the deivce becomes ready due to an
+ error
+
+Part-of: <https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2627>
+(cherry picked from commit 2476a8cedd5b0b0652a2947437b6bc3aacf411f0)
+---
+ src/backends/meta-color-device.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/backends/meta-color-device.c b/src/backends/meta-color-device.c
+index 2652737..53b5865 100644
+--- a/src/backends/meta-color-device.c
++++ b/src/backends/meta-color-device.c
+@@ -378,6 +378,7 @@ on_cd_device_connected (GObject      *source_object,
+ 
+       g_cancellable_cancel (color_device->cancellable);
+       meta_color_device_notify_ready (color_device, FALSE);
++      return;
+     }
+   else
+     {
+@@ -434,6 +435,7 @@ ensure_device_profile_cb (GObject      *source_object,
+ 
+       g_cancellable_cancel (color_device->cancellable);
+       meta_color_device_notify_ready (color_device, FALSE);
++      return;
+     }
+ 
+   meta_topic (META_DEBUG_COLOR, "Color device '%s' generated",
