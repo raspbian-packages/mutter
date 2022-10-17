@@ -25,48 +25,79 @@
 #ifndef EDID_H
 #define EDID_H
 
-typedef unsigned char uchar;
-typedef struct MonitorInfo MonitorInfo;
-typedef struct Timing Timing;
-typedef struct DetailedTiming DetailedTiming;
+#include <stdint.h>
+
+#include "core/util-private.h"
+
+typedef struct _MetaEdidInfo MetaEdidInfo;
+typedef struct _MetaEdidTiming MetaEdidTiming;
+typedef struct _MetaEdidDetailedTiming MetaEdidDetailedTiming;
+typedef struct _MetaEdidHdrStaticMetadata MetaEdidHdrStaticMetadata;
 
 typedef enum
 {
-  UNDEFINED,
-  DVI,
-  HDMI_A,
-  HDMI_B,
-  MDDI,
-  DISPLAY_PORT
-} Interface;
+  META_EDID_INTERFACE_UNDEFINED,
+  META_EDID_INTERFACE_DVI,
+  META_EDID_INTERFACE_HDMI_A,
+  META_EDID_INTERFACE_HDMI_B,
+  META_EDID_INTERFACE_MDDI,
+  META_EDID_INTERFACE_DISPLAY_PORT
+} MetaEdidInterface;
 
 typedef enum
 {
-  UNDEFINED_COLOR,
-  MONOCHROME,
-  RGB,
-  OTHER_COLOR
-} ColorType;
+  META_EDID_COLOR_TYPE_UNDEFINED,
+  META_EDID_COLOR_TYPE_MONOCHROME,
+  META_EDID_COLOR_TYPE_RGB,
+  META_EDID_COLOR_TYPE_OTHER_COLOR
+} MetaEdidColorType;
 
 typedef enum
 {
-  NO_STEREO,
-  FIELD_RIGHT,
-  FIELD_LEFT,
-  TWO_WAY_RIGHT_ON_EVEN,
-  TWO_WAY_LEFT_ON_EVEN,
-  FOUR_WAY_INTERLEAVED,
-  SIDE_BY_SIDE
-} StereoType;
+  META_EDID_STEREO_TYPE_NO_STEREO,
+  META_EDID_STEREO_TYPE_FIELD_RIGHT,
+  META_EDID_STEREO_TYPE_FIELD_LEFT,
+  META_EDID_STEREO_TYPE_TWO_WAY_RIGHT_ON_EVEN,
+  META_EDID_STEREO_TYPE_TWO_WAY_LEFT_ON_EVEN,
+  META_EDID_STEREO_TYPE_FOUR_WAY_INTERLEAVED,
+  META_EDID_STEREO_TYPE_SIDE_BY_SIDE
+} MetaEdidStereoType;
 
-struct Timing
+typedef enum
+{
+  META_EDID_COLORIMETRY_XVYCC601    = (1 << 0),
+  META_EDID_COLORIMETRY_XVYCC709    = (1 << 1),
+  META_EDID_COLORIMETRY_SYCC601     = (1 << 2),
+  META_EDID_COLORIMETRY_OPYCC601    = (1 << 3),
+  META_EDID_COLORIMETRY_OPRGB       = (1 << 4),
+  META_EDID_COLORIMETRY_BT2020CYCC  = (1 << 5),
+  META_EDID_COLORIMETRY_BT2020YCC   = (1 << 6),
+  META_EDID_COLORIMETRY_BT2020RGB   = (1 << 7),
+  META_EDID_COLORIMETRY_ST2113RGB   = (1 << 14),
+  META_EDID_COLORIMETRY_ICTCP       = (1 << 15),
+} MetaEdidColorimetry;
+
+typedef enum
+{
+  META_EDID_TF_TRADITIONAL_GAMMA_SDR = (1 << 0),
+  META_EDID_TF_TRADITIONAL_GAMMA_HDR = (1 << 1),
+  META_EDID_TF_PQ                    = (1 << 2),
+  META_EDID_TF_HLG                   = (1 << 3),
+} MetaEdidTransferFunction;
+
+typedef enum
+{
+  META_EDID_STATIC_METADATA_TYPE1 = 0,
+} MetaEdidStaticMetadataType;
+
+struct _MetaEdidTiming
 {
   int width;
   int height;
   int frequency;
 };
 
-struct DetailedTiming
+struct _MetaEdidDetailedTiming
 {
   int		pixel_clock;
   int		h_addr;
@@ -82,7 +113,7 @@ struct DetailedTiming
   int		right_border;
   int		top_border;
   int		interlaced;
-  StereoType	stereo;
+  MetaEdidStereoType stereo;
 
   int		digital_sync;
   union
@@ -104,7 +135,17 @@ struct DetailedTiming
   } connector;
 };
 
-struct MonitorInfo
+struct _MetaEdidHdrStaticMetadata
+{
+  int available;
+  int max_luminance;
+  int min_luminance;
+  int max_fal;
+  MetaEdidTransferFunction tf;
+  MetaEdidStaticMetadataType sm;
+};
+
+struct _MetaEdidInfo
 {
   int		checksum;
   char		manufacturer_code[4];
@@ -125,7 +166,7 @@ struct MonitorInfo
     struct
     {
       int	bits_per_primary;
-      Interface	interface;
+      MetaEdidInterface interface;
       int	rgb444;
       int	ycrcb444;
       int	ycrcb422;
@@ -143,7 +184,7 @@ struct MonitorInfo
       int	composite_sync_on_h;
       int	composite_sync_on_green;
       int	serration_on_vsync;
-      ColorType	color_type;
+      MetaEdidColorType color_type;
     } analog;
   } connector;
 
@@ -170,24 +211,28 @@ struct MonitorInfo
   double	white_x;
   double	white_y;
 
-  Timing	established[24];	/* Terminated by 0x0x0 */
-  Timing	standard[8];
+  MetaEdidTiming established[24];	/* Terminated by 0x0x0 */
+  MetaEdidTiming standard[8];
 
   int		n_detailed_timings;
-  DetailedTiming detailed_timings[4];	/* If monitor has a preferred
-                                         * mode, it is the first one
-                                         * (whether it has, is
-                                         * determined by the
-                                         * preferred_timing_includes
-                                         * bit.
-                                         */
+  MetaEdidDetailedTiming detailed_timings[4];	/* If monitor has a preferred
+                                                 * mode, it is the first one
+                                                 * (whether it has, is
+                                                 * determined by the
+                                                 * preferred_timing_includes
+                                                 * bit.
+                                                 */
 
   /* Optional product description */
   char		dsc_serial_number[14];
   char		dsc_product_name[14];
   char		dsc_string[14];		/* Unspecified ASCII data */
+
+  MetaEdidColorimetry colorimetry;
+  MetaEdidHdrStaticMetadata hdr_static_metadata;
 };
 
-MonitorInfo *decode_edid (const uchar *data);
+META_EXPORT_TEST
+MetaEdidInfo *meta_edid_info_new_parse (const uint8_t *data);
 
 #endif

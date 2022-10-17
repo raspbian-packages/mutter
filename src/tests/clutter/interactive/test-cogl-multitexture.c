@@ -14,8 +14,8 @@
 typedef struct _TestMultiLayerPipelineState
 {
   ClutterActor    *group;
-  CoglHandle       alpha_tex;
-  CoglHandle       redhand_tex;
+  CoglTexture     *alpha_tex;
+  CoglTexture     *redhand_tex;
   gfloat          *tex_coords;
 
   ClutterTimeline *timeline;
@@ -23,12 +23,12 @@ typedef struct _TestMultiLayerPipelineState
   CoglPipeline *pipeline0;
   graphene_matrix_t tex_matrix0;
   graphene_matrix_t rot_matrix0;
-  CoglHandle       light_tex0;
+  CoglTexture     *light_tex0;
 
   CoglPipeline *pipeline1;
   graphene_matrix_t tex_matrix1;
   graphene_matrix_t rot_matrix1;
-  CoglHandle       light_tex1;
+  CoglTexture     *light_tex1;
 
 } TestMultiLayerPipelineState;
 
@@ -40,8 +40,8 @@ test_cogl_multitexture_describe (void);
 
 static void
 frame_cb (ClutterTimeline  *timeline,
-	  gint		   frame_no,
-	  gpointer	   data)
+          int               frame_no,
+          gpointer          data)
 {
   TestMultiLayerPipelineState *state = data;
 
@@ -112,7 +112,7 @@ G_MODULE_EXPORT int
 test_cogl_multitexture_main (int argc, char *argv[])
 {
   GError            *error = NULL;
-  ClutterActor	    *stage;
+  ClutterActor      *stage;
   ClutterColor       stage_color = { 0x61, 0x56, 0x56, 0xff };
   g_autofree TestMultiLayerPipelineState *state = g_new0 (TestMultiLayerPipelineState, 1);
   gfloat             stage_w, stage_h;
@@ -124,6 +124,7 @@ test_cogl_multitexture_main (int argc, char *argv[])
          0,   0,   1,   1,
          0,   0,   1,   1
     };
+  CoglContext *ctx;
 
   clutter_test_init (&argc, &argv);
 
@@ -142,7 +143,7 @@ test_cogl_multitexture_main (int argc, char *argv[])
   state->group = clutter_actor_new ();
   clutter_actor_set_position (state->group, stage_w / 2, stage_h / 2);
   g_signal_connect (state->group, "paint",
-		    G_CALLBACK(material_rectangle_paint), state);
+                    G_CALLBACK (material_rectangle_paint), state);
 
   files = g_new (gchar*, 4);
   files[0] = g_build_filename (TESTS_DATADIR, "redhand_alpha.png", NULL);
@@ -150,35 +151,20 @@ test_cogl_multitexture_main (int argc, char *argv[])
   files[2] = g_build_filename (TESTS_DATADIR, "light0.png", NULL);
   files[3] = NULL;
 
-  state->alpha_tex =
-    cogl_texture_new_from_file (files[0],
-                                COGL_TEXTURE_NO_SLICING,
-				COGL_PIXEL_FORMAT_ANY,
-				&error);
+  ctx = clutter_backend_get_cogl_context (clutter_get_default_backend ());
+  state->alpha_tex = cogl_texture_2d_new_from_file (ctx, files[0], &error);
   if (!state->alpha_tex)
     g_critical ("Failed to load redhand_alpha.png: %s", error->message);
 
-  state->redhand_tex =
-    cogl_texture_new_from_file (files[1],
-                                COGL_TEXTURE_NO_SLICING,
-				COGL_PIXEL_FORMAT_ANY,
-				&error);
+  state->redhand_tex = cogl_texture_2d_new_from_file (ctx, files[1], &error);
   if (!state->redhand_tex)
     g_critical ("Failed to load redhand.png: %s", error->message);
 
-  state->light_tex0 =
-    cogl_texture_new_from_file (files[2],
-                                COGL_TEXTURE_NO_SLICING,
-				COGL_PIXEL_FORMAT_ANY,
-				&error);
+  state->light_tex0 = cogl_texture_2d_new_from_file (ctx, files[2], &error);
   if (!state->light_tex0)
     g_critical ("Failed to load light0.png: %s", error->message);
 
-  state->light_tex1 =
-    cogl_texture_new_from_file (files[2],
-                                COGL_TEXTURE_NO_SLICING,
-				COGL_PIXEL_FORMAT_ANY,
-				&error);
+  state->light_tex1 = cogl_texture_2d_new_from_file (ctx, files[2], &error);
   if (!state->light_tex1)
     g_critical ("Failed to load light0.png: %s", error->message);
 
@@ -214,8 +200,7 @@ test_cogl_multitexture_main (int argc, char *argv[])
                              &GRAPHENE_POINT3D_INIT (0.5, 0.5, 0));
 
   clutter_actor_set_translation (data->parent_container, -86.f, -125.f, 0.f);
-  clutter_container_add_actor (CLUTTER_CONTAINER(stage),
-			       state->group);
+  clutter_container_add_actor (CLUTTER_CONTAINER(stage), state->group);
 
   state->timeline = clutter_timeline_new_for_actor (stage, 2812);
 

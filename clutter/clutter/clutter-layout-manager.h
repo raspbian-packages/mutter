@@ -42,14 +42,6 @@ G_BEGIN_DECLS
 
 typedef struct _ClutterLayoutManagerClass       ClutterLayoutManagerClass;
 
-/**
- * ClutterLayoutManager:
- *
- * The #ClutterLayoutManager structure contains only private data
- * and should be accessed using the provided API
- *
- * Since: 1.2
- */
 struct _ClutterLayoutManager
 {
   /*< private >*/
@@ -94,8 +86,6 @@ struct _ClutterLayoutManager
  *
  * The #ClutterLayoutManagerClass structure contains only private
  * data and should be accessed using the provided API
- *
- * Since: 1.2
  */
 struct _ClutterLayoutManagerClass
 {

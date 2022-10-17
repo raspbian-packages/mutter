@@ -22,14 +22,6 @@
  *   Emmanuele Bassi <ebassi@linux.intel.com>
  */
 
-/**
- * SECTION:clutter-paint-nodes
- * @Title: Paint Nodes
- * @Short_Description: ClutterPaintNode implementations
- *
- * Clutter provides a set of predefined #ClutterPaintNode implementations
- * that cover all the state changes available.
- */
 
 #include "clutter-build-config.h"
 
@@ -82,9 +74,9 @@ clutter_paint_node_init_types (ClutterBackend *clutter_backend)
 }
 
 /*
- * Root node
+ * ClutterRootNode:
  *
- * any frame can only have a since RootNode instance for each
+ * Any frame can only have a since RootNode instance for each
  * top-level actor.
  */
 
@@ -183,7 +175,7 @@ clutter_root_node_new (CoglFramebuffer    *framebuffer,
 }
 
 /*
- * ClutterTransformNode
+ * ClutterTransformNode:
  */
 
 struct _ClutterTransformNode
@@ -362,8 +354,8 @@ _clutter_dummy_node_new (ClutterActor    *actor,
   return res;
 }
 
-/*
- * Pipeline node
+/**
+ * ClutterPipelineNode:
  */
 
 struct _ClutterPipelineNode
@@ -378,8 +370,6 @@ struct _ClutterPipelineNode
  *
  * The `ClutterPipelineNodeClass` structure is an opaque
  * type whose members cannot be directly accessed.
- *
- * Since: 1.10
  */
 struct _ClutterPipelineNodeClass
 {
@@ -568,8 +558,6 @@ clutter_pipeline_node_init (ClutterPipelineNode *self)
  *
  * Return value: (transfer full): the newly created #ClutterPaintNode.
  *   Use clutter_paint_node_unref() when done.
- *
- * Since: 1.10
  */
 ClutterPaintNode *
 clutter_pipeline_node_new (CoglPipeline *pipeline)
@@ -586,8 +574,8 @@ clutter_pipeline_node_new (CoglPipeline *pipeline)
   return (ClutterPaintNode *) res;
 }
 
-/*
- * Color node
+/**
+ * ClutterColorNode:
  */
 
 struct _ClutterColorNode
@@ -600,8 +588,6 @@ struct _ClutterColorNode
  *
  * The `ClutterColorNodeClass` structure is an
  * opaque type whose members cannot be directly accessed.
- *
- * Since: 1.10
  */
 struct _ClutterColorNodeClass
 {
@@ -634,8 +620,6 @@ clutter_color_node_init (ClutterColorNode *cnode)
  *
  * Return value: (transfer full): the newly created #ClutterPaintNode. Use
  *   clutter_paint_node_unref() when done
- *
- * Since: 1.10
  */
 ClutterPaintNode *
 clutter_color_node_new (const ClutterColor *color)
@@ -661,8 +645,9 @@ clutter_color_node_new (const ClutterColor *color)
   return (ClutterPaintNode *) cnode;
 }
 
-/*
- * Texture node
+/**
+ * ClutterTextureNode:
+ *
  */
 
 struct _ClutterTextureNode
@@ -675,8 +660,6 @@ struct _ClutterTextureNode
  *
  * The `ClutterTextureNodeClass` structure is an
  * opaque type whose members cannot be directly accessed.
- *
- * Since: 1.10
  */
 struct _ClutterTextureNodeClass
 {
@@ -735,8 +718,6 @@ clutter_scaling_filter_to_cogl_pipeline_filter (ClutterScalingFilter filter)
  *
  * Return value: (transfer full): the newly created #ClutterPaintNode.
  *   Use clutter_paint_node_unref() when done
- *
- * Since: 1.10
  */
 ClutterPaintNode *
 clutter_texture_node_new (CoglTexture          *texture,
@@ -775,10 +756,10 @@ clutter_texture_node_new (CoglTexture          *texture,
   return (ClutterPaintNode *) tnode;
 }
 
-/*
- * Text node
- */
 
+/**
+ * ClutterTextNode:
+ */
 struct _ClutterTextNode
 {
   ClutterPaintNode parent_instance;
@@ -792,8 +773,6 @@ struct _ClutterTextNode
  *
  * The `ClutterTextNodeClass` structure is an opaque
  * type whose contents cannot be directly accessed.
- *
- * Since: 1.10
  */
 struct _ClutterTextNodeClass
 {
@@ -958,8 +937,6 @@ clutter_text_node_init (ClutterTextNode *self)
  *
  * Return value: (transfer full): the newly created #ClutterPaintNode.
  *   Use clutter_paint_node_unref() when done
- *
- * Since: 1.10
  */
 ClutterPaintNode *
 clutter_text_node_new (PangoLayout        *layout,
@@ -986,8 +963,8 @@ clutter_text_node_new (PangoLayout        *layout,
   return (ClutterPaintNode *) res;
 }
 
-/*
- * Clip node
+/**
+ * ClutterClipNode:
  */
 struct _ClutterClipNode
 {
@@ -999,8 +976,6 @@ struct _ClutterClipNode
  *
  * The `ClutterClipNodeClass` structure is an opaque
  * type whose members cannot be directly accessed.
- *
- * Since: 1.10
  */
 struct _ClutterClipNodeClass
 {
@@ -1106,8 +1081,6 @@ clutter_clip_node_init (ClutterClipNode *self)
  *
  * Return value: (transfer full): the newly created #ClutterPaintNode.
  *   Use clutter_paint_node_unref() when done.
- *
- * Since: 1.10
  */
 ClutterPaintNode *
 clutter_clip_node_new (void)
@@ -1115,8 +1088,8 @@ clutter_clip_node_new (void)
   return _clutter_paint_node_create (CLUTTER_TYPE_CLIP_NODE);
 }
 
-/*
- * ClutterActorNode
+/**
+ * ClutterActorNode:
  */
 
 struct _ClutterActorNode
@@ -1541,8 +1514,6 @@ clutter_layer_node_init (ClutterLayerNode *self)
  *
  * Return value: (transfer full): the newly created #ClutterLayerNode.
  *   Use clutter_paint_node_unref() when done.
- *
- * Since: 1.10
  */
 ClutterPaintNode *
 clutter_layer_node_new (const graphene_matrix_t *projection,
@@ -1769,7 +1740,7 @@ clutter_blit_node_init (ClutterBlitNode *self)
  * Creates a new #ClutterBlitNode that blits @src into the current
  * draw framebuffer.
  *
- * You must only add rectangles using clutter_blit_node_add_blit_rectangle().
+ * You must only add rectangles using [method@BlitNode.add_blit_rectangle].
  *
  * Return value: (transfer full): the newly created #ClutterBlitNode.
  *   Use clutter_paint_node_unref() when done.
@@ -1798,7 +1769,7 @@ clutter_blit_node_new (CoglFramebuffer *src)
  * @height: Height of region to copy
  *
  * Adds a new blit rectangle to the stack of rectangles. All the
- * constraints of cogl_blit_framebuffer() apply here.
+ * constraints of [func@Cogl.blit_framebuffer] apply here.
  */
 void
 clutter_blit_node_add_blit_rectangle (ClutterBlitNode *blit_node,
@@ -1824,8 +1795,8 @@ clutter_blit_node_add_blit_rectangle (ClutterBlitNode *blit_node,
                                             dst_y + height);
 }
 
-/*
- * ClutterBlurNode
+/**
+ * ClutterBlurNode:
  */
 
 struct _ClutterBlurNode

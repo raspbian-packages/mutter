@@ -677,12 +677,18 @@ static gboolean
 dummy_power_save_page_flip_cb (gpointer user_data)
 {
   MetaRendererNative *renderer_native = user_data;
+  GList *old_list =
+    g_steal_pointer (&renderer_native->power_save_page_flip_onscreens);
 
-  g_list_foreach (renderer_native->power_save_page_flip_onscreens,
+  g_list_foreach (old_list,
                   (GFunc) meta_onscreen_native_dummy_power_save_page_flip,
                   NULL);
-  g_clear_list (&renderer_native->power_save_page_flip_onscreens,
+  g_clear_list (&old_list,
                 g_object_unref);
+
+  if (renderer_native->power_save_page_flip_onscreens != NULL)
+    return G_SOURCE_CONTINUE;
+
   renderer_native->power_save_page_flip_source_id = 0;
 
   return G_SOURCE_REMOVE;
@@ -693,6 +699,9 @@ meta_renderer_native_queue_power_save_page_flip (MetaRendererNative *renderer_na
                                                  CoglOnscreen       *onscreen)
 {
   const unsigned int timeout_ms = 100;
+
+  if (g_list_find (renderer_native->power_save_page_flip_onscreens, onscreen))
+    return;
 
   if (!renderer_native->power_save_page_flip_source_id)
     {
@@ -1403,6 +1412,26 @@ meta_renderer_native_create_view (MetaRenderer       *renderer,
 }
 
 static void
+discard_pending_swaps (MetaRenderer *renderer)
+{
+  GList *views = meta_renderer_get_views (renderer);;
+  GList *l;
+
+  for (l = views; l; l = l->next)
+    {
+      ClutterStageView *stage_view = l->data;
+      CoglFramebuffer *fb = clutter_stage_view_get_onscreen (stage_view);
+      CoglOnscreen *onscreen;
+
+      if (!COGL_IS_ONSCREEN (fb))
+        continue;
+
+      onscreen = COGL_ONSCREEN (fb);
+      meta_onscreen_native_discard_pending_swaps (onscreen);
+    }
+}
+
+static void
 keep_current_onscreens_alive (MetaRenderer *renderer)
 {
   MetaRendererNative *renderer_native = META_RENDERER_NATIVE (renderer);
@@ -1430,6 +1459,7 @@ meta_renderer_native_rebuild_views (MetaRenderer *renderer)
   MetaRendererClass *parent_renderer_class =
     META_RENDERER_CLASS (meta_renderer_native_parent_class);
 
+  discard_pending_swaps (renderer);
   meta_kms_discard_pending_page_flips (kms);
   meta_kms_discard_pending_updates (kms);
 
@@ -1701,24 +1731,16 @@ gpu_kms_is_hardware_rendering (MetaRendererNative *renderer_native,
 }
 
 static MetaRendererNativeGpuData *
-create_renderer_gpu_data_gbm (MetaRendererNative  *renderer_native,
-                              MetaDeviceFile      *device_file,
-                              MetaGpuKms          *gpu_kms,
-                              GError             **error)
+create_renderer_gpu_data_gbm (MetaRendererNative *renderer_native,
+                              MetaRenderDevice   *render_device,
+                              MetaGpuKms         *gpu_kms)
 {
-  MetaRenderer *renderer = META_RENDERER (renderer_native);
-  MetaBackend *backend = meta_renderer_get_backend (renderer);
-  MetaRenderDeviceGbm *render_device_gbm;
   MetaRendererNativeGpuData *renderer_gpu_data;
-
-  render_device_gbm = meta_render_device_gbm_new (backend, device_file, error);
-  if (!render_device_gbm)
-    return NULL;
 
   renderer_gpu_data = meta_create_renderer_native_gpu_data ();
   renderer_gpu_data->renderer_native = renderer_native;
   renderer_gpu_data->mode = META_RENDERER_NATIVE_MODE_GBM;
-  renderer_gpu_data->render_device = META_RENDER_DEVICE (render_device_gbm);
+  renderer_gpu_data->render_device = render_device;
   renderer_gpu_data->gpu_kms = gpu_kms;
 
   init_secondary_gpu_data (renderer_gpu_data);
@@ -1751,26 +1773,15 @@ create_renderer_gpu_data_surfaceless (MetaRendererNative  *renderer_native,
 #ifdef HAVE_EGL_DEVICE
 static MetaRendererNativeGpuData *
 create_renderer_gpu_data_egl_device (MetaRendererNative  *renderer_native,
-                                     MetaDeviceFile      *device_file,
-                                     MetaGpuKms          *gpu_kms,
-                                     GError             **error)
+                                     MetaRenderDevice    *render_device,
+                                     MetaGpuKms          *gpu_kms)
 {
-  MetaRenderer *renderer = META_RENDERER (renderer_native);
-  MetaBackend *backend = meta_renderer_get_backend (renderer);
-  MetaRenderDeviceEglStream *render_device_egl_stream;
   MetaRendererNativeGpuData *renderer_gpu_data;
-
-  render_device_egl_stream = meta_render_device_egl_stream_new (backend,
-                                                                device_file,
-                                                                error);
-  if (!render_device_egl_stream)
-    return NULL;
 
   renderer_gpu_data = meta_create_renderer_native_gpu_data ();
   renderer_gpu_data->renderer_native = renderer_native;
   renderer_gpu_data->mode = META_RENDERER_NATIVE_MODE_EGL_DEVICE;
-  renderer_gpu_data->render_device =
-    META_RENDER_DEVICE (render_device_egl_stream);
+  renderer_gpu_data->render_device = render_device;
   renderer_gpu_data->gpu_kms = gpu_kms;
 
   return renderer_gpu_data;
@@ -1784,91 +1795,42 @@ meta_renderer_native_create_renderer_gpu_data (MetaRendererNative  *renderer_nat
 {
   MetaRenderer *renderer = META_RENDERER (renderer_native);
   MetaBackend *backend = meta_renderer_get_backend (renderer);
-  MetaDevicePool *device_pool =
-    meta_backend_native_get_device_pool (META_BACKEND_NATIVE (backend));
-  MetaRendererNativeGpuData *gbm_renderer_gpu_data = NULL;
-  MetaDeviceFileFlags device_file_flags = META_DEVICE_FILE_FLAG_NONE;
-  g_autoptr (MetaDeviceFile) device_file = NULL;
-  GError *gbm_error = NULL;
-#ifdef HAVE_EGL_DEVICE
-  MetaRendererNativeGpuData *egl_stream_renderer_gpu_data;
-  GError *egl_device_error = NULL;
-#endif
+  MetaBackendNative *backend_native = META_BACKEND_NATIVE (backend);
+  const char *device_path;
+  MetaRenderDevice *render_device;
 
   if (!gpu_kms)
     return create_renderer_gpu_data_surfaceless (renderer_native, error);
 
-  if (!(meta_kms_device_get_flags (meta_gpu_kms_get_kms_device (gpu_kms)) &
-        META_KMS_DEVICE_FLAG_NO_MODE_SETTING))
-    device_file_flags = META_DEVICE_FILE_FLAG_TAKE_CONTROL;
-
-  device_file = meta_device_pool_open (device_pool,
-                                       meta_gpu_kms_get_file_path (gpu_kms),
-                                       device_file_flags,
-                                       error);
-  if (!device_file)
-    return NULL;
-
-#ifdef HAVE_EGL_DEVICE
-  if (g_strcmp0 (getenv ("MUTTER_DEBUG_FORCE_EGL_STREAM"), "1") != 0)
-#endif
+  device_path = meta_gpu_kms_get_file_path (gpu_kms);
+  render_device = meta_backend_native_take_render_device (backend_native,
+                                                          device_path);
+  if (!render_device)
     {
-      gbm_renderer_gpu_data = create_renderer_gpu_data_gbm (renderer_native,
-                                                            device_file,
-                                                            gpu_kms,
-                                                            &gbm_error);
-      if (gbm_renderer_gpu_data)
-        {
-          MetaRenderDevice *render_device = gbm_renderer_gpu_data->render_device;
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No render device found for %s", device_path);
+      return NULL;
+    }
 
-          if (meta_render_device_is_hardware_accelerated (render_device))
-            return gbm_renderer_gpu_data;
-        }
+  if (META_IS_RENDER_DEVICE_GBM (render_device))
+    {
+      return create_renderer_gpu_data_gbm (renderer_native,
+                                           render_device,
+                                           gpu_kms);
     }
 #ifdef HAVE_EGL_DEVICE
+  else if (META_IS_RENDER_DEVICE_EGL_STREAM (render_device))
+    {
+      return create_renderer_gpu_data_egl_device (renderer_native,
+                                                  render_device,
+                                                  gpu_kms);
+    }
+#endif
   else
     {
-      g_set_error (&gbm_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "GBM backend was disabled using env var");
+      g_assert_not_reached ();
+      return NULL;
     }
-#endif
-
-#ifdef HAVE_EGL_DEVICE
-  egl_stream_renderer_gpu_data =
-    create_renderer_gpu_data_egl_device (renderer_native,
-                                         device_file,
-                                         gpu_kms,
-                                         &egl_device_error);
-  if (egl_stream_renderer_gpu_data)
-    {
-      g_clear_pointer (&gbm_renderer_gpu_data,
-                       meta_renderer_native_gpu_data_free);
-      return egl_stream_renderer_gpu_data;
-    }
-#endif
-
-  if (gbm_renderer_gpu_data)
-    return gbm_renderer_gpu_data;
-
-  g_set_error (error, G_IO_ERROR,
-               G_IO_ERROR_FAILED,
-               "Failed to initialize renderer: "
-               "%s"
-#ifdef HAVE_EGL_DEVICE
-               ", %s"
-#endif
-               , gbm_error->message
-#ifdef HAVE_EGL_DEVICE
-               , egl_device_error->message
-#endif
-  );
-
-  g_error_free (gbm_error);
-#ifdef HAVE_EGL_DEVICE
-  g_error_free (egl_device_error);
-#endif
-
-  return NULL;
 }
 
 static const char *
@@ -2125,8 +2087,14 @@ meta_renderer_native_initable_init (GInitable     *initable,
         }
       else
         {
+          MetaKmsDevice *kms_device =
+            meta_gpu_kms_get_kms_device (renderer_native->primary_gpu_kms);
+          MetaKmsDeviceFlag flags;
+
+          flags = meta_kms_device_get_flags (kms_device);
           renderer_native->use_modifiers =
-            !meta_gpu_kms_disable_modifiers (renderer_native->primary_gpu_kms);
+            !(flags & META_KMS_DEVICE_FLAG_DISABLE_MODIFIERS) &&
+            flags & META_KMS_DEVICE_FLAG_HAS_ADDFB2;
         }
 
       meta_topic (META_DEBUG_KMS, "Usage of KMS modifiers is %s",

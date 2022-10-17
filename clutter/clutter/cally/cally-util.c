@@ -24,10 +24,9 @@
  */
 
 /**
- * SECTION:cally-util
- * @Title: CallyUtil
- * @short_description: #AtkUtil implementation
- * @see_also: #ClutterActor
+ * CallyUtil:
+ * 
+ * #AtkUtil implementation
  *
  * #CallyUtil implements #AtkUtil abstract methods. Although it
  * includes the name "Util" it is in fact one of the most important

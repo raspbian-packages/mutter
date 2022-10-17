@@ -24,12 +24,12 @@
  */
 
 /**
- * SECTION:clutter-offscreen-effect
- * @short_description: Base class for effects using offscreen buffers
- * @see_also: #ClutterBlurEffect, #ClutterEffect
+ * ClutterOffscreenEffect:
+ * 
+ * Base class for effects using offscreen buffers
  *
  * #ClutterOffscreenEffect is an abstract class that can be used by
- * #ClutterEffect sub-classes requiring access to an offscreen buffer.
+ * [class@Effect] sub-classes requiring access to an offscreen buffer.
  *
  * Some effects, like the fragment shader based effects, can only use GL
  * textures, and in order to apply those effects to any kind of actor they
@@ -40,24 +40,23 @@
  * offscreen framebuffer, the redirection and the final paint of the texture on
  * the desired stage.
  *
- * #ClutterOffscreenEffect is available since Clutter 1.4
  *
  * ## Implementing a ClutterOffscreenEffect
  *
  * Creating a sub-class of #ClutterOffscreenEffect requires, in case
- * of overriding the #ClutterEffect virtual functions, to chain up to the
+ * of overriding the [class@Effect] virtual functions, to chain up to the
  * #ClutterOffscreenEffect's implementation.
  *
- * On top of the #ClutterEffect's virtual functions,
- * #ClutterOffscreenEffect also provides a #ClutterOffscreenEffectClass.paint_target()
+ * On top of the [class@Effect]'s virtual functions,
+ * #ClutterOffscreenEffect also provides a [vfunc@OffscreenEffect.paint_target]
  * function, which encapsulates the effective painting of the texture that
  * contains the result of the offscreen redirection.
  *
  * The size of the target material is defined to be as big as the
- * transformed size of the #ClutterActor using the offscreen effect.
+ * transformed size of the [class@Actor] using the offscreen effect.
  * Sub-classes of #ClutterOffscreenEffect can change the texture creation
  * code to provide bigger textures by overriding the
- * #ClutterOffscreenEffectClass.create_texture() virtual function; no chain up
+ * [vfunc@OffscreenEffect.create_texture] virtual function; no chain up
  * to the #ClutterOffscreenEffect implementation is required in this
  * case.
  *
@@ -65,25 +64,25 @@
  *
  * #ClutterOffscreenEffect generates the following paint node tree:
  *
- * |[<!-- language="plain" -->
+ * ```
  * Effect
  *  ├─────────┐
  * Layer   Pipeline
  *  │
  * Actor
- * ]|
+ * ```
  *
  * When the actor contents are cached, the generated paint node tree
  * looks like this:
  *
- * |[<!-- language="plain" -->
+ * ```
  * Effect
  *  │
  * Pipeline
- * ]|
+ * ```
  *
  * In both cases, the "Pipeline" node is created with the return value
- * of #ClutterOffscreenEffectClass.create_pipeline().
+ * of [vfunc@OffscreenEffect.create_pipeline].
  */
 
 #include "clutter-build-config.h"
@@ -619,17 +618,15 @@ clutter_offscreen_effect_init (ClutterOffscreenEffect *self)
  * buffer created by @effect
  *
  * You should only use the returned texture when painting. The texture
- * may change after ClutterEffect::pre_paint is called so the effect
+ * may change after [vfunc@Effect.pre_paint] is called so the effect
  * implementation should update any references to the texture after
  * chaining-up to the parent's pre_paint implementation. This can be
- * used instead of clutter_offscreen_effect_get_target() when the
+ * used instead of [method@OffscreenEffect.get_texture] when the
  * effect subclass wants to paint using its own material.
  *
  * Return value: (transfer none): a #CoglHandle or %NULL. The
  *   returned texture is owned by Clutter and it should not be
  *   modified or freed
- *
- * Since: 1.10
  */
 CoglHandle
 clutter_offscreen_effect_get_texture (ClutterOffscreenEffect *effect)
@@ -647,14 +644,12 @@ clutter_offscreen_effect_get_texture (ClutterOffscreenEffect *effect)
  * Retrieves the pipeline used as a render target for the offscreen
  * buffer created by @effect
  *
- * You should only use the returned #CoglPipeline when painting. The
+ * You should only use the returned [class@Cogl.Pipeline] when painting. The
  * returned pipeline might change between different frames.
  *
  * Return value: (transfer none)(nullable): a #CoglPipeline. The
  *   pipeline is owned by Clutter and it should not be modified
  *   or freed
- *
- * Since: 1.4
  */
 CoglPipeline *
 clutter_offscreen_effect_get_pipeline (ClutterOffscreenEffect *effect)
@@ -671,9 +666,7 @@ clutter_offscreen_effect_get_pipeline (ClutterOffscreenEffect *effect)
  * @node: a #ClutterPaintNode
  * @paint_context: a #ClutterPaintContext
  *
- * Calls the paint_target() virtual function of the @effect
- *
- * Since: 1.4
+ * Calls the [vfunc@OffscreenEffect.paint_target] virtual function of the @effect
  */
 void
 clutter_offscreen_effect_paint_target (ClutterOffscreenEffect *effect,
@@ -693,13 +686,11 @@ clutter_offscreen_effect_paint_target (ClutterOffscreenEffect *effect,
  * @width: the minimum width of the target texture
  * @height: the minimum height of the target texture
  *
- * Calls the create_texture() virtual function of the @effect
+ * Calls the [vfunc@OffscreenEffect.create_texture] virtual function of the @effect
  *
  * Return value: (transfer full): a handle to a Cogl texture, or
  *   %NULL. The returned handle has its reference
  *   count increased.
- *
- * Since: 1.4
  */
 CoglHandle
 clutter_offscreen_effect_create_texture (ClutterOffscreenEffect *effect,
@@ -724,13 +715,11 @@ clutter_offscreen_effect_create_texture (ClutterOffscreenEffect *effect,
  * paint the actor to which it has been applied.
  *
  * This function should only be called by #ClutterOffscreenEffect
- * implementations, from within the #ClutterOffscreenEffectClass.paint_target()
+ * implementations, from within the [vfunc@OffscreenEffect.paint_target]
  * virtual function.
  *
  * Return value: %TRUE if the offscreen buffer has a valid size,
  *   and %FALSE otherwise
- *
- * Since: 1.8
  */
 gboolean
 clutter_offscreen_effect_get_target_size (ClutterOffscreenEffect *effect,

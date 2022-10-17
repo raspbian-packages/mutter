@@ -58,45 +58,54 @@ meta_monitor_transform_invert (MetaMonitorTransform transform)
   return 0;
 }
 
+static MetaMonitorTransform
+meta_monitor_transform_flip (MetaMonitorTransform transform)
+{
+  switch (transform)
+    {
+    case META_MONITOR_TRANSFORM_NORMAL:
+      return META_MONITOR_TRANSFORM_FLIPPED;
+    case META_MONITOR_TRANSFORM_90:
+      return META_MONITOR_TRANSFORM_FLIPPED_270;
+    case META_MONITOR_TRANSFORM_180:
+      return META_MONITOR_TRANSFORM_FLIPPED_180;
+    case META_MONITOR_TRANSFORM_270:
+      return META_MONITOR_TRANSFORM_FLIPPED_90;
+    case META_MONITOR_TRANSFORM_FLIPPED:
+      return META_MONITOR_TRANSFORM_NORMAL;
+    case META_MONITOR_TRANSFORM_FLIPPED_90:
+      return META_MONITOR_TRANSFORM_270;
+    case META_MONITOR_TRANSFORM_FLIPPED_180:
+      return META_MONITOR_TRANSFORM_180;
+    case META_MONITOR_TRANSFORM_FLIPPED_270:
+      return META_MONITOR_TRANSFORM_90;
+    }
+  g_assert_not_reached ();
+  return 0;
+}
+
 MetaMonitorTransform
 meta_monitor_transform_transform (MetaMonitorTransform transform,
                                   MetaMonitorTransform other)
 {
   MetaMonitorTransform new_transform;
+  gboolean needs_flip = FALSE;
 
-  new_transform = (transform + other) % META_MONITOR_TRANSFORM_FLIPPED;
-  if (meta_monitor_transform_is_flipped (transform) !=
-      meta_monitor_transform_is_flipped (other))
+  if (meta_monitor_transform_is_flipped (other))
+    new_transform = meta_monitor_transform_flip (transform);
+  else
+    new_transform = transform;
+
+  if (meta_monitor_transform_is_flipped (new_transform))
+    needs_flip = TRUE;
+
+  new_transform += other;
+  new_transform %= META_MONITOR_TRANSFORM_FLIPPED;
+
+  if (needs_flip)
     new_transform += META_MONITOR_TRANSFORM_FLIPPED;
 
   return new_transform;
-}
-
-/**
- * meta_monitor_transform_relative_transform:
- * @transform: The transform to start from
- * @other: The transform to go to
- *
- * Return value: a transform to get from @transform to @other
- */
-MetaMonitorTransform
-meta_monitor_transform_relative_transform (MetaMonitorTransform transform,
-                                           MetaMonitorTransform other)
-{
-  MetaMonitorTransform relative_transform;
-
-  relative_transform = ((other % META_MONITOR_TRANSFORM_FLIPPED -
-                         transform % META_MONITOR_TRANSFORM_FLIPPED) %
-                        META_MONITOR_TRANSFORM_FLIPPED);
-
-  if (meta_monitor_transform_is_flipped (transform) !=
-      meta_monitor_transform_is_flipped (other))
-    {
-      relative_transform = (meta_monitor_transform_invert (relative_transform) +
-                            META_MONITOR_TRANSFORM_FLIPPED);
-    }
-
-  return relative_transform;
 }
 
 void
@@ -143,4 +152,53 @@ meta_monitor_transform_transform_point (MetaMonitorTransform  transform,
       *out_y = x;
       break;
     }
+}
+
+void
+meta_monitor_transform_transform_matrix (MetaMonitorTransform  transform,
+                                         graphene_matrix_t    *matrix)
+{
+  graphene_euler_t euler;
+
+  if (transform == META_MONITOR_TRANSFORM_NORMAL)
+    return;
+
+  graphene_matrix_translate (matrix,
+                             &GRAPHENE_POINT3D_INIT (-0.5, -0.5, 0.0));
+  switch (transform)
+    {
+    case META_MONITOR_TRANSFORM_90:
+      graphene_euler_init_with_order (&euler, 0.0, 0.0, 270.0,
+                                      GRAPHENE_EULER_ORDER_SYXZ);
+      break;
+    case META_MONITOR_TRANSFORM_180:
+      graphene_euler_init_with_order (&euler, 0.0, 0.0, 180.0,
+                                      GRAPHENE_EULER_ORDER_SYXZ);
+      break;
+    case META_MONITOR_TRANSFORM_270:
+      graphene_euler_init_with_order (&euler, 0.0, 0.0, 90.0,
+                                      GRAPHENE_EULER_ORDER_SYXZ);
+      break;
+    case META_MONITOR_TRANSFORM_FLIPPED:
+      graphene_euler_init_with_order (&euler, 0.0, 180.0, 0.0,
+                                      GRAPHENE_EULER_ORDER_SYXZ);
+      break;
+    case META_MONITOR_TRANSFORM_FLIPPED_90:
+      graphene_euler_init_with_order (&euler, 0.0, 180.0, 90.0,
+                                      GRAPHENE_EULER_ORDER_SYXZ);
+      break;
+    case META_MONITOR_TRANSFORM_FLIPPED_180:
+      graphene_euler_init_with_order (&euler, 0.0, 180.0, 180.0,
+                                      GRAPHENE_EULER_ORDER_SYXZ);
+      break;
+    case META_MONITOR_TRANSFORM_FLIPPED_270:
+      graphene_euler_init_with_order (&euler, 0.0, 180.0, 270.0,
+                                      GRAPHENE_EULER_ORDER_SYXZ);
+      break;
+    case META_MONITOR_TRANSFORM_NORMAL:
+      g_assert_not_reached ();
+    }
+  graphene_matrix_rotate_euler (matrix, &euler);
+  graphene_matrix_translate (matrix,
+                             &GRAPHENE_POINT3D_INIT (0.5, 0.5, 0.0));
 }

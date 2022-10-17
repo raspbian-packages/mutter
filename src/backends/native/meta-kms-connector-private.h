@@ -31,8 +31,66 @@ typedef enum _MetaKmsConnectorProp
   META_KMS_CONNECTOR_PROP_UNDERSCAN_VBORDER,
   META_KMS_CONNECTOR_PROP_PRIVACY_SCREEN_SW_STATE,
   META_KMS_CONNECTOR_PROP_PRIVACY_SCREEN_HW_STATE,
+  META_KMS_CONNECTOR_PROP_EDID,
+  META_KMS_CONNECTOR_PROP_TILE,
+  META_KMS_CONNECTOR_PROP_SUGGESTED_X,
+  META_KMS_CONNECTOR_PROP_SUGGESTED_Y,
+  META_KMS_CONNECTOR_PROP_HOTPLUG_MODE_UPDATE,
+  META_KMS_CONNECTOR_PROP_SCALING_MODE,
+  META_KMS_CONNECTOR_PROP_PANEL_ORIENTATION,
+  META_KMS_CONNECTOR_PROP_NON_DESKTOP,
+  META_KMS_CONNECTOR_PROP_MAX_BPC,
   META_KMS_CONNECTOR_N_PROPS
 } MetaKmsConnectorProp;
+
+typedef enum _MetaKmsConnectorDpms
+{
+  META_KMS_CONNECTOR_DPMS_ON = 0,
+  META_KMS_CONNECTOR_DPMS_STANDBY,
+  META_KMS_CONNECTOR_DPMS_SUSPEND,
+  META_KMS_CONNECTOR_DPMS_OFF,
+  META_KMS_CONNECTOR_DPMS_N_PROPS,
+  META_KMS_CONNECTOR_DPMS_UNKNOWN,
+} MetaKmsConnectorDpms;
+
+typedef enum _MetaKmsConnectorUnderscan
+{
+  META_KMS_CONNECTOR_UNDERSCAN_OFF = 0,
+  META_KMS_CONNECTOR_UNDERSCAN_ON,
+  META_KMS_CONNECTOR_UNDERSCAN_AUTO,
+  META_KMS_CONNECTOR_UNDERSCAN_N_PROPS,
+  META_KMS_CONNECTOR_UNDERSCAN_UNKNOWN,
+} MetaKmsConnectorUnderscan;
+
+typedef enum _MetaKmsConnectorPrivacyScreen
+{
+  META_KMS_CONNECTOR_PRIVACY_SCREEN_ENABLED = 0,
+  META_KMS_CONNECTOR_PRIVACY_SCREEN_DISABLED,
+  META_KMS_CONNECTOR_PRIVACY_SCREEN_ENABLED_LOCKED,
+  META_KMS_CONNECTOR_PRIVACY_SCREEN_DISABLED_LOCKED,
+  META_KMS_CONNECTOR_PRIVACY_SCREEN_N_PROPS,
+  META_KMS_CONNECTOR_PRIVACY_SCREEN_UNKNOWN,
+} MetaKmsConnectorPrivacyScreen;
+
+typedef enum _MetaKmsConnectorScalingMode
+{
+  META_KMS_CONNECTOR_SCALING_MODE_NONE = 0,
+  META_KMS_CONNECTOR_SCALING_MODE_FULL,
+  META_KMS_CONNECTOR_SCALING_MODE_CENTER,
+  META_KMS_CONNECTOR_SCALING_MODE_FULL_ASPECT,
+  META_KMS_CONNECTOR_SCALING_MODE_N_PROPS,
+  META_KMS_CONNECTOR_SCALING_MODE_UNKNOWN,
+} MetaKmsConnectorScalingMode;
+
+typedef enum _MetaKmsConnectorPanelOrientation
+{
+  META_KMS_CONNECTOR_PANEL_ORIENTATION_NORMAL = 0,
+  META_KMS_CONNECTOR_PANEL_ORIENTATION_UPSIDE_DOWN,
+  META_KMS_CONNECTOR_PANEL_ORIENTATION_LEFT_SIDE_UP,
+  META_KMS_CONNECTOR_PANEL_ORIENTATION_RIGHT_SIDE_UP,
+  META_KMS_CONNECTOR_PANEL_ORIENTATION_N_PROPS,
+  META_KMS_CONNECTOR_PANEL_ORIENTATION_UNKNOWN,
+} MetaKmsConnectorPanelOrientation;
 
 uint32_t meta_kms_connector_get_prop_id (MetaKmsConnector     *connector,
                                          MetaKmsConnectorProp  prop);
@@ -40,13 +98,17 @@ uint32_t meta_kms_connector_get_prop_id (MetaKmsConnector     *connector,
 const char * meta_kms_connector_get_prop_name (MetaKmsConnector     *connector,
                                                MetaKmsConnectorProp  prop);
 
-MetaKmsUpdateChanges meta_kms_connector_update_state (MetaKmsConnector *connector,
-                                                      drmModeRes       *drm_resources);
+uint64_t meta_kms_connector_get_prop_drm_value (MetaKmsConnector     *connector,
+                                                MetaKmsConnectorProp  prop,
+                                                uint64_t              value);
+
+MetaKmsResourceChanges meta_kms_connector_update_state (MetaKmsConnector *connector,
+                                                        drmModeRes       *drm_resources);
 
 void meta_kms_connector_disable (MetaKmsConnector *connector);
 
-void meta_kms_connector_predict_state (MetaKmsConnector *connector,
-                                       MetaKmsUpdate    *update);
+MetaKmsResourceChanges meta_kms_connector_predict_state (MetaKmsConnector *connector,
+                                                         MetaKmsUpdate    *update);
 
 MetaKmsConnector * meta_kms_connector_new (MetaKmsImplDevice *impl_device,
                                            drmModeConnector  *drm_connector,

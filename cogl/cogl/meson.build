@@ -8,9 +8,7 @@ cdata.set('COGL_HAS_GLX_SUPPORT', have_glx)
 cdata.set('COGL_HAS_EGL_PLATFORM_XLIB_SUPPORT', have_egl_xlib)
 cdata.set('COGL_HAS_EGL_SUPPORT', have_egl)
 cdata.set('COGL_HAS_X11', have_x11)
-cdata.set('COGL_HAS_X11_SUPPORT', have_x11)
-cdata.set('COGL_HAS_XLIB', have_x11)
-cdata.set('COGL_HAS_XLIB_SUPPORT', have_x11)
+cdata.set('COGL_HAS_XLIB', have_x11_client)
 cdata.set('COGL_HAS_TRACING', have_profiler)
 
 cogl_defines_h = configure_file(
@@ -67,7 +65,6 @@ cogl_deprecated_headers = [
   'deprecated/cogl-shader.h',
   'deprecated/cogl-clutter.h',
   'deprecated/cogl-type-casts.h',
-  'deprecated/cogl-auto-texture.h',
 ]
 
 cogl_headers = [
@@ -84,6 +81,7 @@ cogl_headers = [
   'cogl-pipeline-state.h',
   'cogl-pipeline-layer-state.h',
   'cogl-pixel-format.h',
+  'cogl-snippet.h',
   'cogl-texture.h',
   'cogl-texture-2d.h',
   'cogl-texture-2d-sliced.h',
@@ -98,7 +96,6 @@ cogl_nonintrospected_headers = [
   'cogl-onscreen-template.h',
   'cogl-dma-buf-handle.h',
   'cogl-display.h',
-  'cogl-snippet.h',
   'cogl-index-buffer.h',
   'cogl-attribute-buffer.h',
   'cogl-indices.h',
@@ -116,7 +113,6 @@ cogl_nonintrospected_headers = [
   'cogl-pixel-buffer.h',
   'cogl-macros.h',
   'cogl-fence.h',
-  'cogl-version.h',
   'cogl-gtype-private.h',
   'cogl-glib-source.h',
   'cogl-scanout.h',
@@ -277,6 +273,7 @@ cogl_sources = [
   'cogl-glsl-shader-boilerplate.h',
   'cogl-pipeline-snippet-private.h',
   'cogl-pipeline-snippet.c',
+  'cogl-pipeline-cache-private.h',
   'cogl-pipeline-cache.h',
   'cogl-pipeline-cache.c',
   'cogl-pipeline-hash-table.h',
@@ -351,7 +348,6 @@ cogl_sources = [
   'cogl-scanout.c',
   'deprecated/cogl-program.c',
   'deprecated/cogl-program-private.h',
-  'deprecated/cogl-auto-texture.c',
   'deprecated/cogl-shader-private.h',
   'deprecated/cogl-shader.c',
   'deprecated/cogl-clutter.c',
@@ -360,7 +356,7 @@ cogl_sources = [
   'cogl-graphene.c',
 ]
 
-if have_x11
+if have_x11_client
   cogl_nonintrospected_headers += [
     'winsys/cogl-texture-pixmap-x11.h',
     'cogl-xlib.h',
@@ -430,12 +426,6 @@ cogl_headers_all = [
   cogl_deprecated_headers,
 ]
 
-cogl_test_deps = []
-
-if have_cogl_tests
-  cogl_test_deps += [libmutter_cogl_test_fixtures_dep]
-endif
-
 libmutter_cogl_name = 'mutter-cogl-' + libmutter_api_version
 libmutter_cogl = shared_library(libmutter_cogl_name,
   sources: [cogl_sources, cogl_headers_all],
@@ -443,7 +433,7 @@ libmutter_cogl = shared_library(libmutter_cogl_name,
   soversion: 0,
   c_args: cogl_c_args,
   include_directories: cogl_includepath,
-  dependencies: [cogl_deps, cogl_test_deps],
+  dependencies: cogl_deps,
   gnu_symbol_visibility: 'hidden',
   install_rpath: pkglibdir,
   install_dir: pkglibdir,

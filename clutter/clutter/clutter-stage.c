@@ -22,8 +22,9 @@
  */
 
 /**
- * SECTION:clutter-stage
- * @short_description: Top level visual element to which actors are placed.
+ * ClutterStage:
+ * 
+ * Top level visual element to which actors are placed.
  *
  * #ClutterStage is a top level 'window' on which child actors are placed
  * and manipulated.
@@ -1324,8 +1325,6 @@ clutter_stage_class_init (ClutterStageClass *klass)
    *
    * The parameters used for the perspective projection from 3D
    * coordinates to 2D
-   *
-   * Since: 0.8
    */
   obj_props[PROP_PERSPECTIVE] =
       g_param_spec_boxed ("perspective",
@@ -1339,8 +1338,6 @@ clutter_stage_class_init (ClutterStageClass *klass)
    * ClutterStage:title:
    *
    * The stage's title - usually displayed in stage windows title decorations.
-   *
-   * Since: 0.4
    */
   obj_props[PROP_TITLE] =
       g_param_spec_string ("title",
@@ -1353,12 +1350,10 @@ clutter_stage_class_init (ClutterStageClass *klass)
   /**
    * ClutterStage:key-focus:
    *
-   * The #ClutterActor that will receive key events from the underlying
+   * The [class@Clutter.Actor] that will receive key events from the underlying
    * windowing system.
    *
    * If %NULL, the #ClutterStage will receive the events.
-   *
-   * Since: 1.2
    */
   obj_props[PROP_KEY_FOCUS] =
       g_param_spec_object ("key-focus",
@@ -1374,10 +1369,8 @@ clutter_stage_class_init (ClutterStageClass *klass)
    * ClutterStage::activate:
    * @stage: the stage which was activated
    *
-   * The ::activate signal is emitted when the stage receives key focus
+   * The signal is emitted when the stage receives key focus
    * from the underlying window system.
-   *
-   * Since: 0.6
    */
   stage_signals[ACTIVATE] =
     g_signal_new (I_("activate"),
@@ -1390,10 +1383,8 @@ clutter_stage_class_init (ClutterStageClass *klass)
    * ClutterStage::deactivate:
    * @stage: the stage which was deactivated
    *
-   * The ::deactivate signal is emitted when the stage loses key focus
+   * The signal is emitted when the stage loses key focus
    * from the underlying window system.
-   *
-   * Since: 0.6
    */
   stage_signals[DEACTIVATE] =
     g_signal_new (I_("deactivate"),
@@ -1421,7 +1412,7 @@ clutter_stage_class_init (ClutterStageClass *klass)
    * @stage: the stage that received the event
    * @view: a #ClutterStageView
    *
-   * The ::prepare-frame signal is emitted after the stage is updated,
+   * The signal is emitted after the stage is updated,
    * before the stage is painted, even if it will not be painted.
    */
   stage_signals[PREPARE_FRAME] =
@@ -1438,7 +1429,7 @@ clutter_stage_class_init (ClutterStageClass *klass)
    * @stage: the stage that received the event
    * @view: a #ClutterStageView
    *
-   * The ::before-paint signal is emitted before the stage is painted.
+   * The signal is emitted before the stage is painted.
    */
   stage_signals[BEFORE_PAINT] =
     g_signal_new (I_("before-paint"),
@@ -1453,10 +1444,8 @@ clutter_stage_class_init (ClutterStageClass *klass)
    * @stage: the stage that received the event
    * @view: a #ClutterStageView
    *
-   * The ::after-paint signal is emitted after the stage is painted,
-   * but before the results are displayed on the screen.
-   *
-   * Since: 1.20
+   * The signal is emitted after the stage is painted,
+   * but before the results are displayed on the screen.0
    */
   stage_signals[AFTER_PAINT] =
     g_signal_new (I_("after-paint"),
@@ -1487,12 +1476,12 @@ clutter_stage_class_init (ClutterStageClass *klass)
    * @view: a #ClutterStageView
    * @redraw_clip: a #cairo_region_t with the redraw clip
    *
-   * The ::paint-view signal is emitted before a #ClutterStageView is being
+   * The signal is emitted before a [class@Clutter.StageView] is being
    * painted.
    *
    * The view is painted in the default handler. Hence, if you want to perform
    * some action after the view is painted, like reading the contents of the
-   * framebuffer, use g_signal_connect_after() or pass %G_CONNECT_AFTER.
+   * framebuffer, use [func@GObject.signal_connect_after] or pass %G_CONNECT_AFTER.
    */
   stage_signals[PAINT_VIEW] =
     g_signal_new (I_("paint-view"),
@@ -1660,8 +1649,6 @@ clutter_stage_get_perspective (ClutterStage       *stage,
  *
  * Retrieves the @stage's projection matrix. This is derived from the
  * current perspective.
- *
- * Since: 1.6
  */
 void
 _clutter_stage_get_projection_matrix (ClutterStage      *stage,
@@ -1727,8 +1714,6 @@ _clutter_stage_dirty_projection (ClutterStage *stage)
  * offsets and sizes for viewports but the interface takes floats because
  * OpenGL 4.0 has introduced floating point viewports which we might
  * want to expose via this API eventually.
- *
- * Since: 1.6
  */
 static void
 clutter_stage_set_viewport (ClutterStage *stage,
@@ -1802,8 +1787,6 @@ _clutter_stage_dirty_viewport (ClutterStage *stage)
  * clutter_stage_set_viewport() or if the "viewport-mimics-window" property
  * is TRUE then @x and @y will be set to 0 and @width and @height will equal
  * the width if the stage window.
- *
- * Since: 1.6
  */
 void
 _clutter_stage_get_viewport (ClutterStage *stage,
@@ -1931,7 +1914,7 @@ clutter_stage_read_pixels (ClutterStage *stage,
  * @y: Y coordinate to check
  *
  * Checks the scene at the coordinates @x and @y and returns a pointer
- * to the #ClutterActor at those coordinates. The result is the actor which
+ * to the [class@Clutter.Actor] at those coordinates. The result is the actor which
  * would be at the specified location on the next redraw, and is not
  * necessarily that which was there on the previous redraw. This allows the
  * function to perform chronologically correctly after any queued changes to
@@ -1960,8 +1943,6 @@ clutter_stage_get_actor_at_pos (ClutterStage    *stage,
  * @title: A utf8 string for the stage windows title.
  *
  * Sets the stage title.
- *
- * Since: 0.4
  **/
 void
 clutter_stage_set_title (ClutterStage       *stage,
@@ -1993,8 +1974,6 @@ clutter_stage_set_title (ClutterStage       *stage,
  * Return value: pointer to the title string for the stage. The
  * returned string is owned by the actor and should not
  * be modified or freed.
- *
- * Since: 0.4
  **/
 const gchar *
 clutter_stage_get_title (ClutterStage       *stage)
@@ -2012,8 +1991,6 @@ clutter_stage_get_title (ClutterStage       *stage)
  * Sets the key focus on @actor. An actor with key focus will receive
  * all the key events. If @actor is %NULL, the stage will receive
  * focus.
- *
- * Since: 0.6
  */
 void
 clutter_stage_set_key_focus (ClutterStage *stage,
@@ -2085,8 +2062,6 @@ clutter_stage_set_key_focus (ClutterStage *stage,
  * Retrieves the actor that is currently under key focus.
  *
  * Return value: (transfer none): the actor with key focus, or the stage
- *
- * Since: 0.6
  */
 ClutterActor *
 clutter_stage_get_key_focus (ClutterStage *stage)
@@ -2133,8 +2108,6 @@ G_DEFINE_BOXED_TYPE (ClutterPerspective, clutter_perspective,
  * This function should not be called by applications; it is used
  * when embedding a #ClutterStage into a toolkit with another
  * windowing system, like GTK+.
- *
- * Since: 1.0
  */
 void
 clutter_stage_ensure_viewport (ClutterStage *stage)
@@ -2847,7 +2820,7 @@ clutter_stage_presented (ClutterStage     *stage,
  * @out_scale: (out) (optional): the final scale factor
  *
  * Get the size of the framebuffer one must pass to
- * clutter_stage_paint_to_buffer() or clutter_stage_paint_to_framebuffer()
+ * [method@Stage.paint_to_buffer] or [method@Stage.paint_to_framebuffer]
  * would be used with the same @rect.
  *
  * Returns: %TRUE if the size has been retrieved, %FALSE otherwise.
@@ -3320,10 +3293,10 @@ clutter_stage_remove_device_entry (ClutterStage         *self,
  * @device: a #ClutterInputDevice
  * @sequence: (allow-none): an optional #ClutterEventSequence
  *
- * Retrieves the #ClutterActor underneath the pointer or touch point
+ * Retrieves the [class@Clutter.Actor] underneath the pointer or touch point
  * of @device and @sequence.
  *
- * Return value: (transfer none): a pointer to the #ClutterActor or %NULL
+ * Returns: (transfer none) (nullable): a pointer to the #ClutterActor or %NULL
  */
 ClutterActor *
 clutter_stage_get_device_actor (ClutterStage         *stage,
@@ -3427,6 +3400,7 @@ create_crossing_event (ClutterStage         *stage,
   event->crossing.stage = stage;
   event->crossing.x = coords.x;
   event->crossing.y = coords.y;
+  event->crossing.source = source;
   event->crossing.related = related;
   event->crossing.sequence = sequence;
   clutter_event_set_device (event, device);
@@ -3805,7 +3779,7 @@ G_DEFINE_BOXED_TYPE (ClutterGrab, clutter_grab,
  * usual inside its hierarchy.
  *
  * Returns: (transfer full): an opaque #ClutterGrab handle, drop
- *   with clutter_grab_dismiss()
+ *   with [method@Grab.dismiss]
  **/
 ClutterGrab *
 clutter_stage_grab (ClutterStage *stage,
@@ -3932,7 +3906,7 @@ clutter_grab_get_seat_state (ClutterGrab *grab)
  *
  * Gets the actor that currently holds a grab.
  *
- * Returns: (transfer none): The grabbing actor
+ * Returns: (transfer none) (nullable): The grabbing actor
  **/
 ClutterActor *
 clutter_stage_get_grab_actor (ClutterStage *stage)
@@ -3960,7 +3934,7 @@ clutter_stage_get_grab_actor (ClutterStage *stage)
  * and may differ from the actor that the stage originally
  * delivered the event to.
  *
- * Return value: (transfer none): a pointer to the #ClutterActor or %NULL
+ * Returns: (transfer none) (nullable): a pointer to the #ClutterActor or %NULL
  **/
 ClutterActor *
 clutter_stage_get_event_actor (ClutterStage       *stage,

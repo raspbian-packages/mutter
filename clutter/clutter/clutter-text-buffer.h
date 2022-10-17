@@ -41,8 +41,6 @@ G_BEGIN_DECLS
  * CLUTTER_TEXT_BUFFER_MAX_SIZE:
  *
  * Maximum size of text buffer, in bytes.
- *
- * Since: 1.10
  */
 #define CLUTTER_TEXT_BUFFER_MAX_SIZE        G_MAXUSHORT
 
@@ -50,14 +48,6 @@ typedef struct _ClutterTextBuffer            ClutterTextBuffer;
 typedef struct _ClutterTextBufferClass       ClutterTextBufferClass;
 typedef struct _ClutterTextBufferPrivate     ClutterTextBufferPrivate;
 
-/**
- * ClutterTextBuffer:
- *
- * The #ClutterTextBuffer structure contains private
- * data and it should only be accessed using the provided API.
- *
- * Since: 1.10
- */
 struct _ClutterTextBuffer
 {
   /*< private >*/
@@ -77,8 +67,6 @@ struct _ClutterTextBuffer
  *
  * The #ClutterTextBufferClass structure contains
  * only private data.
- *
- * Since: 1.10
  */
 struct _ClutterTextBufferClass
 {

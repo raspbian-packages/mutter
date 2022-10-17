@@ -23,14 +23,12 @@
  */
 
 /**
- * SECTION:clutter-blur-effect
- * @short_description: A blur effect
- * @see_also: #ClutterEffect, #ClutterOffscreenEffect
+ * ClutterBlurEffect:
+ * 
+ * A blur effect
  *
  * #ClutterBlurEffect is a sub-class of #ClutterEffect that allows blurring a
  * actor and its contents.
- *
- * #ClutterBlurEffect is available since Clutter 1.4
  */
 
 #define CLUTTER_BLUR_EFFECT_CLASS(klass)        (G_TYPE_CHECK_CLASS_CAST ((klass), CLUTTER_TYPE_BLUR_EFFECT, ClutterBlurEffectClass))
@@ -123,29 +121,6 @@ clutter_blur_effect_create_pipeline (ClutterOffscreenEffect *effect,
 }
 
 static gboolean
-clutter_blur_effect_pre_paint (ClutterEffect       *effect,
-                               ClutterPaintNode    *node,
-                               ClutterPaintContext *paint_context)
-{
-  ClutterEffectClass *parent_class;
-
-  if (!clutter_feature_available (CLUTTER_FEATURE_SHADERS_GLSL))
-    {
-      /* if we don't have support for GLSL shaders then we
-       * forcibly disable the ActorMeta
-       */
-      g_warning ("Unable to use the ShaderEffect: the graphics hardware "
-                 "or the current GL driver does not implement support "
-                 "for the GLSL shading language.");
-      clutter_actor_meta_set_enabled (CLUTTER_ACTOR_META (effect), FALSE);
-      return FALSE;
-    }
-
-  parent_class = CLUTTER_EFFECT_CLASS (clutter_blur_effect_parent_class);
-  return parent_class->pre_paint (effect, node, paint_context);
-}
-
-static gboolean
 clutter_blur_effect_modify_paint_volume (ClutterEffect      *effect,
                                          ClutterPaintVolume *volume)
 {
@@ -190,7 +165,6 @@ clutter_blur_effect_class_init (ClutterBlurEffectClass *klass)
 
   gobject_class->dispose = clutter_blur_effect_dispose;
 
-  effect_class->pre_paint = clutter_blur_effect_pre_paint;
   effect_class->modify_paint_volume = clutter_blur_effect_modify_paint_volume;
 
   offscreen_class = CLUTTER_OFFSCREEN_EFFECT_CLASS (klass);
@@ -233,8 +207,6 @@ clutter_blur_effect_init (ClutterBlurEffect *self)
  * clutter_actor_add_effect()
  *
  * Return value: the newly created #ClutterBlurEffect or %NULL
- *
- * Since: 1.4
  */
 ClutterEffect *
 clutter_blur_effect_new (void)

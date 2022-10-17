@@ -34,64 +34,16 @@
 
 G_BEGIN_DECLS
 
-#define CLUTTER_TYPE_IMAGE              (clutter_image_get_type ())
-#define CLUTTER_IMAGE(obj)              (G_TYPE_CHECK_INSTANCE_CAST ((obj), CLUTTER_TYPE_IMAGE, ClutterImage))
-#define CLUTTER_IS_IMAGE(obj)           (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CLUTTER_TYPE_IMAGE))
-#define CLUTTER_IMAGE_CLASS(klass)      (G_TYPE_CHECK_CLASS_CAST ((klass), CLUTTER_TYPE_IMAGE, ClutterImageClass))
-#define CLUTTER_IS_IMAGE_CLASS(klass)   (G_TYPE_CHECK_CLASS_TYPE ((klass), CLUTTER_TYPE_IMAGE))
-#define CLUTTER_IMAGE_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS ((obj), CLUTTER_TYPE_IMAGE, ClutterImageClass))
+#define CLUTTER_TYPE_IMAGE (clutter_image_get_type ())
 
-/**
- * CLUTTER_IMAGE_ERROR:
- *
- * Error domain for the #ClutterImageError enumeration.
- *
- * Since: 1.10
- */
-#define CLUTTER_IMAGE_ERROR             (clutter_image_error_quark ())
-
-typedef struct _ClutterImage           ClutterImage;
-typedef struct _ClutterImagePrivate    ClutterImagePrivate;
-typedef struct _ClutterImageClass      ClutterImageClass;
-
-/**
- * ClutterImageError:
- * @CLUTTER_IMAGE_ERROR_INVALID_DATA: Invalid data passed to the
- *   clutter_image_set_data() function.
- *
- * Error enumeration for #ClutterImage.
- *
- * Since: 1.10
- */
-typedef enum
-{
-  CLUTTER_IMAGE_ERROR_INVALID_DATA
-} ClutterImageError;
-
-/**
- * ClutterImage:
- *
- * The #ClutterImage structure contains
- * private data and should only be accessed using the provided
- * API.
- *
- * Since: 1.10
- */
-struct _ClutterImage
-{
-  /*< private >*/
-  GObject parent_instance;
-
-  ClutterImagePrivate *priv;
-};
+CLUTTER_EXPORT
+G_DECLARE_DERIVABLE_TYPE (ClutterImage, clutter_image, CLUTTER, IMAGE, GObject)
 
 /**
  * ClutterImageClass:
  *
  * The #ClutterImageClass structure contains
  * private data.
- *
- * Since: 1.10
  */
 struct _ClutterImageClass
 {
@@ -100,11 +52,6 @@ struct _ClutterImageClass
 
   gpointer _padding[16];
 };
-
-CLUTTER_EXPORT
-GQuark clutter_image_error_quark (void);
-CLUTTER_EXPORT
-GType clutter_image_get_type (void) G_GNUC_CONST;
 
 CLUTTER_EXPORT
 ClutterContent *        clutter_image_new               (void);

@@ -41,7 +41,6 @@
 #include "wayland/meta-wayland-data-device.h"
 #include "wayland/meta-wayland-gtk-shell.h"
 #include "wayland/meta-wayland-keyboard.h"
-#include "wayland/meta-wayland-legacy-xdg-shell.h"
 #include "wayland/meta-wayland-outputs.h"
 #include "wayland/meta-wayland-pointer.h"
 #include "wayland/meta-wayland-presentation-time-private.h"
@@ -781,8 +780,10 @@ meta_wayland_surface_apply_state (MetaWaylandSurface      *surface,
        * it until is replaced by a subsequent wl_surface.commit or when the
        * wl_surface is destroyed.
        */
-      surface->buffer_held = (state->buffer &&
-                              !wl_shm_buffer_get (state->buffer->resource));
+      surface->buffer_held =
+        (state->buffer &&
+         (state->buffer->type != META_WAYLAND_BUFFER_TYPE_SHM &&
+          state->buffer->type != META_WAYLAND_BUFFER_TYPE_SINGLE_PIXEL));
     }
 
   if (state->scale > 0)
@@ -1192,19 +1193,19 @@ transform_from_wl_output_transform (int32_t transform_value)
     case WL_OUTPUT_TRANSFORM_NORMAL:
       return META_MONITOR_TRANSFORM_NORMAL;
     case WL_OUTPUT_TRANSFORM_90:
-      return META_MONITOR_TRANSFORM_270;
+      return META_MONITOR_TRANSFORM_90;
     case WL_OUTPUT_TRANSFORM_180:
       return META_MONITOR_TRANSFORM_180;
     case WL_OUTPUT_TRANSFORM_270:
-      return META_MONITOR_TRANSFORM_90;
+      return META_MONITOR_TRANSFORM_270;
     case WL_OUTPUT_TRANSFORM_FLIPPED:
       return META_MONITOR_TRANSFORM_FLIPPED;
     case WL_OUTPUT_TRANSFORM_FLIPPED_90:
-      return META_MONITOR_TRANSFORM_FLIPPED_270;
+      return META_MONITOR_TRANSFORM_FLIPPED_90;
     case WL_OUTPUT_TRANSFORM_FLIPPED_180:
       return META_MONITOR_TRANSFORM_FLIPPED_180;
     case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-      return META_MONITOR_TRANSFORM_FLIPPED_90;
+      return META_MONITOR_TRANSFORM_FLIPPED_270;
     default:
       return -1;
     }
@@ -1577,7 +1578,6 @@ void
 meta_wayland_shell_init (MetaWaylandCompositor *compositor)
 {
   meta_wayland_xdg_shell_init (compositor);
-  meta_wayland_legacy_xdg_shell_init (compositor);
   meta_wayland_init_gtk_shell (compositor);
   meta_wayland_init_viewporter (compositor);
 }
@@ -2258,4 +2258,15 @@ meta_wayland_surface_can_scanout_untransformed (MetaWaylandSurface *surface,
     }
 
   return TRUE;
+}
+
+int
+meta_wayland_surface_get_geometry_scale (MetaWaylandSurface *surface)
+{
+  MetaWaylandActorSurface *actor_surface;
+
+  g_return_val_if_fail (META_IS_WAYLAND_ACTOR_SURFACE (surface->role), 1);
+
+  actor_surface = META_WAYLAND_ACTOR_SURFACE (surface->role);
+  return meta_wayland_actor_surface_get_geometry_scale (actor_surface);
 }

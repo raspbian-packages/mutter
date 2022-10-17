@@ -23,6 +23,7 @@
 #include "backends/native/meta-kms-private.h"
 
 #include "backends/native/meta-backend-native.h"
+#include "backends/native/meta-kms-crtc.h"
 #include "backends/native/meta-kms-device-private.h"
 #include "backends/native/meta-kms-impl.h"
 #include "backends/native/meta-kms-update-private.h"
@@ -177,9 +178,16 @@ struct _MetaKms
 
   GList *pending_callbacks;
   guint callback_source_id;
+
+  gboolean shutting_down;
 };
 
 G_DEFINE_TYPE (MetaKms, meta_kms, G_TYPE_OBJECT)
+
+static MetaKmsFeedback *
+meta_kms_post_update_sync (MetaKms           *kms,
+                           MetaKmsUpdate     *update,
+                           MetaKmsUpdateFlag  flags);
 
 void
 meta_kms_discard_pending_updates (MetaKms *kms)
@@ -247,22 +255,111 @@ meta_kms_take_pending_update (MetaKms       *kms,
   return NULL;
 }
 
+MetaKmsUpdate *
+meta_kms_ensure_pending_update_for_crtc (MetaKms     *kms,
+                                         MetaKmsCrtc *crtc)
+{
+  MetaKmsUpdate *update;
+
+  update = meta_kms_get_pending_update_for_crtc (kms, crtc);
+  if (update == NULL)
+    {
+      update = meta_kms_update_new (meta_kms_crtc_get_device (crtc));
+      meta_kms_update_include_crtc (update, crtc);
+      meta_kms_add_pending_update (kms, update);
+    }
+
+  return update;
+}
+
+static MetaKmsUpdate *
+meta_kms_find_compatible_update_for_crtc (MetaKms     *kms,
+                                          MetaKmsCrtc *crtc,
+                                          gboolean     take)
+{
+  MetaKmsDevice *device;
+  MetaKmsUpdate *update;
+  GList *l;
+
+  for (l = kms->pending_updates; l; l = l->next)
+    {
+      update = l->data;
+      if (meta_kms_update_includes_crtc (update, crtc))
+        goto found;
+    }
+
+  device = meta_kms_crtc_get_device (crtc);
+
+  for (l = kms->pending_updates; l; l = l->next)
+    {
+      update = l->data;
+      if (meta_kms_update_get_device (update) == device &&
+          meta_kms_update_get_mode_sets (update))
+        goto found;
+    }
+
+  return NULL;
+
+found:
+  if (take)
+    kms->pending_updates = g_list_delete_link (kms->pending_updates, l);
+  return update;
+}
+
+MetaKmsUpdate *
+meta_kms_get_pending_update_for_crtc (MetaKms     *kms,
+                                      MetaKmsCrtc *crtc)
+{
+  return meta_kms_find_compatible_update_for_crtc (kms, crtc, FALSE);
+}
+
+static MetaKmsUpdate *
+meta_kms_take_pending_update_for_crtc (MetaKms     *kms,
+                                       MetaKmsCrtc *crtc)
+{
+  return meta_kms_find_compatible_update_for_crtc (kms, crtc, TRUE);
+}
+
 MetaKmsFeedback *
 meta_kms_post_pending_update_sync (MetaKms           *kms,
                                    MetaKmsDevice     *device,
                                    MetaKmsUpdateFlag  flags)
 {
   MetaKmsUpdate *update;
+
+  update = meta_kms_take_pending_update (kms, device);
+  if (!update)
+    return NULL;
+
+  return meta_kms_post_update_sync (kms, update, flags);
+}
+
+MetaKmsFeedback *
+meta_kms_post_pending_update_for_crtc_sync (MetaKms           *kms,
+                                            MetaKmsCrtc       *crtc,
+                                            MetaKmsUpdateFlag  flags)
+{
+  MetaKmsUpdate *update;
+
+  update = meta_kms_take_pending_update_for_crtc (kms, crtc);
+  if (!update)
+    return NULL;
+
+  return meta_kms_post_update_sync (kms, update, flags);
+}
+
+static MetaKmsFeedback *
+meta_kms_post_update_sync (MetaKms           *kms,
+                           MetaKmsUpdate     *update,
+                           MetaKmsUpdateFlag  flags)
+{
+  MetaKmsDevice *device = meta_kms_update_get_device (update);
   MetaKmsFeedback *feedback;
   GList *result_listeners;
   GList *l;
 
   COGL_TRACE_BEGIN_SCOPED (MetaKmsPostUpdateSync,
                            "KMS (post update)");
-
-  update = meta_kms_take_pending_update (kms, device);
-  if (!update)
-    return NULL;
 
   meta_kms_update_lock (update);
 
@@ -567,11 +664,11 @@ typedef struct _UpdateStatesData
   uint32_t connector_id;
 } UpdateStatesData;
 
-static MetaKmsUpdateChanges
+static MetaKmsResourceChanges
 meta_kms_update_states_in_impl (MetaKms          *kms,
                                 UpdateStatesData *update_data)
 {
-  MetaKmsUpdateChanges changes = META_KMS_UPDATE_CHANGE_NONE;
+  MetaKmsResourceChanges changes = META_KMS_RESOURCE_CHANGE_NONE;
   GList *l;
 
   COGL_TRACE_BEGIN_SCOPED (MetaKmsUpdateStates,
@@ -580,7 +677,7 @@ meta_kms_update_states_in_impl (MetaKms          *kms,
   meta_assert_in_kms_impl (kms);
 
   if (!kms->devices)
-    return META_KMS_UPDATE_CHANGE_NO_DEVICES;
+    return META_KMS_RESOURCE_CHANGE_NO_DEVICES;
 
   for (l = kms->devices; l; l = l->next)
     {
@@ -620,7 +717,7 @@ update_states_in_impl (MetaKmsImpl  *impl,
   return GUINT_TO_POINTER (meta_kms_update_states_in_impl (kms, data));
 }
 
-MetaKmsUpdateChanges
+MetaKmsResourceChanges
 meta_kms_update_states_sync (MetaKms     *kms,
                              GUdevDevice *udev_device)
 {
@@ -644,20 +741,20 @@ meta_kms_update_states_sync (MetaKms     *kms,
 }
 
 static void
-handle_hotplug_event (MetaKms              *kms,
-                      GUdevDevice          *udev_device,
-                      MetaKmsUpdateChanges  changes)
+handle_hotplug_event (MetaKms                *kms,
+                      GUdevDevice            *udev_device,
+                      MetaKmsResourceChanges  changes)
 {
   changes |= meta_kms_update_states_sync (kms, udev_device);
 
-  if (changes != META_KMS_UPDATE_CHANGE_NONE)
-    g_signal_emit (kms, signals[RESOURCES_CHANGED], 0, changes);
+  if (changes != META_KMS_RESOURCE_CHANGE_NONE)
+    meta_kms_emit_resources_changed (kms, changes);
 }
 
 void
 meta_kms_resume (MetaKms *kms)
 {
-  handle_hotplug_event (kms, NULL, META_KMS_UPDATE_CHANGE_FULL);
+  handle_hotplug_event (kms, NULL, META_KMS_RESOURCE_CHANGE_FULL);
 }
 
 static void
@@ -665,7 +762,7 @@ on_udev_hotplug (MetaUdev    *udev,
                  GUdevDevice *udev_device,
                  MetaKms     *kms)
 {
-  handle_hotplug_event (kms, udev_device, META_KMS_UPDATE_CHANGE_NONE);
+  handle_hotplug_event (kms, udev_device, META_KMS_RESOURCE_CHANGE_NONE);
 }
 
 static void
@@ -673,7 +770,7 @@ on_udev_device_removed (MetaUdev    *udev,
                         GUdevDevice *device,
                         MetaKms     *kms)
 {
-  handle_hotplug_event (kms, NULL, META_KMS_UPDATE_CHANGE_NONE);
+  handle_hotplug_event (kms, NULL, META_KMS_RESOURCE_CHANGE_NONE);
 }
 
 MetaBackend *
@@ -752,8 +849,16 @@ prepare_shutdown_in_impl (MetaKmsImpl  *impl,
 void
 meta_kms_prepare_shutdown (MetaKms *kms)
 {
+  kms->shutting_down = TRUE;
+
   meta_kms_run_impl_task_sync (kms, prepare_shutdown_in_impl, NULL, NULL);
   flush_callbacks (kms);
+}
+
+gboolean
+meta_kms_is_shutting_down (MetaKms *kms)
+{
+  return kms->shutting_down;
 }
 
 static void
@@ -797,5 +902,12 @@ meta_kms_class_init (MetaKmsClass *klass)
                   0,
                   NULL, NULL, NULL,
                   G_TYPE_NONE, 1,
-                  META_TYPE_KMS_UPDATE_CHANGES);
+                  META_TYPE_KMS_RESOURCE_CHANGES);
+}
+
+void
+meta_kms_emit_resources_changed (MetaKms                *kms,
+                                 MetaKmsResourceChanges  changes)
+{
+  g_signal_emit (kms, signals[RESOURCES_CHANGED], 0, changes);
 }

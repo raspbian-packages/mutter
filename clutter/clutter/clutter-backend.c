@@ -25,8 +25,9 @@
  */
 
 /**
- * SECTION:clutter-backend
- * @short_description: Backend abstraction
+ * ClutterBackend:
+ * 
+ * Backend abstraction
  *
  * Clutter can be compiled against different backends. Each backend
  * has to implement a set of functions, in order to be used by Clutter.
@@ -34,8 +35,6 @@
  * #ClutterBackend is the base class abstracting the various implementation;
  * it provides a basic API to query the backend for generic information
  * and settings.
- *
- * #ClutterBackend is available since Clutter 0.4
  */
 
 #include "clutter-build-config.h"
@@ -376,10 +375,8 @@ clutter_backend_class_init (ClutterBackendClass *klass)
    * ClutterBackend::resolution-changed:
    * @backend: the #ClutterBackend that emitted the signal
    *
-   * The ::resolution-changed signal is emitted each time the font
+   * The signal is emitted each time the font
    * resolutions has been changed through #ClutterSettings.
-   *
-   * Since: 1.0
    */
   backend_signals[RESOLUTION_CHANGED] =
     g_signal_new (I_("resolution-changed"),
@@ -393,10 +390,8 @@ clutter_backend_class_init (ClutterBackendClass *klass)
    * ClutterBackend::font-changed:
    * @backend: the #ClutterBackend that emitted the signal
    *
-   * The ::font-changed signal is emitted each time the font options
+   * The signal is emitted each time the font options
    * have been changed through #ClutterSettings.
-   *
-   * Since: 1.0
    */
   backend_signals[FONT_CHANGED] =
     g_signal_new (I_("font-changed"),
@@ -410,10 +405,8 @@ clutter_backend_class_init (ClutterBackendClass *klass)
    * ClutterBackend::settings-changed:
    * @backend: the #ClutterBackend that emitted the signal
    *
-   * The ::settings-changed signal is emitted each time the #ClutterSettings
+   * The signal is emitted each time the #ClutterSettings
    * properties have been changed.
-   *
-   * Since: 1.4
    */
   backend_signals[SETTINGS_CHANGED] =
     g_signal_new (I_("settings-changed"),
@@ -518,8 +511,6 @@ _clutter_backend_get_units_per_em (ClutterBackend       *backend,
  * Return value: (transfer none): the default backend. You should
  *   not ref or unref the returned object. Applications should rarely
  *   need to use this.
- *
- * Since: 0.4
  */
 ClutterBackend *
 clutter_get_default_backend (void)
@@ -548,8 +539,6 @@ clutter_get_default_backend (void)
  *
  * Return value: the current resolution, or -1 if no resolution
  *   has been set.
- *
- * Since: 0.4
  */
 gdouble
 clutter_backend_get_resolution (ClutterBackend *backend)
@@ -582,8 +571,6 @@ clutter_backend_get_resolution (ClutterBackend *backend)
  *
  * This function is intended for actors creating a Pango layout
  * using the PangoCairo API.
- *
- * Since: 0.8
  */
 void
 clutter_backend_set_font_options (ClutterBackend             *backend,
@@ -614,8 +601,6 @@ clutter_backend_set_font_options (ClutterBackend             *backend,
  * Return value: (transfer none): the font options of the #ClutterBackend.
  *   The returned #cairo_font_options_t is owned by the backend and should
  *   not be modified or freed
- *
- * Since: 0.8
  */
 const cairo_font_options_t *
 clutter_backend_get_font_options (ClutterBackend *backend)
@@ -653,7 +638,7 @@ _clutter_backend_translate_event (ClutterBackend *backend,
 }
 
 /**
- * clutter_backend_get_cogl_context: (skip)
+ * clutter_backend_get_cogl_context:
  * @backend: a #ClutterBackend
  *
  * Retrieves the #CoglContext associated with the given clutter
@@ -668,8 +653,6 @@ _clutter_backend_translate_event (ClutterBackend *backend,
  * explicitly create a CoglContext.
  *
  * Return value: (transfer none): The #CoglContext associated with @backend.
- *
- * Since: 1.8
  * Stability: unstable
  */
 CoglContext *

@@ -16,10 +16,10 @@ Applied-upstream: no
  1 file changed, 4 insertions(+), 14 deletions(-)
 
 diff --git a/src/ui/theme.c b/src/ui/theme.c
-index a4c8a0d..e84870f 100644
+index 9d909d2..c307113 100644
 --- a/src/ui/theme.c
 +++ b/src/ui/theme.c
-@@ -872,21 +872,11 @@ meta_frame_layout_draw_with_style (MetaFrameLayout         *layout,
+@@ -892,21 +892,11 @@ meta_frame_layout_draw_with_style (MetaFrameLayout         *layout,
  
            if (surface)
              {

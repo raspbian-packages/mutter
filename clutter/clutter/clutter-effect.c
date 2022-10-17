@@ -23,8 +23,9 @@
  */
 
 /**
- * SECTION:clutter-effect
- * @short_description: Base class for actor effects
+ * ClutterEffect:
+ * 
+ * Base class for actor effects
  *
  * The #ClutterEffect class provides a default type and API for creating
  * effects for generic actors.
@@ -42,7 +43,7 @@
  * #ClutterEffectClass.paint() method. The implementation of the function should look
  * something like this:
  *
- * |[
+ * ```c
  * void effect_paint (ClutterEffect *effect, ClutterEffectPaintFlags flags)
  * {
  *   // Set up initialisation of the paint such as binding a
@@ -58,7 +59,7 @@
  *
  *   // perform any cleanup of state, such as popping the CoglOffscreen
  * }
- * ]|
+ * ```
  *
  * The effect can optionally avoid calling clutter_actor_continue_paint() to skip any
  * further stages of the paint sequence. This is useful for example if the effect
@@ -79,7 +80,7 @@
  * will paint the first material using cogl_rectangle(), before continuing and then it
  * will paint paint the second material after.
  *
- *  |[
+ * ```c
  *  typedef struct {
  *    ClutterEffect parent_instance;
  *
@@ -155,9 +156,7 @@
  *
  *    klass->paint = my_effect_paint;
  *  }
- * ]|
- *
- * #ClutterEffect is available since Clutter 1.4
+ * ```
  */
 
 #include "clutter-build-config.h"
@@ -377,8 +376,6 @@ _clutter_effect_has_custom_paint_volume (ClutterEffect *effect)
  * one then that will override this call. In that case this effect
  * will instead be called with the %CLUTTER_EFFECT_PAINT_ACTOR_DIRTY
  * flag set.
- *
- * Since: 1.8
  */
 void
 clutter_effect_queue_repaint (ClutterEffect *effect)

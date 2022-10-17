@@ -8,15 +8,15 @@ This way we can mark them as nocheck without build issues.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/meson.build b/meson.build
-index 2e95ede..2ae3dd4 100644
+index b95c3b9..a5873fd 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -354,7 +354,7 @@ if have_tests
-     ],
-     exe_wrapper: [
-       default_test_wrappers,
--      find_program('xvfb-run'), '-a', '-s', '+iglx -noreset',
-+      find_program('xvfb-run', required: false), '-a', '-s', '+iglx -noreset',
-     ],
-     timeout_multiplier: 10,
-   )
+@@ -364,7 +364,7 @@ if have_tests
+ 
+   add_test_setup('plain')
+ 
+-  xvfb = find_program('xvfb-run')
++  xvfb = find_program('xvfb-run', required: false)
+   xvfb_args = [
+     '-a',
+     '-s',

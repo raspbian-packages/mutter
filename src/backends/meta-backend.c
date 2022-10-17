@@ -53,6 +53,7 @@
 
 #include <stdlib.h>
 
+#include "backends/meta-barrier-private.h"
 #include "backends/meta-cursor-renderer.h"
 #include "backends/meta-cursor-tracker-private.h"
 #include "backends/meta-idle-manager.h"
@@ -70,6 +71,7 @@
 #include "meta/main.h"
 #include "meta/meta-backend.h"
 #include "meta/meta-context.h"
+#include "meta/meta-enum-types.h"
 #include "meta/util.h"
 
 #ifdef HAVE_PROFILER
@@ -96,6 +98,7 @@ enum
   PROP_0,
 
   PROP_CONTEXT,
+  PROP_CAPABILITIES,
 
   N_PROPS
 };
@@ -145,6 +148,7 @@ struct _MetaBackendPrivate
   MetaInputMapper *input_mapper;
   MetaIdleManager *idle_manager;
   MetaRenderer *renderer;
+  MetaColorManager *color_manager;
 #ifdef HAVE_EGL
   MetaEgl *egl;
 #endif
@@ -162,6 +166,9 @@ struct _MetaBackendPrivate
 
 #ifdef HAVE_LIBWACOM
   WacomDeviceDatabase *wacom_db;
+#endif
+#ifdef HAVE_GNOME_DESKTOP
+  GnomePnpIds *pnp_ids;
 #endif
 
   ClutterContext *clutter_context;
@@ -219,6 +226,7 @@ meta_backend_dispose (GObject *object)
 
   g_clear_pointer (&priv->cursor_tracker, meta_cursor_tracker_destroy);
   g_clear_object (&priv->current_device);
+  g_clear_object (&priv->color_manager);
   g_clear_object (&priv->monitor_manager);
   g_clear_object (&priv->orientation_manager);
 #ifdef HAVE_REMOTE_DESKTOP
@@ -230,6 +238,9 @@ meta_backend_dispose (GObject *object)
 
 #ifdef HAVE_LIBWACOM
   g_clear_pointer (&priv->wacom_db, libwacom_database_destroy);
+#endif
+#ifdef HAVE_GNOME_DESKTOP
+  g_clear_object (&priv->pnp_ids);
 #endif
 
   if (priv->sleep_signal_id)
@@ -417,7 +428,12 @@ determine_hotplug_pointer_visibility (ClutterSeat *seat)
       if (device_type == CLUTTER_TABLET_DEVICE ||
           device_type == CLUTTER_PEN_DEVICE ||
           device_type == CLUTTER_ERASER_DEVICE)
-        has_tablet = TRUE;
+        {
+          if (meta_is_wayland_compositor ())
+            has_tablet = TRUE;
+          else
+            has_pointer = TRUE;
+        }
     }
 
   return has_pointer && !has_touchscreen && !has_tablet;
@@ -794,16 +810,22 @@ meta_backend_constructed (GObject *object)
     }
 #endif
 
-  if (backend_class->is_lid_closed != meta_backend_real_is_lid_closed)
-    return;
+  if (backend_class->is_lid_closed == meta_backend_real_is_lid_closed)
+    {
+      priv->upower_watch_id = g_bus_watch_name (G_BUS_TYPE_SYSTEM,
+                                                "org.freedesktop.UPower",
+                                                G_BUS_NAME_WATCHER_FLAGS_NONE,
+                                                upower_appeared,
+                                                upower_vanished,
+                                                backend,
+                                                NULL);
+    }
 
-  priv->upower_watch_id = g_bus_watch_name (G_BUS_TYPE_SYSTEM,
-                                            "org.freedesktop.UPower",
-                                            G_BUS_NAME_WATCHER_FLAGS_NONE,
-                                            upower_appeared,
-                                            upower_vanished,
-                                            backend,
-                                            NULL);
+#ifdef HAVE_EGL
+  priv->egl = g_object_new (META_TYPE_EGL, NULL);
+#endif
+
+  G_OBJECT_CLASS (meta_backend_parent_class)->constructed (object);
 }
 
 static void
@@ -840,6 +862,9 @@ meta_backend_get_property (GObject    *object,
     case PROP_CONTEXT:
       g_value_set_object (value, priv->context);
       break;
+    case PROP_CAPABILITIES:
+      g_value_set_flags (value, meta_backend_get_capabilities (backend));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -873,6 +898,14 @@ meta_backend_class_init (MetaBackendClass *klass)
                          G_PARAM_READWRITE |
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
+  obj_props[PROP_CAPABILITIES] =
+    g_param_spec_flags ("capabilities",
+                        "capabilities",
+                        "Backend capabilities",
+                        META_TYPE_BACKEND_CAPABILITIES,
+                        META_BACKEND_CAPABILITY_NONE,
+                        G_PARAM_READABLE |
+                        G_PARAM_STATIC_STRINGS);
   g_object_class_install_properties (object_class, N_PROPS, obj_props);
 
   signals[KEYMAP_CHANGED] =
@@ -933,6 +966,12 @@ meta_backend_create_monitor_manager (MetaBackend *backend,
 {
   return META_BACKEND_GET_CLASS (backend)->create_monitor_manager (backend,
                                                                    error);
+}
+
+static MetaColorManager *
+meta_backend_create_color_manager (MetaBackend *backend)
+{
+  return META_BACKEND_GET_CLASS (backend)->create_color_manager (backend);
 }
 
 static MetaRenderer *
@@ -1164,16 +1203,13 @@ meta_backend_initable_init (GInitable     *initable,
   MetaBackendPrivate *priv = meta_backend_get_instance_private (backend);
 
   priv->settings = meta_settings_new (backend);
-
-#ifdef HAVE_EGL
-  priv->egl = g_object_new (META_TYPE_EGL, NULL);
-#endif
-
   priv->orientation_manager = g_object_new (META_TYPE_ORIENTATION_MANAGER, NULL);
 
   priv->monitor_manager = meta_backend_create_monitor_manager (backend, error);
   if (!priv->monitor_manager)
     return FALSE;
+
+  priv->color_manager = meta_backend_create_color_manager (backend);
 
   priv->renderer = meta_backend_create_renderer (backend, error);
   if (!priv->renderer)
@@ -1262,6 +1298,17 @@ meta_backend_get_monitor_manager (MetaBackend *backend)
   MetaBackendPrivate *priv = meta_backend_get_instance_private (backend);
 
   return priv->monitor_manager;
+}
+
+/**
+ * meta_backend_get_color_manager: (skip)
+ */
+MetaColorManager *
+meta_backend_get_color_manager (MetaBackend *backend)
+{
+  MetaBackendPrivate *priv = meta_backend_get_instance_private (backend);
+
+  return priv->color_manager;
 }
 
 /**
@@ -1562,6 +1609,12 @@ meta_backend_prepare_shutdown (MetaBackend *backend)
   g_signal_emit (backend, signals[PREPARE_SHUTDOWN], 0);
 }
 
+MetaBackendCapabilities
+meta_backend_get_capabilities (MetaBackend *backend)
+{
+  return META_BACKEND_GET_CLASS (backend)->get_capabilities (backend);
+}
+
 /**
  * meta_is_stage_views_enabled:
  *
@@ -1711,4 +1764,30 @@ meta_backend_update_from_event (MetaBackend  *backend,
 {
   update_last_device_from_event (backend, event);
   update_pointer_visibility_from_event (backend, event);
+}
+
+/**
+ * meta_backend_get_vendor_name:
+ * @backend: A #MetaBackend object
+ * @pnp_id: the PNP ID
+ *
+ * Find the full vendor name from the given PNP ID.
+ *
+ * Returns: (transfer full): A string containing the vendor name,
+ *                           or NULL when not found.
+ */
+char *
+meta_backend_get_vendor_name (MetaBackend *backend,
+                              const char  *pnp_id)
+{
+#ifdef HAVE_GNOME_DESKTOP
+  MetaBackendPrivate *priv = meta_backend_get_instance_private (backend);
+
+  if (!priv->pnp_ids)
+    priv->pnp_ids = gnome_pnp_ids_new ();
+
+  return gnome_pnp_ids_get_pnp_id (priv->pnp_ids, pnp_id);
+#else
+  return g_strdup (pnp_id);
+#endif
 }

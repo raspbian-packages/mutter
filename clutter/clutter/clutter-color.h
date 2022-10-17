@@ -43,7 +43,12 @@ G_BEGIN_DECLS
  * @blue: blue component, between 0 and 255
  * @alpha: alpha component, between 0 and 255
  *
- * Color representation.
+ * A simple type for representing colors.
+ *
+ * A #ClutterColor is expressed as a 4-tuple of values ranging from
+ * zero to 255, one for each color channel plus one for the alpha.
+ *
+ * The alpha channel is fully opaque at 255 and fully transparent at 0.
  */
 struct _ClutterColor
 {
@@ -63,8 +68,6 @@ struct _ClutterColor
  * @a: value for the alpha channel, between 0 and 255
  *
  * A macro that initializes a #ClutterColor, to be used when declaring it.
- *
- * Since: 1.12
  */
 #define CLUTTER_COLOR_INIT(r,g,b,a)     { (r), (g), (b), (a) }
 
@@ -151,9 +154,7 @@ void          clutter_color_interpolate (const ClutterColor *initial,
  * CLUTTER_VALUE_HOLDS_COLOR:
  * @x: a #GValue
  *
- * Evaluates to %TRUE if @x holds a #ClutterColor<!-- -->.
- *
- * Since: 1.0
+ * Evaluates to %TRUE if @x holds a `ClutterColor`.
  */
 #define CLUTTER_VALUE_HOLDS_COLOR(x)       (G_VALUE_HOLDS ((x), CLUTTER_TYPE_COLOR))
 
@@ -165,8 +166,6 @@ typedef struct _ClutterParamSpecColor  ClutterParamSpecColor;
  *
  * A #GParamSpec subclass for defining properties holding
  * a #ClutterColor.
- *
- * Since: 1.0
  */
 struct _ClutterParamSpecColor
 {

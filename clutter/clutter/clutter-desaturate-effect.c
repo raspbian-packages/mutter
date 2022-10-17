@@ -23,16 +23,14 @@
  */
 
 /**
- * SECTION:clutter-desaturate-effect
- * @short_description: A desaturation effect
- * @see_also: #ClutterEffect, #ClutterOffscreenEffect
+ * ClutterDesaturateEffect:
+ * 
+ * A desaturation effect
  *
  * #ClutterDesaturateEffect is a sub-class of #ClutterEffect that
  * desaturates the color of an actor and its contents. The strength
  * of the desaturation effect is controllable and animatable through
  * the #ClutterDesaturateEffect:factor property.
- *
- * #ClutterDesaturateEffect is available since Clutter 1.4
  */
 
 #define CLUTTER_DESATURATE_EFFECT_CLASS(klass)        (G_TYPE_CHECK_CLASS_CAST ((klass), CLUTTER_TYPE_DESATURATE_EFFECT, ClutterDesaturateEffectClass))
@@ -121,29 +119,6 @@ clutter_desaturate_effect_create_pipeline (ClutterOffscreenEffect *effect,
   return cogl_object_ref (desaturate_effect->pipeline);
 }
 
-static gboolean
-clutter_desaturate_effect_pre_paint (ClutterEffect       *effect,
-                                     ClutterPaintNode    *node,
-                                     ClutterPaintContext *paint_context)
-{
-  ClutterEffectClass *parent_class;
-
-  if (!clutter_feature_available (CLUTTER_FEATURE_SHADERS_GLSL))
-    {
-      /* if we don't have support for GLSL shaders then we
-       * forcibly disable the ActorMeta
-       */
-      g_warning ("Unable to use the ShaderEffect: the graphics hardware "
-                 "or the current GL driver does not implement support "
-                 "for the GLSL shading language.");
-      clutter_actor_meta_set_enabled (CLUTTER_ACTOR_META (effect), FALSE);
-      return FALSE;
-    }
-
-  parent_class = CLUTTER_EFFECT_CLASS (clutter_desaturate_effect_parent_class);
-  return parent_class->pre_paint (effect, node, paint_context);
-}
-
 static void
 clutter_desaturate_effect_dispose (GObject *gobject)
 {
@@ -211,22 +186,17 @@ update_factor_uniform (ClutterDesaturateEffect *self)
 static void
 clutter_desaturate_effect_class_init (ClutterDesaturateEffectClass *klass)
 {
-  ClutterEffectClass *effect_class = CLUTTER_EFFECT_CLASS (klass);
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   ClutterOffscreenEffectClass *offscreen_class;
 
   offscreen_class = CLUTTER_OFFSCREEN_EFFECT_CLASS (klass);
   offscreen_class->create_pipeline = clutter_desaturate_effect_create_pipeline;
 
-  effect_class->pre_paint = clutter_desaturate_effect_pre_paint;
-
   /**
    * ClutterDesaturateEffect:factor:
    *
    * The desaturation factor, between 0.0 (no desaturation) and 1.0 (full
    * desaturation).
-   *
-   * Since: 1.4
    */
   obj_props[PROP_FACTOR] =
     g_param_spec_double ("factor",
@@ -283,8 +253,6 @@ clutter_desaturate_effect_init (ClutterDesaturateEffect *self)
  * clutter_actor_add_effect()
  *
  * Return value: the newly created #ClutterDesaturateEffect or %NULL
- *
- * Since: 1.4
  */
 ClutterEffect *
 clutter_desaturate_effect_new (gdouble factor)
@@ -303,8 +271,6 @@ clutter_desaturate_effect_new (gdouble factor)
  *
  * Sets the desaturation factor for @effect, with 0.0 being "do not desaturate"
  * and 1.0 being "fully desaturate"
- *
- * Since: 1.4
  */
 void
 clutter_desaturate_effect_set_factor (ClutterDesaturateEffect *effect,
@@ -331,8 +297,6 @@ clutter_desaturate_effect_set_factor (ClutterDesaturateEffect *effect,
  * Retrieves the desaturation factor of @effect
  *
  * Return value: the desaturation factor
- *
- * Since: 1.4
  */
 gdouble
 clutter_desaturate_effect_get_factor (ClutterDesaturateEffect *effect)

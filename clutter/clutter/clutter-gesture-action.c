@@ -25,20 +25,20 @@
  */
 
 /**
- * SECTION:clutter-gesture-action
- * @Title: ClutterGestureAction
- * @Short_Description: Action for gesture gestures
+ * ClutterGestureAction:
+ * 
+ * Action for gesture gestures
  *
- * #ClutterGestureAction is a sub-class of #ClutterAction that implements
+ * #ClutterGestureAction is a sub-class of [class@Action] that implements
  * the logic for recognizing gesture gestures. It listens for low level events
- * such as #ClutterButtonEvent and #ClutterMotionEvent on the stage to raise
- * the #ClutterGestureAction::gesture-begin, #ClutterGestureAction::gesture-progress,
- * and #ClutterGestureAction::gesture-end signals.
+ * such as [struct@ButtonEvent] and [struct@MotionEvent] on the stage to raise
+ * the [signal@GestureAction::gesture-begin], [signal@GestureAction::gesture-progress],
+ * and [signal@GestureAction::gesture-end] signals.
  *
- * To use #ClutterGestureAction you just need to apply it to a #ClutterActor
- * using clutter_actor_add_action() and connect to the signals:
+ * To use #ClutterGestureAction you just need to apply it to a [class@Actor]
+ * using [method@Actor.add_action] and connect to the signals:
  *
- * |[<!-- language="C" -->
+ * ```c
  *   ClutterAction *action = clutter_gesture_action_new ();
  *
  *   clutter_actor_add_action (actor, action);
@@ -46,7 +46,7 @@
  *   g_signal_connect (action, "gesture-begin", G_CALLBACK (on_gesture_begin), NULL);
  *   g_signal_connect (action, "gesture-progress", G_CALLBACK (on_gesture_progress), NULL);
  *   g_signal_connect (action, "gesture-end", G_CALLBACK (on_gesture_end), NULL);
- * ]|
+ * ```
  *
  * ## Creating Gesture actions
  *
@@ -60,13 +60,13 @@
  *  - Prepare -> Begin -> Progress -> End
  *
  * Each #ClutterGestureAction starts in the "prepare" state, and calls
- * the #ClutterGestureActionClass.gesture_prepare() virtual function; this
+ * the [vfunc@GestureAction.gesture_prepare] virtual function; this
  * state can be used to reset the internal state of a #ClutterGestureAction
  * subclass, but it can also immediately cancel a gesture without going
  * through the rest of the states.
  *
  * The "begin" state follows the "prepare" state, and calls the
- * #ClutterGestureActionClass.gesture_begin() virtual function. This state
+ * [vfunc@GestureAction.gesture_begin] virtual function. This state
  * signals the start of a gesture recognizing process. From the "begin" state
  * the gesture recognition process can successfully end, by going to the
  * "end" state; it can continue in the "progress" state, in case of a
@@ -74,13 +74,11 @@
  * state.
  *
  * In case of continuous gestures, the #ClutterGestureAction will use
- * the "progress" state, calling the #ClutterGestureActionClass.gesture_progress()
+ * the "progress" state, calling the [vfunc@GestureAction.gesture_progress]
  * virtual function; the "progress" state will continue until the end of the
  * gesture, in which case the "end" state will be reached, or until the
  * gesture is cancelled, in which case the "cancel" gesture will be used
  * instead.
- *
- * Since: 1.8
  */
 
 #include "clutter-build-config.h"
@@ -651,8 +649,6 @@ clutter_gesture_action_class_init (ClutterGestureActionClass *klass)
    * ClutterGestureAction:n-touch-points:
    *
    * Number of touch points to trigger a gesture action.
-   *
-   * Since: 1.16
    */
   gesture_props[PROP_N_TOUCH_POINTS] =
     g_param_spec_int ("n-touch-points",
@@ -665,10 +661,8 @@ clutter_gesture_action_class_init (ClutterGestureActionClass *klass)
    * ClutterGestureAction:threshold-trigger-edge:
    *
    * The trigger edge to be used by the action to either emit the
-   * #ClutterGestureAction::gesture-begin signal or to emit the
-   * #ClutterGestureAction::gesture-cancel signal.
-   *
-   * Since: 1.18
+   * [signal@GestureAction::gesture-begin] signal or to emit the
+   * [signal@GestureAction::gesture-cancel] signal.
    */
   gesture_props[PROP_THRESHOLD_TRIGGER_EDGE] =
     g_param_spec_enum ("threshold-trigger-edge",
@@ -683,12 +677,10 @@ clutter_gesture_action_class_init (ClutterGestureActionClass *klass)
    * ClutterGestureAction:threshold-trigger-distance-x:
    *
    * The horizontal trigger distance to be used by the action to either
-   * emit the #ClutterGestureAction::gesture-begin signal or to emit
-   * the #ClutterGestureAction::gesture-cancel signal.
+   * emit the [signal@GestureAction::gesture-begin] signal or to emit
+   * the [signal@GestureAction::gesture-cancel] signal.
    *
    * A negative value will be interpreted as the default drag threshold.
-   *
-   * Since: 1.18
    */
   gesture_props[PROP_THRESHOLD_TRIGGER_DISTANCE_X] =
     g_param_spec_float ("threshold-trigger-distance-x",
@@ -702,12 +694,10 @@ clutter_gesture_action_class_init (ClutterGestureActionClass *klass)
    * ClutterGestureAction:threshold-trigger-distance-y:
    *
    * The vertical trigger distance to be used by the action to either
-   * emit the #ClutterGestureAction::gesture-begin signal or to emit
-   * the #ClutterGestureAction::gesture-cancel signal.
+   * emit the [signal@GestureAction::gesture-begin] signal or to emit
+   * the [signal@GestureAction::gesture-cancel] signal.
    *
    * A negative value will be interpreted as the default drag threshold.
-   *
-   * Since: 1.18
    */
   gesture_props[PROP_THRESHOLD_TRIGGER_DISTANCE_Y] =
     g_param_spec_float ("threshold-trigger-distance-y",
@@ -726,13 +716,11 @@ clutter_gesture_action_class_init (ClutterGestureActionClass *klass)
    * @action: the #ClutterGestureAction that emitted the signal
    * @actor: the #ClutterActor attached to the @action
    *
-   * The ::gesture_begin signal is emitted when the #ClutterActor to which
+   * The signal is emitted when the [class@Actor] to which
    * a #ClutterGestureAction has been applied starts receiving a gesture.
    *
    * Return value: %TRUE if the gesture should start, and %FALSE if
    *   the gesture should be ignored.
-   *
-   * Since: 1.8
    */
   gesture_signals[GESTURE_BEGIN] =
     g_signal_new (I_("gesture-begin"),
@@ -749,13 +737,11 @@ clutter_gesture_action_class_init (ClutterGestureActionClass *klass)
    * @action: the #ClutterGestureAction that emitted the signal
    * @actor: the #ClutterActor attached to the @action
    *
-   * The ::gesture-progress signal is emitted for each motion event after
-   * the #ClutterGestureAction::gesture-begin signal has been emitted.
+   * The signal is emitted for each motion event after
+   * the [signal@GestureAction::gesture-begin] signal has been emitted.
    *
    * Return value: %TRUE if the gesture should continue, and %FALSE if
    *   the gesture should be cancelled.
-   *
-   * Since: 1.8
    */
   gesture_signals[GESTURE_PROGRESS] =
     g_signal_new (I_("gesture-progress"),
@@ -772,13 +758,11 @@ clutter_gesture_action_class_init (ClutterGestureActionClass *klass)
    * @action: the #ClutterGestureAction that emitted the signal
    * @actor: the #ClutterActor attached to the @action
    *
-   * The ::gesture-end signal is emitted at the end of the gesture gesture,
+   * The signal is emitted at the end of the gesture gesture,
    * when the pointer's button is released
    *
-   * This signal is emitted if and only if the #ClutterGestureAction::gesture-begin
+   * This signal is emitted if and only if the [signal@GestureAction::gesture-begin]
    * signal has been emitted first.
-   *
-   * Since: 1.8
    */
   gesture_signals[GESTURE_END] =
     g_signal_new (I_("gesture-end"),
@@ -794,13 +778,11 @@ clutter_gesture_action_class_init (ClutterGestureActionClass *klass)
    * @action: the #ClutterGestureAction that emitted the signal
    * @actor: the #ClutterActor attached to the @action
    *
-   * The ::gesture-cancel signal is emitted when the ongoing gesture gets
-   * cancelled from the #ClutterGestureAction::gesture-progress signal handler.
+   * The signal is emitted when the ongoing gesture gets
+   * cancelled from the [signal@GestureAction::gesture-progress] signal handler.
    *
-   * This signal is emitted if and only if the #ClutterGestureAction::gesture-begin
+   * This signal is emitted if and only if the [signal@GestureAction::gesture-begin]
    * signal has been emitted first.
-   *
-   * Since: 1.8
    */
   gesture_signals[GESTURE_CANCEL] =
     g_signal_new (I_("gesture-cancel"),
@@ -831,8 +813,6 @@ clutter_gesture_action_init (ClutterGestureAction *self)
  * Creates a new #ClutterGestureAction instance.
  *
  * Return value: the newly created #ClutterGestureAction
- *
- * Since: 1.8
  */
 ClutterAction *
 clutter_gesture_action_new (void)
@@ -852,8 +832,6 @@ clutter_gesture_action_new (void)
  *
  * Retrieves the coordinates, in stage space, of the press event
  * that started the dragging for a specific touch point.
- *
- * Since: 1.8
  */
 void
 clutter_gesture_action_get_press_coords (ClutterGestureAction *action,
@@ -892,8 +870,6 @@ clutter_gesture_action_get_press_coords (ClutterGestureAction *action,
  *
  * Retrieves the coordinates, in stage space, of the latest motion
  * event during the dragging.
- *
- * Since: 1.8
  */
 void
 clutter_gesture_action_get_motion_coords (ClutterGestureAction *action,
@@ -934,8 +910,6 @@ clutter_gesture_action_get_motion_coords (ClutterGestureAction *action,
  * during the dragging.
  *
  * Return value: the distance since last motion event
- *
- * Since: 1.12
  */
 gfloat
 clutter_gesture_action_get_motion_delta (ClutterGestureAction *action,
@@ -980,8 +954,6 @@ clutter_gesture_action_get_motion_delta (ClutterGestureAction *action,
  *
  * Retrieves the coordinates, in stage space, where the touch point was
  * last released.
- *
- * Since: 1.8
  */
 void
 clutter_gesture_action_get_release_coords (ClutterGestureAction *action,
@@ -1020,8 +992,6 @@ clutter_gesture_action_get_release_coords (ClutterGestureAction *action,
  *
  * Retrieves the velocity, in stage pixels per millisecond, of the
  * latest motion event during the dragging.
- *
- * Since: 1.12
  */
 gfloat
 clutter_gesture_action_get_velocity (ClutterGestureAction *action,
@@ -1063,8 +1033,6 @@ clutter_gesture_action_get_velocity (ClutterGestureAction *action,
  * Retrieves the number of requested points to trigger the gesture.
  *
  * Return value: the number of points to trigger the gesture.
- *
- * Since: 1.12
  */
 gint
 clutter_gesture_action_get_n_touch_points (ClutterGestureAction *action)
@@ -1084,8 +1052,6 @@ clutter_gesture_action_get_n_touch_points (ClutterGestureAction *action)
  * @nb_points: a number of points
  *
  * Sets the number of points needed to trigger the gesture.
- *
- * Since: 1.12
  */
 void
 clutter_gesture_action_set_n_touch_points (ClutterGestureAction *action,
@@ -1144,8 +1110,6 @@ clutter_gesture_action_set_n_touch_points (ClutterGestureAction *action,
  * Retrieves the number of points currently active.
  *
  * Return value: the number of points currently active.
- *
- * Since: 1.12
  */
 guint
 clutter_gesture_action_get_n_current_points (ClutterGestureAction *action)
@@ -1167,8 +1131,6 @@ clutter_gesture_action_get_n_current_points (ClutterGestureAction *action)
  * Retrieves the #ClutterEventSequence of a touch point.
  *
  * Return value: (transfer none): the #ClutterEventSequence of a touch point.
- *
- * Since: 1.12
  */
 ClutterEventSequence *
 clutter_gesture_action_get_sequence (ClutterGestureAction *action,
@@ -1194,8 +1156,6 @@ clutter_gesture_action_get_sequence (ClutterGestureAction *action,
  * Retrieves the #ClutterInputDevice of a touch point.
  *
  * Return value: (transfer none): the #ClutterInputDevice of a touch point.
- *
- * Since: 1.12
  */
 ClutterInputDevice *
 clutter_gesture_action_get_device (ClutterGestureAction *action,
@@ -1218,11 +1178,9 @@ clutter_gesture_action_get_device (ClutterGestureAction *action,
  * @point: index of a point currently active
  *
  * Retrieves a reference to the last #ClutterEvent for a touch point. Call
- * clutter_event_copy() if you need to store the reference somewhere.
+ * [method@Event.copy] if you need to store the reference somewhere.
  *
  * Return value: (transfer none): the last #ClutterEvent for a touch point.
- *
- * Since: 1.14
  */
 const ClutterEvent *
 clutter_gesture_action_get_last_event (ClutterGestureAction *action,
@@ -1247,8 +1205,6 @@ clutter_gesture_action_get_last_event (ClutterGestureAction *action,
  * @action: a #ClutterGestureAction
  *
  * Cancel a #ClutterGestureAction before it begins
- *
- * Since: 1.12
  */
 void
 clutter_gesture_action_cancel (ClutterGestureAction *action)
@@ -1267,8 +1223,6 @@ clutter_gesture_action_cancel (ClutterGestureAction *action)
  *
  * This function should only be called by sub-classes of
  * #ClutterGestureAction during their construction phase.
- *
- * Since: 1.18
  */
 void
 clutter_gesture_action_set_threshold_trigger_edge (ClutterGestureAction      *action,
@@ -1293,11 +1247,9 @@ clutter_gesture_action_set_threshold_trigger_edge (ClutterGestureAction      *ac
  * @action: a #ClutterGestureAction
  *
  * Retrieves the edge trigger of the gesture @action, as set using
- * clutter_gesture_action_set_threshold_trigger_edge().
+ * [method@GestureAction.set_threshold_trigger_edge].
  *
- * Return value: the edge trigger
- *
- * Since: 1.20
+ * Return value: the edge trigger0
  */
 ClutterGestureTriggerEdge
 clutter_gesture_action_get_threshold_trigger_edge (ClutterGestureAction *action)
@@ -1317,13 +1269,11 @@ clutter_gesture_action_get_threshold_trigger_edge (ClutterGestureAction *action)
  * @action: a #ClutterGestureAction
  *
  * Retrieves the edge trigger of the gesture @action, as set using
- * clutter_gesture_action_set_threshold_trigger_edge().
+ * [method@GestureAction.set_threshold_trigger_edge].
  *
  * Return value: the edge trigger
  *
- * Since: 1.18
- *
- * Deprecated: 1.20: Use clutter_gesture_action_get_threshold_trigger_edge() instead.
+ * Deprecated: 1.20: Use [method@GestureAction.get_threshold_trigger_edge] instead.
  */
 ClutterGestureTriggerEdge
 clutter_gesture_action_get_threshold_trigger_egde (ClutterGestureAction *action)
@@ -1341,8 +1291,6 @@ clutter_gesture_action_get_threshold_trigger_egde (ClutterGestureAction *action)
  *
  * This function should only be called by sub-classes of
  * #ClutterGestureAction during their construction phase.
- *
- * Since: 1.18
  */
 void
 clutter_gesture_action_set_threshold_trigger_distance (ClutterGestureAction      *action,
@@ -1375,9 +1323,7 @@ clutter_gesture_action_set_threshold_trigger_distance (ClutterGestureAction     
  * @y: (out) (allow-none): The return location for the vertical distance, or %NULL
  *
  * Retrieves the threshold trigger distance of the gesture @action,
- * as set using clutter_gesture_action_set_threshold_trigger_distance().
- *
- * Since: 1.18
+ * as set using [method@GestureAction.set_threshold_trigger_distance].
  */
 void
 clutter_gesture_action_get_threshold_trigger_distance (ClutterGestureAction *action,

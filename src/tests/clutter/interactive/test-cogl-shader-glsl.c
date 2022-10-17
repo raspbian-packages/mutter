@@ -23,12 +23,12 @@ test_cogl_shader_glsl_main (int argc, char *argv[]);
 /* FRAGMENT_SHADER_BEGIN: generate boilerplate with a local vec4 color already
  * initialized, from a sampler2D in a variable tex.
  */
-#define FRAGMENT_SHADER_VARS					\
-  "uniform sampler2D tex;"					\
+#define FRAGMENT_SHADER_VARS        \
+  "uniform sampler2D tex;"        \
   "uniform float x_step, y_step;"
 
-#define FRAGMENT_SHADER_BEGIN					\
-  "void main (){"						\
+#define FRAGMENT_SHADER_BEGIN        \
+  "void main (){"        \
   "  vec4 color = texture2D (tex, vec2(cogl_tex_coord_in[0]));"
 
 /* FRAGMENT_SHADER_END: apply the changed color to the output buffer correctly
@@ -323,10 +323,7 @@ test_cogl_shader_glsl_main (int argc, char *argv[])
 
   file = g_build_filename (TESTS_DATADIR, "redhand.png", NULL);
   error = NULL;
-  redhand = cogl_texture_new_from_file (file,
-                                        COGL_TEXTURE_NO_ATLAS,
-                                        COGL_PIXEL_FORMAT_ANY,
-                                        &error);
+  redhand = cogl_texture_2d_new_from_file (ctx, file, &error);
   if (redhand == NULL)
     g_error ("image load failed: %s", error->message);
 

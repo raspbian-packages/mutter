@@ -42,14 +42,6 @@ G_BEGIN_DECLS
 
 typedef struct _ClutterConstraintClass          ClutterConstraintClass;
 
-/**
- * ClutterConstraint:
- *
- * The #ClutterConstraint structure contains only
- * private data and should be accessed using the provided API
- *
- * Since: 1.4
- */
 struct _ClutterConstraint
 {
   /*< private >*/
@@ -66,8 +58,6 @@ struct _ClutterConstraint
  *
  * The #ClutterConstraintClass structure contains
  * only private data
- *
- * Since: 1.4
  */
 struct _ClutterConstraintClass
 {

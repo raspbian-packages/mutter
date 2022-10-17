@@ -55,6 +55,9 @@ typedef struct _MetaOutputPrivate
 
   gboolean is_underscanning;
 
+  gboolean has_max_bpc;
+  unsigned int max_bpc;
+
   int backlight;
 } MetaOutputPrivate;
 
@@ -91,6 +94,8 @@ meta_output_info_unref (MetaOutputInfo *output_info)
       g_free (output_info->vendor);
       g_free (output_info->product);
       g_free (output_info->serial);
+      g_free (output_info->edid_checksum_md5);
+      g_free (output_info->edid_info);
       g_free (output_info->modes);
       g_free (output_info->possible_crtcs);
       g_free (output_info->possible_clones);
@@ -177,6 +182,18 @@ meta_output_is_underscanning (MetaOutput *output)
   return priv->is_underscanning;
 }
 
+gboolean
+meta_output_get_max_bpc (MetaOutput   *output,
+                         unsigned int *max_bpc)
+{
+  MetaOutputPrivate *priv = meta_output_get_instance_private (output);
+
+  if (priv->has_max_bpc && max_bpc)
+    *max_bpc = priv->max_bpc;
+
+  return priv->has_max_bpc;
+}
+
 void
 meta_output_set_backlight (MetaOutput *output,
                            int         backlight)
@@ -235,6 +252,10 @@ meta_output_assign_crtc (MetaOutput                 *output,
   priv->is_primary = output_assignment->is_primary;
   priv->is_presentation = output_assignment->is_presentation;
   priv->is_underscanning = output_assignment->is_underscanning;
+
+  priv->has_max_bpc = output_assignment->has_max_bpc;
+  if (priv->has_max_bpc)
+    priv->max_bpc = output_assignment->max_bpc;
 }
 
 void
@@ -285,50 +306,55 @@ meta_output_crtc_to_logical_transform (MetaOutput           *output,
                                            inverted_panel_orientation_transform);
 }
 
+static void
+set_output_details_from_edid (MetaOutputInfo *output_info,
+                              MetaEdidInfo   *edid_info)
+{
+  output_info->vendor = g_strndup (edid_info->manufacturer_code, 4);
+  if (!g_utf8_validate (output_info->vendor, -1, NULL))
+    g_clear_pointer (&output_info->vendor, g_free);
+
+  output_info->product = g_strndup (edid_info->dsc_product_name, 14);
+  if (!g_utf8_validate (output_info->product, -1, NULL) ||
+      output_info->product[0] == '\0')
+    {
+      g_clear_pointer (&output_info->product, g_free);
+      output_info->product =
+        g_strdup_printf ("0x%04x", (unsigned) edid_info->product_code);
+    }
+
+  output_info->serial = g_strndup (edid_info->dsc_serial_number, 14);
+  if (!g_utf8_validate (output_info->serial, -1, NULL) ||
+      output_info->serial[0] == '\0')
+    {
+      g_clear_pointer (&output_info->serial, g_free);
+      output_info->serial =
+        g_strdup_printf ("0x%08x", edid_info->serial_number);
+    }
+}
+
 void
 meta_output_info_parse_edid (MetaOutputInfo *output_info,
                              GBytes         *edid)
 {
-  MonitorInfo *parsed_edid;
+  MetaEdidInfo *edid_info;
   size_t len;
+  gconstpointer data;
 
-  if (!edid)
-    goto out;
+  g_return_if_fail (!output_info->edid_info);
+  g_return_if_fail (edid);
 
-  parsed_edid = decode_edid (g_bytes_get_data (edid, &len));
+  data = g_bytes_get_data (edid, &len);
+  edid_info = meta_edid_info_new_parse (data);
 
-  if (parsed_edid)
+  output_info->edid_checksum_md5 = g_compute_checksum_for_data (G_CHECKSUM_MD5,
+                                                                data, len);
+
+  if (edid_info)
     {
-      output_info->vendor = g_strndup (parsed_edid->manufacturer_code, 4);
-      if (!g_utf8_validate (output_info->vendor, -1, NULL))
-        g_clear_pointer (&output_info->vendor, g_free);
-
-      output_info->product = g_strndup (parsed_edid->dsc_product_name, 14);
-      if (!g_utf8_validate (output_info->product, -1, NULL) ||
-          output_info->product[0] == '\0')
-        {
-          g_clear_pointer (&output_info->product, g_free);
-          output_info->product = g_strdup_printf ("0x%04x", (unsigned) parsed_edid->product_code);
-        }
-
-      output_info->serial = g_strndup (parsed_edid->dsc_serial_number, 14);
-      if (!g_utf8_validate (output_info->serial, -1, NULL) ||
-          output_info->serial[0] == '\0')
-        {
-          g_clear_pointer (&output_info->serial, g_free);
-          output_info->serial = g_strdup_printf ("0x%08x", parsed_edid->serial_number);
-        }
-
-      g_free (parsed_edid);
+      output_info->edid_info = edid_info;
+      set_output_details_from_edid (output_info, edid_info);
     }
-
- out:
-  if (!output_info->vendor)
-    output_info->vendor = g_strdup ("unknown");
-  if (!output_info->product)
-    output_info->product = g_strdup ("unknown");
-  if (!output_info->serial)
-    output_info->serial = g_strdup ("unknown");
 }
 
 gboolean

@@ -32,13 +32,13 @@
 #endif
 
 #include "backends/meta-backend-private.h"
+#include "backends/meta-crtc.h"
 #include "backends/meta-cursor.h"
 #include "backends/meta-display-config-shared.h"
 #include "backends/meta-monitor-transform.h"
 #include "backends/meta-viewport-info.h"
 #include "core/util-private.h"
 #include "meta/display.h"
-#include "meta/meta-enum-types.h"
 #include "meta/meta-monitor-manager.h"
 
 #define META_MONITOR_MANAGER_MIN_SCREEN_WIDTH 640
@@ -83,11 +83,11 @@ typedef enum
  */
 struct _MetaCrtcAssignment
 {
-  MetaCrtc                 *crtc;
-  MetaCrtcMode             *mode;
-  graphene_rect_t           layout;
-  MetaMonitorTransform      transform;
-  GPtrArray                *outputs;
+  MetaCrtc *crtc;
+  MetaCrtcMode *mode;
+  graphene_rect_t layout;
+  MetaMonitorTransform transform;
+  GPtrArray *outputs;
 };
 
 /*
@@ -98,10 +98,12 @@ struct _MetaCrtcAssignment
  */
 struct _MetaOutputAssignment
 {
-  MetaOutput  *output;
-  gboolean     is_primary;
-  gboolean     is_presentation;
-  gboolean     is_underscanning;
+  MetaOutput *output;
+  gboolean is_primary;
+  gboolean is_presentation;
+  gboolean is_underscanning;
+  gboolean has_max_bpc;
+  unsigned int max_bpc;
 };
 
 /*
@@ -159,10 +161,6 @@ struct _MetaMonitorManager
 
   MetaMonitorConfigManager *config_manager;
 
-#ifdef HAVE_GNOME_DESKTOP
-  GnomePnpIds *pnp_ids;
-#endif
-
   MetaMonitorSwitchConfigType current_switch_config;
 
   MetaPrivacyScreenChangeState privacy_screen_change_state;
@@ -184,13 +182,6 @@ struct _MetaMonitorManager
  *
  * @change_backlight: Changes the backlight intensity to the given value (in
  *   percent).
- *
- * @get_crtc_gamma: Queries and returns the gamma rampQueries and returns the
- *   gamma ramp.
- *
- * @set_crtc_gamma: Sets custom display LUT (look up table) for each primary
- *   color. Each table is indexed by a value that represents input intensity,
- *   and yields a value that represents output intensity.
  *
  * @tiled_monitor_added: Should be called by a #MetaMonitor when it is created.
  *
@@ -232,22 +223,6 @@ struct _MetaMonitorManagerClass
   void (* change_backlight) (MetaMonitorManager *manager,
                              MetaOutput         *output,
                              int                 backlight);
-
-  void (* get_crtc_gamma) (MetaMonitorManager  *manager,
-                           MetaCrtc            *crtc,
-                           size_t              *size,
-                           unsigned short     **red,
-                           unsigned short     **green,
-                           unsigned short     **blue);
-  void (* set_crtc_gamma) (MetaMonitorManager *manager,
-                           MetaCrtc           *crtc,
-                           size_t              size,
-                           unsigned short     *red,
-                           unsigned short     *green,
-                           unsigned short     *blue);
-
-  gboolean (* set_privacy_screen_enabled) (MetaMonitorManager *manager,
-                                           gboolean            enabled);
 
   void (* tiled_monitor_added) (MetaMonitorManager *manager,
                                 MetaMonitor        *monitor);
@@ -352,6 +327,7 @@ gboolean           meta_monitor_manager_has_hotplug_mode_update (MetaMonitorMana
 
 void               meta_monitor_manager_read_current_state (MetaMonitorManager *manager);
 
+META_EXPORT_TEST
 void               meta_monitor_manager_reconfigure (MetaMonitorManager *manager);
 
 META_EXPORT_TEST
@@ -430,9 +406,6 @@ void meta_monitor_manager_clear_mode (MetaCrtcMode *mode);
 void meta_monitor_manager_clear_crtc (MetaCrtc *crtc);
 
 gboolean meta_monitor_has_aspect_as_size (MetaMonitor *monitor);
-
-char * meta_monitor_manager_get_vendor_name (MetaMonitorManager *manager,
-                                             const char         *vendor);
 
 static inline MetaOutputAssignment *
 meta_find_output_assignment (MetaOutputAssignment **outputs,

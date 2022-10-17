@@ -248,7 +248,8 @@ meta_wayland_text_input_focus_commit_text (ClutterInputFocus *focus,
 static void
 meta_wayland_text_input_focus_set_preedit_text (ClutterInputFocus *focus,
                                                 const gchar       *text,
-                                                guint              cursor)
+                                                unsigned int       cursor,
+                                                unsigned int       anchor)
 {
   MetaWaylandTextInput *text_input;
   gsize pos = 0;
@@ -265,7 +266,7 @@ meta_wayland_text_input_focus_set_preedit_text (ClutterInputFocus *focus,
     pos = g_utf8_offset_to_pointer (text, cursor) - text;
 
   text_input->preedit.cursor = pos;
-  text_input->preedit.anchor = pos;
+  text_input->preedit.anchor = anchor;
   text_input->preedit.changed = TRUE;
 
   meta_wayland_text_input_focus_defer_done (focus);
@@ -411,11 +412,24 @@ text_input_destroy (struct wl_client   *client,
   wl_resource_destroy (resource);
 }
 
+static gboolean
+client_matches_focus (MetaWaylandTextInput *text_input,
+                      struct wl_client     *client)
+{
+  if (!text_input->surface)
+    return FALSE;
+
+  return client == wl_resource_get_client (text_input->surface->resource);
+}
+
 static void
 text_input_enable (struct wl_client   *client,
                    struct wl_resource *resource)
 {
   MetaWaylandTextInput *text_input = wl_resource_get_user_data (resource);
+
+  if (!client_matches_focus (text_input, client))
+    return;
 
   text_input->enabled = TRUE;
   text_input->pending_state |= META_WAYLAND_PENDING_STATE_ENABLED;
@@ -426,6 +440,9 @@ text_input_disable (struct wl_client   *client,
                     struct wl_resource *resource)
 {
   MetaWaylandTextInput *text_input = wl_resource_get_user_data (resource);
+
+  if (!client_matches_focus (text_input, client))
+    return;
 
   text_input->enabled = FALSE;
   text_input->pending_state |= META_WAYLAND_PENDING_STATE_ENABLED;
@@ -440,6 +457,9 @@ text_input_set_surrounding_text (struct wl_client   *client,
 {
   MetaWaylandTextInput *text_input = wl_resource_get_user_data (resource);
 
+  if (!client_matches_focus (text_input, client))
+    return;
+
   g_free (text_input->surrounding.text);
   text_input->surrounding.text = g_strdup (text);
   text_input->surrounding.cursor = cursor;
@@ -449,10 +469,13 @@ text_input_set_surrounding_text (struct wl_client   *client,
 
 static void
 text_input_set_text_change_cause (struct wl_client   *client,
-				  struct wl_resource *resource,
-				  uint32_t            cause)
+                                  struct wl_resource *resource,
+                                  uint32_t            cause)
 {
   MetaWaylandTextInput *text_input = wl_resource_get_user_data (resource);
+
+  if (!client_matches_focus (text_input, client))
+    return;
 
   text_input->text_change_cause = cause;
   text_input->pending_state |= META_WAYLAND_PENDING_STATE_CHANGE_CAUSE;
@@ -532,7 +555,7 @@ text_input_set_content_type (struct wl_client   *client,
 {
   MetaWaylandTextInput *text_input = wl_resource_get_user_data (resource);
 
-  if (!text_input->surface)
+  if (!client_matches_focus (text_input, client))
     return;
 
   text_input->content_type_hint = hint;
@@ -550,7 +573,7 @@ text_input_set_cursor_rectangle (struct wl_client   *client,
 {
   MetaWaylandTextInput *text_input = wl_resource_get_user_data (resource);
 
-  if (!text_input->surface)
+  if (!client_matches_focus (text_input, client))
     return;
 
   text_input->cursor_rect = (cairo_rectangle_int_t) { x, y, width, height };
@@ -579,7 +602,7 @@ text_input_commit_state (struct wl_client   *client,
 
   increment_serial (text_input, resource);
 
-  if (text_input->surface == NULL)
+  if (!client_matches_focus (text_input, client))
     return;
 
   input_method = clutter_backend_get_input_method (clutter_get_default_backend ());

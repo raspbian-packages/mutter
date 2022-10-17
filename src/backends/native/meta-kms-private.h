@@ -54,12 +54,15 @@ GSource * meta_kms_register_fd_in_impl (MetaKms             *kms,
                                         gpointer             user_data);
 
 META_EXPORT_TEST
-MetaKmsUpdateChanges meta_kms_update_states_sync (MetaKms     *kms,
-                                                  GUdevDevice *udev_device);
+MetaKmsResourceChanges meta_kms_update_states_sync (MetaKms     *kms,
+                                                    GUdevDevice *udev_device);
 
 gboolean meta_kms_in_impl_task (MetaKms *kms);
 
 gboolean meta_kms_is_waiting_for_impl_task (MetaKms *kms);
+
+void meta_kms_emit_resources_changed (MetaKms                *kms,
+                                      MetaKmsResourceChanges  changes);
 
 #define meta_assert_in_kms_impl(kms) \
   g_assert (meta_kms_in_impl_task (kms))

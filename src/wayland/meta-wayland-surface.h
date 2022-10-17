@@ -300,16 +300,12 @@ void                meta_wayland_surface_update_outputs (MetaWaylandSurface *sur
 
 MetaWaylandSurface *meta_wayland_surface_get_toplevel (MetaWaylandSurface *surface);
 
+META_EXPORT_TEST
 MetaWindow *        meta_wayland_surface_get_window (MetaWaylandSurface *surface);
 
 gboolean            meta_wayland_surface_should_cache_state (MetaWaylandSurface *surface);
 
 MetaWindow *        meta_wayland_surface_get_toplevel_window (MetaWaylandSurface *surface);
-
-void                meta_wayland_surface_queue_pending_frame_callbacks (MetaWaylandSurface *surface);
-
-void                meta_wayland_surface_queue_pending_state_frame_callbacks (MetaWaylandSurface      *surface,
-                                                                              MetaWaylandSurfaceState *pending);
 
 void                meta_wayland_surface_get_relative_coordinates (MetaWaylandSurface *surface,
                                                                    float               abs_x,
@@ -372,6 +368,8 @@ gboolean
 meta_wayland_surface_can_scanout_untransformed (MetaWaylandSurface *surface,
                                                 MetaRendererView   *view,
                                                 int                 geometry_scale);
+
+int meta_wayland_surface_get_geometry_scale (MetaWaylandSurface *surface);
 
 static inline GNode *
 meta_get_next_subsurface_sibling (GNode *n)

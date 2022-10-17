@@ -328,17 +328,22 @@ meta_display_handle_event (MetaDisplay        *display,
       event->type != CLUTTER_DEVICE_REMOVED)
     handle_idletime_for_event (display, event);
 
-#ifdef HAVE_WAYLAND
-  if (wayland_compositor && event->type == CLUTTER_MOTION)
+  if (event->type == CLUTTER_MOTION)
     {
-      MetaCursorRenderer *cursor_renderer;
       ClutterInputDevice *device;
 
       device = clutter_event_get_device (event);
-      cursor_renderer = meta_backend_get_cursor_renderer_for_device (backend,
-                                                                     device);
-      if (cursor_renderer)
-        meta_cursor_renderer_update_position (cursor_renderer);
+
+#ifdef HAVE_WAYLAND
+      if (wayland_compositor)
+        {
+          MetaCursorRenderer *cursor_renderer =
+            meta_backend_get_cursor_renderer_for_device (backend, device);
+
+          if (cursor_renderer)
+            meta_cursor_renderer_update_position (cursor_renderer);
+        }
+#endif
 
       if (device == clutter_seat_get_pointer (clutter_input_device_get_seat (device)))
         {
@@ -348,7 +353,6 @@ meta_display_handle_event (MetaDisplay        *display,
           meta_cursor_tracker_invalidate_position (cursor_tracker);
         }
     }
-#endif
 
   window = get_window_for_event (display, event, event_actor);
 
@@ -526,10 +530,6 @@ meta_display_handle_event (MetaDisplay        *display,
     }
 
  out:
-  /* If the compositor has a grab, don't pass that through to Wayland */
-  if (display->event_route == META_EVENT_ROUTE_COMPOSITOR_GRAB)
-    bypass_wayland = TRUE;
-
   /* If a Wayland client has a grab, don't pass that through to Clutter */
   if (display->event_route == META_EVENT_ROUTE_WAYLAND_POPUP)
     bypass_clutter = !bypass_wayland;

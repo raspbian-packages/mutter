@@ -445,6 +445,18 @@ static void
 meta_wayland_compositor_finalize (GObject *object)
 {
   MetaWaylandCompositor *compositor = META_WAYLAND_COMPOSITOR (object);
+  MetaBackend *backend = meta_context_get_backend (compositor->context);
+  ClutterActor *stage = meta_backend_get_stage (backend);
+
+  meta_wayland_activation_finalize (compositor);
+  meta_wayland_outputs_finalize (compositor);
+  meta_wayland_presentation_time_finalize (compositor);
+  meta_wayland_tablet_manager_finalize (compositor);
+
+  g_hash_table_destroy (compositor->scheduled_surface_associations);
+
+  g_signal_handlers_disconnect_by_func (stage, on_after_update, compositor);
+  g_signal_handlers_disconnect_by_func (stage, on_presented, compositor);
 
   g_clear_object (&compositor->dma_buf_manager);
 
@@ -606,7 +618,6 @@ meta_wayland_compositor_new (MetaContext *context)
   meta_wayland_outputs_init (compositor);
   meta_wayland_data_device_manager_init (compositor);
   meta_wayland_data_device_primary_manager_init (compositor);
-  meta_wayland_data_device_primary_legacy_manager_init (compositor);
   meta_wayland_subsurfaces_init (compositor);
   meta_wayland_shell_init (compositor);
   meta_wayland_pointer_gestures_init (compositor);
@@ -616,6 +627,7 @@ meta_wayland_compositor_new (MetaContext *context)
   meta_wayland_pointer_constraints_init (compositor);
   meta_wayland_xdg_foreign_init (compositor);
   init_dma_buf_support (compositor);
+  meta_wayland_init_single_pixel_buffer_manager (compositor);
   meta_wayland_keyboard_shortcuts_inhibit_init (compositor);
   meta_wayland_surface_inhibit_shortcuts_dialog_init ();
   meta_wayland_text_input_init (compositor);
@@ -825,4 +837,10 @@ MetaXWaylandManager *
 meta_wayland_compositor_get_xwayland_manager (MetaWaylandCompositor *compositor)
 {
   return &compositor->xwayland_manager;
+}
+
+MetaContext *
+meta_wayland_compositor_get_context (MetaWaylandCompositor *compositor)
+{
+  return compositor->context;
 }

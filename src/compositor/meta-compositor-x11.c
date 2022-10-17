@@ -28,6 +28,7 @@
 #include "backends/x11/meta-backend-x11.h"
 #include "backends/x11/meta-clutter-backend-x11.h"
 #include "backends/x11/meta-event-x11.h"
+#include "compositor/meta-compositor-view.h"
 #include "compositor/meta-sync-ring.h"
 #include "compositor/meta-window-actor-x11.h"
 #include "core/display-private.h"
@@ -385,8 +386,8 @@ on_after_update (ClutterStage     *stage,
 }
 
 static void
-meta_compositor_x11_before_paint (MetaCompositor   *compositor,
-                                  ClutterStageView *stage_view)
+meta_compositor_x11_before_paint (MetaCompositor     *compositor,
+                                  MetaCompositorView *compositor_view)
 {
   MetaCompositorX11 *compositor_x11 = META_COMPOSITOR_X11 (compositor);
   MetaCompositorClass *parent_class;
@@ -394,7 +395,7 @@ meta_compositor_x11_before_paint (MetaCompositor   *compositor,
   maybe_unredirect_top_window (compositor_x11);
 
   parent_class = META_COMPOSITOR_CLASS (meta_compositor_x11_parent_class);
-  parent_class->before_paint (compositor, stage_view);
+  parent_class->before_paint (compositor, compositor_view);
 }
 
 static void
@@ -456,6 +457,13 @@ meta_compositor_x11_grab_end (MetaCompositor *compositor)
   MetaBackendX11 *backend_x11 = META_BACKEND_X11 (meta_get_backend ());
 
   meta_backend_x11_sync_pointer (backend_x11);
+}
+
+static MetaCompositorView *
+meta_compositor_x11_create_view (MetaCompositor   *compositor,
+                                 ClutterStageView *stage_view)
+{
+  return meta_compositor_view_new (stage_view);
 }
 
 Window
@@ -532,4 +540,5 @@ meta_compositor_x11_class_init (MetaCompositorX11Class *klass)
    meta_compositor_x11_monotonic_to_high_res_xserver_time;
   compositor_class->grab_begin = meta_compositor_x11_grab_begin;
   compositor_class->grab_end = meta_compositor_x11_grab_end;
+  compositor_class->create_view = meta_compositor_x11_create_view;
 }

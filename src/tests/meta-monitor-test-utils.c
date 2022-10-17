@@ -387,11 +387,17 @@ meta_check_monitor_configuration (MetaContext           *context,
         {
           MetaOutput *output = l_output->data;
           uint64_t winsys_id = expect->monitors[i].outputs[j];
+          unsigned int output_max_bpc;
 
           g_assert (output == output_from_winsys_id (backend, winsys_id));
           g_assert_cmpint (expect->monitors[i].is_underscanning,
                            ==,
                            meta_output_is_underscanning (output));
+
+          if (!meta_output_get_max_bpc (output, &output_max_bpc))
+            output_max_bpc = 0;
+
+          g_assert_cmpint (expect->monitors[i].max_bpc, ==, output_max_bpc);
         }
 
       meta_monitor_get_physical_dimensions (monitor, &width_mm, &height_mm);
@@ -660,6 +666,8 @@ meta_create_monitor_test_setup (MetaBackend          *backend,
                            "id", (uint64_t) i + 1,
                            "gpu", meta_test_get_gpu (backend),
                            NULL);
+      if (setup->crtcs[i].disable_gamma_lut)
+        meta_crtc_test_disable_gamma_lut (META_CRTC_TEST (crtc));
 
       test_setup->crtcs = g_list_append (test_setup->crtcs, crtc);
     }
@@ -680,7 +688,7 @@ meta_create_monitor_test_setup (MetaBackend          *backend,
       int n_possible_crtcs;
       int scale;
       gboolean is_laptop_panel;
-      const char *serial;
+      char *serial;
       g_autoptr (MetaOutputInfo) output_info = NULL;
 
       crtc_index = setup->outputs[i].crtc;
@@ -723,9 +731,9 @@ meta_create_monitor_test_setup (MetaBackend          *backend,
 
       is_laptop_panel = setup->outputs[i].is_laptop_panel;
 
-      serial = setup->outputs[i].serial;
+      serial = g_strdup (setup->outputs[i].serial);
       if (!serial)
-        serial = "0x123456";
+        serial = g_strdup_printf ("0x123456%d", i);
 
       output_info = meta_output_info_new ();
 
@@ -734,7 +742,7 @@ meta_create_monitor_test_setup (MetaBackend          *backend,
                            : g_strdup_printf ("DP-%d", ++n_normal_panels));
       output_info->vendor = g_strdup ("MetaProduct's Inc.");
       output_info->product = g_strdup ("MetaMonitor");
-      output_info->serial = g_strdup (serial);
+      output_info->serial = serial;
       if (setup->outputs[i].hotplug_mode)
         {
           output_info->hotplug_mode_update = TRUE;
@@ -762,6 +770,15 @@ meta_create_monitor_test_setup (MetaBackend          *backend,
       output_info->tile_info = setup->outputs[i].tile_info;
       output_info->panel_orientation_transform =
         setup->outputs[i].panel_orientation_transform;
+      if (setup->outputs[i].has_edid_info)
+        {
+          output_info->edid_info = g_memdup2 (&setup->outputs[i].edid_info,
+                                              sizeof (setup->outputs[i].edid_info));
+          output_info->edid_checksum_md5 =
+            g_compute_checksum_for_data (G_CHECKSUM_MD5,
+                                         (uint8_t *) &setup->outputs[i].edid_info,
+                                         sizeof (setup->outputs[i].edid_info));
+        }
 
       output = g_object_new (META_TYPE_OUTPUT_TEST,
                              "id", (uint64_t) i,
@@ -778,6 +795,8 @@ meta_create_monitor_test_setup (MetaBackend          *backend,
 
           output_assignment = (MetaOutputAssignment) {
             .is_underscanning = setup->outputs[i].is_underscanning,
+            .has_max_bpc = !!setup->outputs[i].max_bpc,
+            .max_bpc = setup->outputs[i].max_bpc,
           };
           meta_output_assign_crtc (output, crtc, &output_assignment);
         }

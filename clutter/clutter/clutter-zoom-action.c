@@ -23,27 +23,25 @@
  */
 
 /**
- * SECTION:clutter-zoom-action
- * @Title: ClutterZoomAction
- * @Short_Description: Action enabling zooming on actors
+ * ClutterZoomAction:
+ * 
+ * Action enabling zooming on actors
  *
- * #ClutterZoomAction is a sub-class of #ClutterGestureAction that
+ * #ClutterZoomAction is a sub-class of [class@GestureAction] that
  * implements all the necessary logic for zooming actors using a "pinch"
  * gesture between two touch points.
  *
- * The simplest usage of #ClutterZoomAction consists in adding it to
- * a #ClutterActor and setting it as reactive; for instance, the following
+ * The simplest usage of [class@ZoomAction] consists in adding it to
+ * a [class@Actor] and setting it as reactive; for instance, the following
  * code:
  *
- * |[
+ * ```c
  *   clutter_actor_add_action (actor, clutter_zoom_action_new ());
  *   clutter_actor_set_reactive (actor, TRUE);
- * ]|
+ * ```
  *
  * will automatically result in the actor to be scale according to the
  * distance between two touch points.
- *
- * Since: 1.12
  */
 
 #include "clutter-build-config.h"
@@ -258,19 +256,17 @@ clutter_zoom_action_class_init (ClutterZoomActionClass *klass)
    * @focal_point: the focal point of the zoom
    * @factor: the initial distance between the 2 touch points
    *
-   * The ::zoom signal is emitted for each series of touch events that
+   * The signal is emitted for each series of touch events that
    * change the distance and focal point between the touch points.
    *
    * The default handler of the signal will call
-   * clutter_actor_set_scale() on @actor using the ratio of the first
+   * [method@Actor.set_scale] on @actor using the ratio of the first
    * distance between the touch points and the current distance. To
    * override the default behaviour, connect to this signal and return
    * %FALSE.
    *
    * Return value: %TRUE if the zoom should continue, and %FALSE if
    *   the zoom should be cancelled.
-   *
-   * Since: 1.12
    */
   zoom_signals[ZOOM] =
     g_signal_new (I_("zoom"),
@@ -301,8 +297,6 @@ clutter_zoom_action_init (ClutterZoomAction *self)
  * Creates a new #ClutterZoomAction instance
  *
  * Return value: the newly created #ClutterZoomAction
- *
- * Since: 1.12
  */
 ClutterAction *
 clutter_zoom_action_new (void)
@@ -316,8 +310,6 @@ clutter_zoom_action_new (void)
  * @point: (out): a #graphene_point_t
  *
  * Retrieves the focal point of the current zoom
- *
- * Since: 1.12
  */
 void
 clutter_zoom_action_get_focal_point (ClutterZoomAction *action,
@@ -336,8 +328,6 @@ clutter_zoom_action_get_focal_point (ClutterZoomAction *action,
  *
  * Retrieves the focal point relative to the actor's coordinates of
  * the current zoom
- *
- * Since: 1.12
  */
 void
 clutter_zoom_action_get_transformed_focal_point (ClutterZoomAction *action,

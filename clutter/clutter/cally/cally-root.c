@@ -21,18 +21,18 @@
  */
 
 /**
- * SECTION:cally-root
- * @short_description: Root object for the Cally toolkit
- * @see_also: #ClutterStage
+ * CallyRoot:
+ * 
+ * Root object for the Cally toolkit
  *
  * #CallyRoot is the root object of the accessibility tree-like
  * hierarchy, exposing the application level.
  *
  * Somewhat equivalent to #GailTopLevel. We consider that this class
- * expose the a11y information of the #ClutterStageManager, as the
- * children of this object are the different ClutterStage managed (so
- * the #GObject used in the atk_object_initialize() is the
- * #ClutterStageManager).
+ * expose the a11y information of the [class@Clutter.StageManager], as the
+ * children of this object are the different [class@Clutter.Stage] managed (so
+ * the [class@GObject.Object] used in the atk_object_initialize() is the
+ * [class@Clutter.StageManager]).
  */
 
 #include "clutter-build-config.h"
@@ -113,8 +113,6 @@ cally_root_init (CallyRoot *root)
  * Creates a new #CallyRoot object.
  *
  * Return value: the newly created #AtkObject
- *
- * Since: 1.4
  */
 AtkObject*
 cally_root_new (void)

@@ -27,14 +27,12 @@
  */
 
 /**
- * SECTION:clutter-swipe-action
- * @Title: ClutterSwipeAction
- * @Short_Description: Action for swipe gestures
+ * ClutterSwipeAction:
+ * 
+ * Action for swipe gestures
  *
- * #ClutterSwipeAction is a sub-class of #ClutterGestureAction that implements
+ * #ClutterSwipeAction is a sub-class of [class@GestureAction] that implements
  * the logic for recognizing swipe gestures.
- *
- * Since: 1.8
  */
 
 #include "clutter-build-config.h"
@@ -199,12 +197,10 @@ clutter_swipe_action_class_init (ClutterSwipeActionClass *klass)
    * @actor: the #ClutterActor attached to the @action
    * @direction: the main direction of the swipe gesture
    *
-   * The ::swept signal is emitted when a swipe gesture is recognized on the
+   * The signal is emitted when a swipe gesture is recognized on the
    * attached actor.
    *
-   * Deprecated: 1.14: Use the ::swipe signal instead.
-   *
-   * Since: 1.8
+   * Deprecated: 1.14: Use the [signal@SwipeAction::swipe] signal instead.
    */
   swipe_signals[SWEPT] =
     g_signal_new (I_("swept"),
@@ -224,13 +220,11 @@ clutter_swipe_action_class_init (ClutterSwipeActionClass *klass)
    * @actor: the #ClutterActor attached to the @action
    * @direction: the main direction of the swipe gesture
    *
-   * The ::swipe signal is emitted when a swipe gesture is recognized on the
+   * The signal is emitted when a swipe gesture is recognized on the
    * attached actor.
    *
    * Return value: %TRUE if the swipe should continue, and %FALSE if
    *   the swipe should be cancelled.
-   *
-   * Since: 1.14
    */
   swipe_signals[SWIPE] =
     g_signal_new (I_("swipe"),
@@ -255,8 +249,6 @@ clutter_swipe_action_init (ClutterSwipeAction *self)
  * Creates a new #ClutterSwipeAction instance
  *
  * Return value: the newly created #ClutterSwipeAction
- *
- * Since: 1.8
  */
 ClutterAction *
 clutter_swipe_action_new (void)

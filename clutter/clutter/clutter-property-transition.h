@@ -43,14 +43,6 @@ G_BEGIN_DECLS
 typedef struct _ClutterPropertyTransitionPrivate        ClutterPropertyTransitionPrivate;
 typedef struct _ClutterPropertyTransitionClass          ClutterPropertyTransitionClass;
 
-/**
- * ClutterPropertyTransition:
- *
- * The #ClutterPropertyTransition structure contains
- * private data and should only be accessed using the provided API.
- *
- * Since: 1.10
- */
 struct _ClutterPropertyTransition
 {
   /*< private >*/
@@ -64,8 +56,6 @@ struct _ClutterPropertyTransition
  *
  * The #ClutterPropertyTransitionClass structure
  * contains private data.
- *
- * Since: 1.10
  */
 struct _ClutterPropertyTransitionClass
 {

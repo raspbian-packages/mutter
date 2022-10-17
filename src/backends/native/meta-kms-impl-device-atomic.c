@@ -114,6 +114,8 @@ add_connector_property (MetaKmsImplDevice     *impl_device,
       return FALSE;
     }
 
+  value = meta_kms_connector_get_prop_drm_value (connector, prop, value);
+
   meta_topic (META_DEBUG_KMS,
               "[atomic] Setting connector %u (%s) property '%s' (%u) to %"
               G_GUINT64_FORMAT,
@@ -165,15 +167,17 @@ process_connector_update (MetaKmsImplDevice  *impl_device,
       if (!add_connector_property (impl_device,
                                    connector, req,
                                    META_KMS_CONNECTOR_PROP_UNDERSCAN,
-                                   1,
+                                   META_KMS_CONNECTOR_UNDERSCAN_ON,
                                    error))
         return FALSE;
+
       if (!add_connector_property (impl_device,
                                    connector, req,
                                    META_KMS_CONNECTOR_PROP_UNDERSCAN_HBORDER,
                                    connector_update->underscanning.hborder,
                                    error))
         return FALSE;
+
       if (!add_connector_property (impl_device,
                                    connector, req,
                                    META_KMS_CONNECTOR_PROP_UNDERSCAN_VBORDER,
@@ -191,7 +195,7 @@ process_connector_update (MetaKmsImplDevice  *impl_device,
       if (!add_connector_property (impl_device,
                                    connector, req,
                                    META_KMS_CONNECTOR_PROP_UNDERSCAN,
-                                   0,
+                                   META_KMS_CONNECTOR_UNDERSCAN_OFF,
                                    error))
         return FALSE;
     }
@@ -207,7 +211,25 @@ process_connector_update (MetaKmsImplDevice  *impl_device,
       if (!add_connector_property (impl_device,
                                    connector, req,
                                    META_KMS_CONNECTOR_PROP_PRIVACY_SCREEN_SW_STATE,
-                                   connector_update->privacy_screen.is_enabled,
+                                   connector_update->privacy_screen.is_enabled ?
+                                     META_KMS_CONNECTOR_PRIVACY_SCREEN_ENABLED :
+                                     META_KMS_CONNECTOR_PRIVACY_SCREEN_DISABLED,
+                                   error))
+        return FALSE;
+    }
+
+  if (connector_update->max_bpc.has_update)
+    {
+      meta_topic (META_DEBUG_KMS,
+                  "[atomic] Setting max BPC to %u on connector %u (%s)",
+                  (unsigned int) connector_update->max_bpc.value,
+                  meta_kms_connector_get_id (connector),
+                  meta_kms_impl_device_get_path (impl_device));
+
+      if (!add_connector_property (impl_device,
+                                   connector, req,
+                                   META_KMS_CONNECTOR_PROP_MAX_BPC,
+                                   connector_update->max_bpc.value,
                                    error))
         return FALSE;
     }
@@ -234,6 +256,8 @@ add_crtc_property (MetaKmsImplDevice  *impl_device,
                    meta_kms_crtc_get_prop_name (crtc, prop));
       return FALSE;
     }
+
+  value = meta_kms_crtc_get_prop_drm_value (crtc, prop, value);
 
   meta_topic (META_DEBUG_KMS,
               "[atomic] Setting CRTC %u (%s) property '%s' (%u) to %"
@@ -364,6 +388,8 @@ add_plane_property (MetaKmsImplDevice  *impl_device,
       return FALSE;
     }
 
+  value = meta_kms_plane_get_prop_drm_value (plane, prop, value);
+
   switch (meta_kms_plane_get_prop_internal_type (plane, prop))
     {
     case META_KMS_PROP_TYPE_RAW:
@@ -431,6 +457,7 @@ process_plane_assignment (MetaKmsImplDevice  *impl_device,
 {
   MetaKmsPlaneAssignment *plane_assignment = update_entry;
   MetaKmsPlane *plane = plane_assignment->plane;
+  MetaKmsUpdateFlag flags = (MetaKmsUpdateFlag) user_data;
   MetaDrmBuffer *buffer;
   MetaKmsFbDamage *fb_damage;
   uint32_t prop_id;
@@ -546,17 +573,14 @@ process_plane_assignment (MetaKmsImplDevice  *impl_device,
   if (plane_assignment->rotation)
     {
       meta_topic (META_DEBUG_KMS,
-                  "[atomic] Setting plane (%u, %s) rotation to %"
-                  G_GUINT64_FORMAT,
+                  "[atomic] Setting plane (%u, %s) rotation to %u",
                   meta_kms_plane_get_id (plane),
                   meta_kms_impl_device_get_path (impl_device),
                   plane_assignment->rotation);
 
-      if (!add_plane_property (impl_device,
-                               plane, req,
+      if (!add_plane_property (impl_device, plane, req,
                                META_KMS_PLANE_PROP_ROTATION,
-                               plane_assignment->rotation,
-                               error))
+                               plane_assignment->rotation, error))
         return FALSE;
     }
 
@@ -586,6 +610,12 @@ process_plane_assignment (MetaKmsImplDevice  *impl_device,
                                error))
         return FALSE;
     }
+
+  if (!(flags & META_KMS_UPDATE_FLAG_TEST_ONLY))
+    meta_kms_crtc_remember_plane_buffer (plane_assignment->crtc,
+                                         meta_kms_plane_get_id (plane),
+                                         buffer);
+
   return TRUE;
 }
 
@@ -963,7 +993,7 @@ meta_kms_impl_device_atomic_process_update (MetaKmsImplDevice *impl_device,
                         req,
                         blob_ids,
                         meta_kms_update_get_plane_assignments (update),
-                        NULL,
+                        GUINT_TO_POINTER (flags),
                         process_plane_assignment,
                         &error))
     goto err;
@@ -1191,8 +1221,8 @@ is_atomic_allowed (const char *driver_name)
     "qxl",
     "vmwgfx",
     "vboxvideo",
-    "nvidia-drm",
     "virtio_gpu",
+    "xlnx",
     NULL,
   };
 
@@ -1205,15 +1235,6 @@ meta_kms_impl_device_atomic_initable_init (GInitable     *initable,
                                            GError       **error)
 {
   MetaKmsImplDevice *impl_device = META_KMS_IMPL_DEVICE (initable);
-  const char *atomic_kms_enable_env;
-
-  atomic_kms_enable_env = getenv ("MUTTER_DEBUG_ENABLE_ATOMIC_KMS");
-  if (atomic_kms_enable_env && g_strcmp0 (atomic_kms_enable_env, "1") != 0)
-    {
-      g_set_error (error, META_KMS_ERROR, META_KMS_ERROR_USER_INHIBITED,
-                   "Atomic mode setting disable via env var");
-      return FALSE;
-    }
 
   if (!initable_parent_iface->init (initable, cancellable, error))
     return FALSE;

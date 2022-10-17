@@ -145,11 +145,28 @@ output_set_underscanning_xrandr (MetaOutput *output,
     }
 }
 
+static void
+output_set_max_bpc_xrandr (MetaOutput   *output,
+                           unsigned int  max_bpc)
+{
+  Display *xdisplay = xdisplay_from_output (output);
+  Atom prop = XInternAtom (xdisplay, "max bpc", False);
+  uint32_t value = max_bpc;
+
+  xcb_randr_change_output_property (XGetXCBConnection (xdisplay),
+                                    (XID) meta_output_get_id (output),
+                                    prop, XCB_ATOM_INTEGER, 32,
+                                    XCB_PROP_MODE_REPLACE,
+                                    1, &value);
+}
+
 void
 meta_output_xrandr_apply_mode (MetaOutputXrandr *output_xrandr)
 {
   MetaOutput *output = META_OUTPUT (output_xrandr);
   Display *xdisplay = xdisplay_from_output (output);
+  const MetaOutputInfo *output_info = meta_output_get_info (output);
+  unsigned int max_bpc;
 
   if (meta_output_is_primary (output))
     {
@@ -163,6 +180,13 @@ meta_output_xrandr_apply_mode (MetaOutputXrandr *output_xrandr)
     {
       output_set_underscanning_xrandr (output,
                                        meta_output_is_underscanning (output));
+    }
+
+  if (meta_output_get_max_bpc (output, &max_bpc) &&
+      max_bpc >= output_info->max_bpc_min &&
+      max_bpc <= output_info->max_bpc_max)
+    {
+      output_set_max_bpc_xrandr (output, max_bpc);
     }
 }
 
@@ -348,6 +372,33 @@ output_get_underscanning_xrandr (MetaOutput *output)
 }
 
 static gboolean
+output_get_max_bpc_xrandr (MetaOutput   *output,
+                           unsigned int *max_bpc)
+{
+  Display *xdisplay = xdisplay_from_output (output);
+  Atom atom, actual_type;
+  int actual_format;
+  unsigned long nitems, bytes_after;
+  g_autofree unsigned char *buffer = NULL;
+
+  atom = XInternAtom (xdisplay, "max bpc", False);
+  XRRGetOutputProperty (xdisplay,
+                        (XID) meta_output_get_id (output),
+                        atom,
+                        0, G_MAXLONG, False, False, XCB_ATOM_INTEGER,
+                        &actual_type, &actual_format,
+                        &nitems, &bytes_after, &buffer);
+
+  if (actual_type != XCB_ATOM_INTEGER || actual_format != 32 || nitems < 1)
+    return FALSE;
+
+  if (max_bpc)
+    *max_bpc = *((uint32_t*) buffer);
+
+  return TRUE;
+}
+
+static gboolean
 output_get_supports_underscanning_xrandr (Display  *xdisplay,
                                           RROutput  output_id)
 {
@@ -390,6 +441,44 @@ output_get_supports_underscanning_xrandr (Display  *xdisplay,
   XFree (property_info);
 
   return supports_underscanning;
+}
+
+static gboolean
+output_get_max_bpc_range_xrandr (Display      *xdisplay,
+                                 RROutput      output_id,
+                                 unsigned int *min,
+                                 unsigned int *max)
+{
+  Atom atom;
+  XRRPropertyInfo *property_info;
+  long *values;
+
+  atom = XInternAtom (xdisplay, "max bpc", False);
+
+  meta_clutter_x11_trap_x_errors ();
+  property_info = XRRQueryOutputProperty (xdisplay,
+                                          (XID) output_id,
+                                          atom);
+  meta_clutter_x11_untrap_x_errors ();
+
+  if (!property_info)
+    return FALSE;
+
+  if (property_info->num_values != 2)
+    {
+      XFree (property_info);
+      return FALSE;
+    }
+
+  values = (long *) property_info->values;
+  if (min)
+    *min = values[0];
+  if (max)
+    *max = values[1];
+
+  XFree (property_info);
+
+  return TRUE;
 }
 
 static gboolean
@@ -889,8 +978,11 @@ meta_output_xrandr_new (MetaGpuXrandr *gpu_xrandr,
   output_info->name = g_strdup (xrandr_output->name);
 
   edid = read_xrandr_edid (xdisplay, output_id);
-  meta_output_info_parse_edid (output_info, edid);
-  g_bytes_unref (edid);
+  if (edid)
+    {
+      meta_output_info_parse_edid (output_info, edid);
+      g_bytes_unref (edid);
+    }
 
   output_info->subpixel_order = COGL_SUBPIXEL_ORDER_UNKNOWN;
   output_info->hotplug_mode_update = output_get_hotplug_mode_update (xdisplay,
@@ -903,8 +995,7 @@ meta_output_xrandr_new (MetaGpuXrandr *gpu_xrandr,
   output_info->panel_orientation_transform =
     output_get_panel_orientation_transform (xdisplay, output_id);
 
-  if (meta_monitor_transform_is_rotated (
-                                output_info->panel_orientation_transform))
+  if (meta_monitor_transform_is_rotated (output_info->panel_orientation_transform))
     {
       output_info->width_mm = xrandr_output->mm_height;
       output_info->height_mm = xrandr_output->mm_width;
@@ -935,6 +1026,10 @@ meta_output_xrandr_new (MetaGpuXrandr *gpu_xrandr,
 
   output_info->supports_underscanning =
     output_get_supports_underscanning_xrandr (xdisplay, output_id);
+  output_get_max_bpc_range_xrandr (xdisplay,
+                                   output_id,
+                                   &output_info->max_bpc_min,
+                                   &output_info->max_bpc_max);
   output_info->supports_color_transform =
     output_get_supports_color_transform_xrandr (xdisplay, output_id);
   output_info_init_backlight_limits_xrandr (output_info, xdisplay, output_id);
@@ -955,6 +1050,9 @@ meta_output_xrandr_new (MetaGpuXrandr *gpu_xrandr,
         .is_presentation = output_get_presentation_xrandr (output),
         .is_underscanning = output_get_underscanning_xrandr (output),
       };
+      output_assignment.has_max_bpc =
+        output_get_max_bpc_xrandr (output, &output_assignment.max_bpc);
+
       meta_output_assign_crtc (output, assigned_crtc, &output_assignment);
     }
   else

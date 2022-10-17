@@ -395,7 +395,7 @@ find_existing_connector (MetaKmsImplDevice *impl_device,
   return NULL;
 }
 
-static MetaKmsUpdateChanges
+static MetaKmsResourceChanges
 update_connectors (MetaKmsImplDevice *impl_device,
                    drmModeRes        *drm_resources)
 {
@@ -436,12 +436,12 @@ update_connectors (MetaKmsImplDevice *impl_device,
 
   if (!added_connector &&
       g_list_length (connectors) == g_list_length (priv->connectors))
-    return META_KMS_UPDATE_CHANGE_NONE;
+    return META_KMS_RESOURCE_CHANGE_NONE;
 
   g_list_free_full (priv->connectors, g_object_unref);
   priv->connectors = g_list_reverse (g_steal_pointer (&connectors));
 
-  return META_KMS_UPDATE_CHANGE_FULL;
+  return META_KMS_RESOURCE_CHANGE_FULL;
 }
 
 static MetaKmsPlaneType
@@ -486,6 +486,122 @@ meta_kms_impl_device_add_fake_plane (MetaKmsImplDevice *impl_device,
   return plane;
 }
 
+uint64_t
+meta_kms_prop_convert_value (MetaKmsProp *prop,
+                             uint64_t     value)
+{
+  switch (prop->type)
+    {
+    case DRM_MODE_PROP_RANGE:
+    case DRM_MODE_PROP_SIGNED_RANGE:
+    case DRM_MODE_PROP_BLOB:
+    case DRM_MODE_PROP_OBJECT:
+      return value;
+    case DRM_MODE_PROP_ENUM:
+      g_assert (prop->enum_values[value].valid);
+      return prop->enum_values[value].value;
+    case DRM_MODE_PROP_BITMASK:
+      {
+        int i;
+        uint64_t result = 0;
+
+        for (i = 0; i < prop->num_enum_values; i++)
+          {
+            if (!prop->enum_values[i].valid)
+              continue;
+
+            if (value & prop->enum_values[i].bitmask)
+              {
+                result |= (1 << prop->enum_values[i].value);
+                value &= ~(prop->enum_values[i].bitmask);
+              }
+          }
+
+        g_assert (value == 0);
+        return result;
+      }
+    default:
+      g_assert_not_reached ();
+    }
+
+  return 0;
+}
+
+static void
+update_prop_value (MetaKmsProp *prop,
+                   uint64_t     drm_value)
+{
+  switch (prop->type)
+    {
+    case DRM_MODE_PROP_RANGE:
+    case DRM_MODE_PROP_SIGNED_RANGE:
+    case DRM_MODE_PROP_BLOB:
+    case DRM_MODE_PROP_OBJECT:
+      prop->value = drm_value;
+      return;
+    case DRM_MODE_PROP_ENUM:
+      {
+        int i;
+
+        for (i = 0; i < prop->num_enum_values; i++)
+          {
+            if (prop->enum_values[i].valid &&
+                prop->enum_values[i].value == drm_value)
+              {
+                prop->value = i;
+                return;
+              }
+          }
+
+        prop->value = prop->default_value;
+        return;
+      }
+    case DRM_MODE_PROP_BITMASK:
+      {
+        int i;
+        uint64_t result = 0;
+
+        for (i = 0; i < prop->num_enum_values; i++)
+          {
+            if (!prop->enum_values[i].valid)
+              continue;
+
+            if (drm_value & (1 << prop->enum_values[i].value))
+              {
+                result |= prop->enum_values[i].bitmask;
+                drm_value &= ~(1 << prop->enum_values[i].value);
+              }
+          }
+        if (drm_value  != 0)
+          result |= prop->default_value;
+
+        prop->value = result;
+        return;
+      }
+    default:
+      g_assert_not_reached ();
+    }
+}
+
+static void
+update_prop_enum_value(MetaKmsEnum        *prop_enum,
+                       drmModePropertyRes *drm_prop)
+{
+  int i;
+
+  for (i = 0; i < drm_prop->count_enums; i++)
+    {
+      if (strcmp (prop_enum->name, drm_prop->enums[i].name) == 0)
+        {
+          prop_enum->value = drm_prop->enums[i].value;
+          prop_enum->valid = TRUE;
+          return;
+        }
+    }
+
+  prop_enum->valid = FALSE;
+}
+
 static MetaKmsProp *
 find_prop (MetaKmsProp *props,
            int          n_props,
@@ -507,25 +623,43 @@ find_prop (MetaKmsProp *props,
 }
 
 void
-meta_kms_impl_device_init_prop_table (MetaKmsImplDevice *impl_device,
-                                      uint32_t          *drm_props,
-                                      uint64_t          *drm_prop_values,
-                                      int                n_drm_props,
-                                      MetaKmsProp       *props,
-                                      int                n_props,
-                                      gpointer           user_data)
+meta_kms_impl_device_update_prop_table (MetaKmsImplDevice *impl_device,
+                                        uint32_t          *drm_props,
+                                        uint64_t          *drm_prop_values,
+                                        int                n_drm_props,
+                                        MetaKmsProp       *props,
+                                        int                n_props)
 {
   int fd;
-  uint32_t i;
+  uint32_t i, j;
 
   fd = meta_kms_impl_device_get_fd (impl_device);
 
+  for (i = 0; i < n_props; i++)
+    {
+      MetaKmsProp *prop = &props[i];
+
+      prop->prop_id = 0;
+      prop->value = 0;
+
+      for (j = 0; j < prop->num_enum_values; j++)
+        {
+          prop->enum_values[j].valid = FALSE;
+          prop->enum_values[j].value = 0;
+        }
+    }
+
   for (i = 0; i < n_drm_props; i++)
     {
+      uint32_t prop_id;
+      uint64_t prop_value;
       drmModePropertyRes *drm_prop;
       MetaKmsProp *prop;
 
-      drm_prop = drmModeGetProperty (fd, drm_props[i]);
+      prop_id = drm_props[i];
+      prop_value = drm_prop_values[i];
+
+      drm_prop = drmModeGetProperty (fd, prop_id);
       if (!drm_prop)
         continue;
 
@@ -540,18 +674,34 @@ meta_kms_impl_device_init_prop_table (MetaKmsImplDevice *impl_device,
         {
           g_warning ("DRM property '%s' (%u) had unexpected flags (0x%x), "
                      "ignoring",
-                     drm_prop->name, drm_props[i], drm_prop->flags);
+                     drm_prop->name, prop_id, drm_prop->flags);
           drmModeFreeProperty (drm_prop);
           continue;
         }
 
-      prop->prop_id = drm_props[i];
+      prop->prop_id = prop_id;
 
-      if (prop->parse)
+      if (prop->type == DRM_MODE_PROP_BITMASK ||
+          prop->type == DRM_MODE_PROP_ENUM)
         {
-          prop->parse (impl_device, prop,
-                       drm_prop, drm_prop_values[i],
-                       user_data);
+          for (j = 0; j < prop->num_enum_values; j++)
+            update_prop_enum_value (&prop->enum_values[j], drm_prop);
+        }
+
+      update_prop_value (prop, prop_value);
+
+      if (prop->type == DRM_MODE_PROP_RANGE)
+        {
+          if (drm_prop->count_values == 2)
+            {
+              prop->range_min = drm_prop->values[0];
+              prop->range_max = drm_prop->values[1];
+            }
+          else
+            {
+              g_warning ("DRM property '%s' is a range with %d values, ignoring",
+                         drm_prop->name, drm_prop->count_values);
+            }
         }
 
       drmModeFreeProperty (drm_prop);
@@ -708,7 +858,7 @@ clear_latched_fd_hold (MetaKmsImplDevice *impl_device)
     }
 }
 
-MetaKmsUpdateChanges
+MetaKmsResourceChanges
 meta_kms_impl_device_update_states (MetaKmsImplDevice *impl_device,
                                     uint32_t           crtc_id,
                                     uint32_t           connector_id)
@@ -718,7 +868,7 @@ meta_kms_impl_device_update_states (MetaKmsImplDevice *impl_device,
   g_autoptr (GError) error = NULL;
   int fd;
   drmModeRes *drm_resources;
-  MetaKmsUpdateChanges changes;
+  MetaKmsResourceChanges changes;
   GList *l;
 
   meta_assert_in_kms_impl (meta_kms_impl_get_kms (priv->impl));
@@ -775,20 +925,28 @@ err:
   g_clear_list (&priv->crtcs, g_object_unref);
   g_clear_list (&priv->connectors, g_object_unref);
 
-  return META_KMS_UPDATE_CHANGE_FULL;
+  return META_KMS_RESOURCE_CHANGE_FULL;
 }
 
-static void
+static MetaKmsResourceChanges
 meta_kms_impl_device_predict_states (MetaKmsImplDevice *impl_device,
                                      MetaKmsUpdate     *update)
 {
   MetaKmsImplDevicePrivate *priv =
     meta_kms_impl_device_get_instance_private (impl_device);
+  MetaKmsResourceChanges changes = META_KMS_RESOURCE_CHANGE_NONE;
+  GList *l;
 
-  g_list_foreach (priv->crtcs, (GFunc) meta_kms_crtc_predict_state,
-                  update);
-  g_list_foreach (priv->connectors, (GFunc) meta_kms_connector_predict_state,
-                  update);
+  g_list_foreach (priv->crtcs, (GFunc) meta_kms_crtc_predict_state, update);
+
+  for (l = priv->connectors; l; l = l->next)
+    {
+      MetaKmsConnector *connector = l->data;
+
+      changes |= meta_kms_connector_predict_state (connector, update);
+    }
+
+  return changes;
 }
 
 void
@@ -808,14 +966,26 @@ meta_kms_impl_device_get_fd (MetaKmsImplDevice *impl_device)
   return meta_device_file_get_fd (priv->device_file);
 }
 
+static void
+emit_resources_changed_callback (MetaKms  *kms,
+                                 gpointer  user_data)
+{
+  MetaKmsResourceChanges changes = GPOINTER_TO_UINT (user_data);
+
+  meta_kms_emit_resources_changed (kms, changes);
+}
+
 MetaKmsFeedback *
 meta_kms_impl_device_process_update (MetaKmsImplDevice *impl_device,
                                      MetaKmsUpdate     *update,
                                      MetaKmsUpdateFlag  flags)
 {
+  MetaKmsImplDevicePrivate *priv =
+    meta_kms_impl_device_get_instance_private (impl_device);
   MetaKmsImplDeviceClass *klass = META_KMS_IMPL_DEVICE_GET_CLASS (impl_device);
   MetaKmsFeedback *feedback;
   g_autoptr (GError) error = NULL;
+  MetaKmsResourceChanges changes = META_KMS_RESOURCE_CHANGE_NONE;
 
   if (!ensure_device_file (impl_device, &error))
     return meta_kms_feedback_new_failed (NULL, g_steal_pointer (&error));
@@ -823,9 +993,17 @@ meta_kms_impl_device_process_update (MetaKmsImplDevice *impl_device,
   meta_kms_impl_device_hold_fd (impl_device);
   feedback = klass->process_update (impl_device, update, flags);
   if (!(flags & META_KMS_UPDATE_FLAG_TEST_ONLY))
-    meta_kms_impl_device_predict_states (impl_device, update);
+    changes = meta_kms_impl_device_predict_states (impl_device, update);
   meta_kms_impl_device_unhold_fd (impl_device);
 
+  if (changes != META_KMS_RESOURCE_CHANGE_NONE)
+    {
+      MetaKms *kms = meta_kms_device_get_kms (priv->device);
+
+      meta_kms_queue_callback (kms,
+                               emit_resources_changed_callback,
+                               GUINT_TO_POINTER (changes), NULL);
+    }
   return feedback;
 }
 
@@ -1028,7 +1206,11 @@ meta_kms_impl_device_init_mode_setting (MetaKmsImplDevice  *impl_device,
 void
 meta_kms_impl_device_prepare_shutdown (MetaKmsImplDevice *impl_device)
 {
+  MetaKmsImplDevicePrivate *priv =
+    meta_kms_impl_device_get_instance_private (impl_device);
   MetaKmsImplDeviceClass *klass = META_KMS_IMPL_DEVICE_GET_CLASS (impl_device);
+
+  g_list_foreach (priv->crtcs, (GFunc) meta_kms_crtc_release_buffers, NULL);
 
   if (klass->prepare_shutdown)
     klass->prepare_shutdown (impl_device);

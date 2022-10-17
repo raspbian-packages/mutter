@@ -167,6 +167,7 @@ typedef enum
   STATE_MONITOR_MODE_RATE,
   STATE_MONITOR_MODE_FLAG,
   STATE_MONITOR_UNDERSCANNING,
+  STATE_MONITOR_MAXBPC,
   STATE_DISABLED,
   STATE_POLICY,
   STATE_STORES,
@@ -266,7 +267,7 @@ handle_start_element (GMarkupParseContext  *context,
             g_set_error (error, G_MARKUP_ERROR, G_MARKUP_ERROR_INVALID_CONTENT,
                          "Missing config file format version");
           }
-        
+
         if (g_str_equal (version, "1"))
           {
             g_set_error_literal (error,
@@ -451,6 +452,10 @@ handle_start_element (GMarkupParseContext  *context,
           {
             parser->state = STATE_MONITOR_UNDERSCANNING;
           }
+        else if (g_str_equal (element_name, "maxbpc"))
+          {
+            parser->state = STATE_MONITOR_MAXBPC;
+          }
         else
           {
             g_set_error (error, G_MARKUP_ERROR, G_MARKUP_ERROR_UNKNOWN_ELEMENT,
@@ -541,6 +546,13 @@ handle_start_element (GMarkupParseContext  *context,
       {
         g_set_error (error, G_MARKUP_ERROR, G_MARKUP_ERROR_UNKNOWN_ELEMENT,
                      "Invalid element '%s' under underscanning", element_name);
+        return;
+      }
+
+    case STATE_MONITOR_MAXBPC:
+      {
+        g_set_error (error, G_MARKUP_ERROR, G_MARKUP_ERROR_UNKNOWN_ELEMENT,
+                     "Invalid element '%s' under maxbpc", element_name);
         return;
       }
 
@@ -818,6 +830,14 @@ handle_end_element (GMarkupParseContext  *context,
         return;
       }
 
+    case STATE_MONITOR_MAXBPC:
+      {
+        g_assert (g_str_equal (element_name, "maxbpc"));
+
+        parser->state = STATE_MONITOR;
+        return;
+      }
+
     case STATE_MONITOR:
       {
         MetaLogicalMonitorConfig *logical_monitor_config;
@@ -936,6 +956,7 @@ handle_end_element (GMarkupParseContext  *context,
       }
 
     case STATE_STORE:
+      {
         g_assert (g_str_equal (element_name, "store"));
 
         if (parser->pending_store == -1)
@@ -960,8 +981,10 @@ handle_end_element (GMarkupParseContext  *context,
 
         parser->state = STATE_STORES;
         return;
+      }
 
     case STATE_STORES:
+      {
         g_assert (g_str_equal (element_name, "stores"));
 
         if (parser->config_store->has_stores_policy)
@@ -980,8 +1003,10 @@ handle_end_element (GMarkupParseContext  *context,
 
         parser->state = STATE_POLICY;
         return;
+      }
 
     case STATE_DBUS:
+      {
         if (!parser->config_store->has_dbus_policy)
           {
             parser->config_store->has_dbus_policy = TRUE;
@@ -997,12 +1022,15 @@ handle_end_element (GMarkupParseContext  *context,
         parser->state = STATE_POLICY;
 
         return;
+      }
 
     case STATE_POLICY:
+      {
         g_assert (g_str_equal (element_name, "policy"));
 
         parser->state = STATE_MONITORS;
         return;
+      }
 
     case STATE_UNKNOWN:
       {
@@ -1301,6 +1329,29 @@ handle_text (GMarkupParseContext *context,
         return;
       }
 
+    case STATE_MONITOR_MAXBPC:
+      {
+        int signed_max_bpc;
+
+        if (read_int (text, text_len, &signed_max_bpc, error))
+          {
+            if (signed_max_bpc >= 0)
+              {
+                parser->current_monitor_config->has_max_bpc = TRUE;
+                parser->current_monitor_config->max_bpc = signed_max_bpc;
+              }
+            else
+              {
+                g_set_error (error, G_MARKUP_ERROR,
+                             G_MARKUP_ERROR_INVALID_CONTENT,
+                             "Invalid negative maxbpc value \"%s\"",
+                             text);
+              }
+          }
+
+        return;
+      }
+
     case STATE_STORE:
       {
         MetaConfigStore store;
@@ -1459,8 +1510,8 @@ append_monitors (GString *buffer,
       MetaMonitorConfig *monitor_config = l->data;
       char rate_str[G_ASCII_DTOSTR_BUF_SIZE];
 
-      g_ascii_dtostr (rate_str, sizeof (rate_str),
-                      monitor_config->mode_spec->refresh_rate);
+      g_ascii_formatd (rate_str, sizeof (rate_str),
+                       "%.3f", monitor_config->mode_spec->refresh_rate);
 
       g_string_append (buffer, "      <monitor>\n");
       append_monitor_spec (buffer, monitor_config->monitor_spec, "        ");
@@ -1476,6 +1527,12 @@ append_monitors (GString *buffer,
       g_string_append (buffer, "        </mode>\n");
       if (monitor_config->enable_underscanning)
         g_string_append (buffer, "        <underscanning>yes</underscanning>\n");
+
+      if (monitor_config->has_max_bpc)
+        {
+          g_string_append_printf (buffer, "        <maxbpc>%u</maxbpc>\n",
+                                  monitor_config->max_bpc);
+        }
       g_string_append (buffer, "      </monitor>\n");
     }
 }

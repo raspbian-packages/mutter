@@ -107,17 +107,10 @@ meta_x11_display_unmanage_windows (MetaX11Display *x11_display)
 
   for (l = windows; l; l = l->next)
     {
-      if (META_IS_WINDOW (l->data))
-        {
-          MetaWindow *window = l->data;
+      MetaWindow *window = META_WINDOW (l->data);
 
-          if (!window->unmanaging)
-            meta_window_unmanage (window, META_CURRENT_TIME);
-        }
-      else if (META_IS_BARRIER (l->data))
-        meta_barrier_destroy (META_BARRIER (l->data));
-      else
-        g_assert_not_reached ();
+      if (!window->unmanaging)
+        meta_window_unmanage (window, META_CURRENT_TIME);
     }
   g_list_free_full (windows, g_object_unref);
 }
@@ -429,15 +422,8 @@ query_xi_extension (MetaX11Display *x11_display)
                        &x11_display->xinput_error_base,
                        &x11_display->xinput_event_base))
     {
-        if (XIQueryVersion (x11_display->xdisplay, &major, &minor) == Success)
-        {
-          int version = (major * 10) + minor;
-          if (version >= 22)
-            has_xi = TRUE;
-
-          if (version >= 23)
-            x11_display->have_xinput_23 = TRUE;
-        }
+      if (XIQueryVersion (x11_display->xdisplay, &major, &minor) == Success)
+        has_xi = TRUE;
     }
 
   if (!has_xi)
@@ -792,11 +778,6 @@ init_event_masks (MetaX11Display *x11_display)
   XISetMask (mask.mask, XI_Leave);
   XISetMask (mask.mask, XI_FocusIn);
   XISetMask (mask.mask, XI_FocusOut);
-  if (META_X11_DISPLAY_HAS_XINPUT_23 (x11_display))
-    {
-      XISetMask (mask.mask, XI_BarrierHit);
-      XISetMask (mask.mask, XI_BarrierLeave);
-    }
   XISelectEvents (x11_display->xdisplay, x11_display->xroot, &mask, 1);
 
   event_mask = (SubstructureRedirectMask | SubstructureNotifyMask |
@@ -1144,6 +1125,7 @@ on_window_visibility_updated (MetaDisplay    *display,
 MetaX11Display *
 meta_x11_display_new (MetaDisplay *display, GError **error)
 {
+  MetaContext *context = meta_display_get_context (display);
   MetaX11Display *x11_display;
   Display *xdisplay;
   Screen *xscreen;
@@ -1176,19 +1158,17 @@ meta_x11_display_new (MetaDisplay *display, GError **error)
   gdk_display = g_steal_pointer (&prepared_gdk_display);
   xdisplay = GDK_DISPLAY_XDISPLAY (gdk_display);
 
+  XSynchronize (xdisplay, meta_context_is_x11_sync (context));
+
 #ifdef HAVE_WAYLAND
   if (meta_is_wayland_compositor ())
     {
-      MetaContext *context = meta_display_get_context (display);
       MetaWaylandCompositor *compositor =
         meta_context_get_wayland_compositor (context);
 
       meta_xwayland_setup_xdisplay (&compositor->xwayland_manager, xdisplay);
     }
 #endif
-
-  if (meta_is_syncing ())
-    XSynchronize (xdisplay, True);
 
   replace_current_wm =
     meta_context_is_replacing (meta_backend_get_context (backend));

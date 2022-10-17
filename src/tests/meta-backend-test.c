@@ -21,6 +21,7 @@
 
 #include "tests/meta-backend-test.h"
 
+#include "backends/meta-color-manager.h"
 #include "tests/meta-gpu-test.h"
 #include "tests/meta-monitor-manager-test.h"
 
@@ -67,16 +68,19 @@ meta_backend_test_init_gpus (MetaBackendX11Nested *backend_x11_nested)
   meta_backend_add_gpu (META_BACKEND (backend_test), backend_test->gpu);
 }
 
-static void
-meta_backend_test_init (MetaBackendTest *backend_test)
-{
-}
-
 static MetaMonitorManager *
 meta_backend_test_create_monitor_manager (MetaBackend *backend,
                                           GError     **error)
 {
   return g_object_new (META_TYPE_MONITOR_MANAGER_TEST,
+                       "backend", backend,
+                       NULL);
+}
+
+static MetaColorManager *
+meta_backend_test_create_color_manager (MetaBackend *backend)
+{
+  return g_object_new (META_TYPE_COLOR_MANAGER,
                        "backend", backend,
                        NULL);
 }
@@ -176,6 +180,11 @@ meta_backend_test_remove_device (MetaBackendTest    *backend_test,
 }
 
 static void
+meta_backend_test_init (MetaBackendTest *backend_test)
+{
+}
+
+static void
 meta_backend_test_class_init (MetaBackendTestClass *klass)
 {
   MetaBackendClass *backend_class = META_BACKEND_CLASS (klass);
@@ -183,6 +192,7 @@ meta_backend_test_class_init (MetaBackendTestClass *klass)
     META_BACKEND_X11_NESTED_CLASS (klass);
 
   backend_class->create_monitor_manager = meta_backend_test_create_monitor_manager;
+  backend_class->create_color_manager = meta_backend_test_create_color_manager;
   backend_class->is_lid_closed = meta_backend_test_is_lid_closed;
 
   backend_x11_nested_class->init_gpus = meta_backend_test_init_gpus;

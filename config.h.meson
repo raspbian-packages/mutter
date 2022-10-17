@@ -4,6 +4,9 @@
 /* Version number of package */
 #mesondefine VERSION
 
+/* Name of package */
+#mesondefine PACKAGE_NAME
+
 /* Version number of package */
 #mesondefine PACKAGE_VERSION
 
@@ -43,11 +46,23 @@
 /* Define if you want to enable Wayland support */
 #mesondefine HAVE_WAYLAND
 
+/* Define if you want to enable XWayland support */
+#mesondefine HAVE_XWAYLAND
+
+/* Define if you want to enable X11 backend support */
+#mesondefine HAVE_X11
+
+/* Define if either XWayland or X11 backend are enabled */
+#mesondefine HAVE_X11_CLIENT
+
 /* Defined if screen cast and remote desktop support is enabled */
 #mesondefine HAVE_REMOTE_DESKTOP
 
 /* Defined if gnome-desktop is enabled */
 #mesondefine HAVE_GNOME_DESKTOP
+
+/* Defined if sound player is enabled */
+#mesondefine HAVE_SOUND_PLAYER
 
 /* Building with SM support */
 #mesondefine HAVE_SM

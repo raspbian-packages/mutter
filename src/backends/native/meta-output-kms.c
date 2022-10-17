@@ -38,7 +38,7 @@
 #include "backends/native/meta-crtc-kms.h"
 #include "backends/native/meta-crtc-mode-kms.h"
 
-#define SYNC_TOLERANCE 0.01    /* 1 percent */
+#define SYNC_TOLERANCE_HZ 0.001
 
 struct _MetaOutputKms
 {
@@ -97,6 +97,36 @@ meta_output_kms_set_underscan (MetaOutputKms *output_kms,
     }
 }
 
+void
+meta_output_kms_set_max_bpc (MetaOutputKms *output_kms,
+                             MetaKmsUpdate *kms_update)
+{
+  MetaKmsConnector *kms_connector = output_kms->kms_connector;
+  const MetaKmsRange *range;
+
+  range = meta_kms_connector_get_max_bpc (kms_connector);
+  if (range)
+    {
+      MetaOutput *output = META_OUTPUT (output_kms);
+      unsigned int max_bpc;
+
+      if (!meta_output_get_max_bpc (output, &max_bpc))
+        return;
+
+      if (max_bpc >= range->min_value && max_bpc <= range->max_value)
+        {
+          meta_kms_update_set_max_bpc (kms_update, kms_connector, max_bpc);
+        }
+      else
+        {
+          g_warning ("Ignoring out of range value %u for max bpc (%u-%u)",
+                     max_bpc,
+                     (unsigned) range->min_value,
+                     (unsigned) range->max_value);
+        }
+    }
+}
+
 static MetaPrivacyScreenState
 meta_output_kms_get_privacy_screen_state (MetaOutput *output)
 {
@@ -114,12 +144,15 @@ meta_output_kms_set_privacy_screen_enabled (MetaOutput  *output,
                                             gboolean     enabled,
                                             GError     **error)
 {
-  MetaGpu *gpu;
-  MetaKms *kms;
-  MetaKmsDevice *kms_device;
-  MetaKmsUpdate *kms_update;
+  MetaGpu *gpu = meta_output_get_gpu (output);
+  MetaBackend *backend = meta_gpu_get_backend (gpu);
+  MetaRenderer *renderer = meta_backend_get_renderer (backend);
+  MetaKmsDevice *kms_device = meta_gpu_kms_get_kms_device (META_GPU_KMS (gpu));
+  MetaKms *kms = meta_kms_device_get_kms (kms_device);
   MetaOutputKms *output_kms = META_OUTPUT_KMS (output);
   MetaKmsConnector *connector = meta_output_kms_get_kms_connector (output_kms);
+  MetaKmsUpdate *kms_update;
+  MetaCrtc *crtc;
 
   if (!meta_kms_connector_is_privacy_screen_supported (connector))
     {
@@ -128,12 +161,18 @@ meta_output_kms_set_privacy_screen_enabled (MetaOutput  *output,
       return FALSE;
     }
 
-  gpu = meta_output_get_gpu (META_OUTPUT (output_kms));
-  kms_device = meta_gpu_kms_get_kms_device (META_GPU_KMS (gpu));
-  kms = meta_kms_device_get_kms (kms_device);
   kms_update = meta_kms_ensure_pending_update (kms, kms_device);
 
   meta_kms_update_set_privacy_screen (kms_update, connector, enabled);
+
+  crtc = meta_output_get_assigned_crtc (output);
+  if (crtc)
+    {
+      MetaRendererView *view;
+
+      view = meta_renderer_get_view_for_crtc (renderer, crtc);
+      clutter_stage_view_schedule_update (CLUTTER_STAGE_VIEW (view));
+    }
 
   return TRUE;
 }
@@ -195,7 +234,7 @@ add_common_modes (MetaOutputInfo *output_info,
     }
 
   max_refresh_rate = MAX (max_refresh_rate, 60.0);
-  max_refresh_rate *= (1 + SYNC_TOLERANCE);
+  max_refresh_rate += SYNC_TOLERANCE_HZ;
 
   kms_device = meta_gpu_kms_get_kms_device (gpu_kms);
 
@@ -231,8 +270,8 @@ add_common_modes (MetaOutputInfo *output_info,
 
           if (drm_mode->hdisplay == crtc_mode_info->width &&
               drm_mode->vdisplay == crtc_mode_info->height &&
-              fabs (1 - (refresh_rate / crtc_mode_info->refresh_rate)) <
-              SYNC_TOLERANCE)
+              (fabs (refresh_rate - crtc_mode_info->refresh_rate) <
+               SYNC_TOLERANCE_HZ))
             {
               is_duplicate = TRUE;
               break;
@@ -278,6 +317,45 @@ compare_modes (const void *one,
 }
 
 static gboolean
+are_all_modes_equally_sized (MetaOutputInfo *output_info)
+{
+  const MetaCrtcModeInfo *base =
+    meta_crtc_mode_get_info (output_info->modes[0]);
+  int i;
+
+  for (i = 1; i < output_info->n_modes; i++)
+    {
+      const MetaCrtcModeInfo *mode_info =
+        meta_crtc_mode_get_info (output_info->modes[i]);
+
+      if (base->width != mode_info->width ||
+          base->height != mode_info->height)
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+maybe_add_fallback_modes (const MetaKmsConnectorState *connector_state,
+                          MetaOutputInfo              *output_info,
+                          MetaGpuKms                  *gpu_kms,
+                          MetaKmsConnector            *kms_connector)
+{
+  if (!connector_state->has_scaling)
+    return;
+
+  if (output_info->connector_type == DRM_MODE_CONNECTOR_eDP &&
+      !are_all_modes_equally_sized (output_info))
+    return;
+
+  meta_topic (META_DEBUG_KMS, "Adding common modes to connector %u on %s",
+              meta_kms_connector_get_id (kms_connector),
+              meta_gpu_kms_get_file_path (gpu_kms));
+  add_common_modes (output_info, gpu_kms);
+}
+
+static gboolean
 init_output_modes (MetaOutputInfo    *output_info,
                    MetaGpuKms        *gpu_kms,
                    MetaKmsConnector  *kms_connector,
@@ -305,14 +383,7 @@ init_output_modes (MetaOutputInfo    *output_info,
         output_info->preferred_mode = output_info->modes[i];
     }
 
-  if (connector_state->has_scaling)
-    {
-      meta_topic (META_DEBUG_KMS, "Adding common modes to connector %u on %s",
-                  meta_kms_connector_get_id (kms_connector),
-                  meta_gpu_kms_get_file_path (gpu_kms));
-      add_common_modes (output_info, gpu_kms);
-    }
-
+  maybe_add_fallback_modes (connector_state, output_info, gpu_kms, kms_connector);
   if (!output_info->modes)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -353,6 +424,7 @@ meta_output_kms_new (MetaGpuKms        *gpu_kms,
   const MetaKmsConnectorState *connector_state;
   GArray *crtcs;
   GList *l;
+  const MetaKmsRange *max_bpc_range;
 
   gpu_id = meta_gpu_kms_get_id (gpu_kms);
   connector_id = meta_kms_connector_get_id (kms_connector);
@@ -374,6 +446,10 @@ meta_output_kms_new (MetaGpuKms        *gpu_kms,
       output_info->width_mm = connector_state->width_mm;
       output_info->height_mm = connector_state->height_mm;
     }
+
+  drm_connector_type = meta_kms_connector_get_connector_type (kms_connector);
+  output_info->connector_type =
+    meta_kms_connector_type_from_drm (drm_connector_type);
 
   if (!init_output_modes (output_info, gpu_kms, kms_connector, error))
     return NULL;
@@ -400,11 +476,15 @@ meta_output_kms_new (MetaGpuKms        *gpu_kms,
   output_info->supports_underscanning =
     meta_kms_connector_is_underscanning_supported (kms_connector);
 
-  meta_output_info_parse_edid (output_info, connector_state->edid_data);
+  max_bpc_range = meta_kms_connector_get_max_bpc (kms_connector);
+  if (max_bpc_range)
+    {
+      output_info->max_bpc_min = max_bpc_range->min_value;
+      output_info->max_bpc_max = max_bpc_range->max_value;
+    }
 
-  drm_connector_type = meta_kms_connector_get_connector_type (kms_connector);
-  output_info->connector_type =
-    meta_kms_connector_type_from_drm (drm_connector_type);
+  if (connector_state->edid_data)
+    meta_output_info_parse_edid (output_info, connector_state->edid_data);
 
   output_info->tile_info = connector_state->tile_info;
 

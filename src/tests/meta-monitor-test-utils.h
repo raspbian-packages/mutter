@@ -106,16 +106,20 @@ typedef struct _MonitorTestCaseOutput
   float scale;
   gboolean is_laptop_panel;
   gboolean is_underscanning;
+  unsigned int max_bpc;
   const char *serial;
   MetaMonitorTransform panel_orientation_transform;
   gboolean hotplug_mode;
   int suggested_x;
   int suggested_y;
+  gboolean has_edid_info;
+  MetaEdidInfo edid_info;
 } MonitorTestCaseOutput;
 
 typedef struct _MonitorTestCaseCrtc
 {
   int current_mode;
+  gboolean disable_gamma_lut;
 } MonitorTestCaseCrtc;
 
 typedef struct _MonitorTestCaseSetup
@@ -157,6 +161,7 @@ typedef struct _MonitorTestCaseMonitor
   int width_mm;
   int height_mm;
   gboolean is_underscanning;
+  unsigned int max_bpc;
 } MonitorTestCaseMonitor;
 
 typedef struct _MonitorTestCaseLogicalMonitor

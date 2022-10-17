@@ -21,18 +21,6 @@
  * License along with this library. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/**
- * SECTION:clutter-color
- * @short_description: Color management and manipulation.
- *
- * #ClutterColor is a simple type for representing colors in Clutter.
- *
- * A #ClutterColor is expressed as a 4-tuple of values ranging from
- * zero to 255, one for each color channel plus one for the alpha.
- *
- * The alpha channel is fully opaque at 255 and fully transparent at 0.
- */
-
 #include "clutter-build-config.h"
 
 #include <math.h>
@@ -110,8 +98,6 @@ static const ClutterColor static_colors[] = {
  *
  * Return value: a pointer to a static color; the returned pointer
  *   is owned by Clutter and it should never be modified or freed
- *
- * Since: 1.6
  */
 const ClutterColor *
 clutter_color_get_static (ClutterStaticColor color)
@@ -649,8 +635,6 @@ parse_hsla (ClutterColor *color,
  * be fully opaque.
  *
  * Return value: %TRUE if parsing succeeded, and %FALSE otherwise
- *
- * Since: 1.0
  */
 gboolean
 clutter_color_from_string (ClutterColor *color,
@@ -783,8 +767,6 @@ clutter_color_from_string (ClutterColor *color,
  * respectively.
  *
  * Return value: (transfer full): a newly-allocated text string
- *
- * Since: 0.2
  */
 gchar *
 clutter_color_to_string (const ClutterColor *color)
@@ -803,14 +785,12 @@ clutter_color_to_string (const ClutterColor *color)
  * @v1: (type Clutter.Color): a #ClutterColor
  * @v2: (type Clutter.Color): a #ClutterColor
  *
- * Compares two #ClutterColor<!-- -->s and checks if they are the same.
+ * Compares two `ClutterColor`s and checks if they are the same.
  *
  * This function can be passed to g_hash_table_new() as the @key_equal_func
- * parameter, when using #ClutterColor<!-- -->s as keys in a #GHashTable.
+ * parameter, when using `ClutterColor`s as keys in a #GHashTable.
  *
  * Return value: %TRUE if the two colors are the same.
- *
- * Since: 0.2
  */
 gboolean
 clutter_color_equal (gconstpointer v1,
@@ -840,11 +820,9 @@ clutter_color_equal (gconstpointer v1,
  * Converts a #ClutterColor to a hash value.
  *
  * This function can be passed to g_hash_table_new() as the @hash_func
- * parameter, when using #ClutterColor<!-- -->s as keys in a #GHashTable.
+ * parameter, when using `ClutterColor`s as keys in a #GHashTable.
  *
  * Return value: a hash value corresponding to the color
- *
- * Since: 1.0
  */
 guint
 clutter_color_hash (gconstpointer v)
@@ -859,10 +837,8 @@ clutter_color_hash (gconstpointer v)
  * @progress: the interpolation progress
  * @result: (out): return location for the interpolation
  *
- * Interpolates between @initial and @final #ClutterColor<!-- -->s
+ * Interpolates between @initial and @final `ClutterColor`s
  * using @progress
- *
- * Since: 1.6
  */
 void
 clutter_color_interpolate (const ClutterColor *initial,
@@ -904,8 +880,6 @@ clutter_color_progress (const GValue *a,
  * freed using clutter_color_free().
  *
  * Return value: (transfer full): an allocated copy of @color.
- *
- * Since: 0.2
  */
 ClutterColor *
 clutter_color_copy (const ClutterColor *color)
@@ -921,8 +895,6 @@ clutter_color_copy (const ClutterColor *color)
  * @color: a #ClutterColor
  *
  * Frees a color structure created with clutter_color_copy().
- *
- * Since: 0.2
  */
 void
 clutter_color_free (ClutterColor *color)
@@ -942,14 +914,12 @@ clutter_color_free (ClutterColor *color)
  *
  * This function is the equivalent of:
  *
- * |[
+ * ```c
  *   clutter_color_init (clutter_color_alloc (), red, green, blue, alpha);
- * ]|
+ * ```
  *
  * Return value: (transfer full): the newly allocated color.
  *   Use clutter_color_free() when done
- *
- * Since: 0.8
  */
 ClutterColor *
 clutter_color_new (guint8 red,
@@ -971,8 +941,6 @@ clutter_color_new (guint8 red,
  *
  * Return value: (transfer full): the newly allocated #ClutterColor; use
  *   clutter_color_free() to free its resources
- *
- * Since: 1.12
  */
 ClutterColor *
 clutter_color_alloc (void)
@@ -991,8 +959,6 @@ clutter_color_alloc (void)
  * Initializes @color with the given values.
  *
  * Return value: (transfer none): the initialized #ClutterColor
- *
- * Since: 1.12
  */
 ClutterColor *
 clutter_color_init (ClutterColor *color,
@@ -1058,8 +1024,6 @@ G_DEFINE_BOXED_TYPE_WITH_CODE (ClutterColor, clutter_color,
  * @color: the color to set
  *
  * Sets @value to @color.
- *
- * Since: 0.8
  */
 void
 clutter_value_set_color (GValue             *value,
@@ -1077,8 +1041,6 @@ clutter_value_set_color (GValue             *value,
  * Gets the #ClutterColor contained in @value.
  *
  * Return value: (transfer none): the color inside the passed #GValue
- *
- * Since: 0.8
  */
 const ClutterColor *
 clutter_value_get_color (const GValue *value)
@@ -1172,8 +1134,6 @@ clutter_param_color_get_type (void)
  * Creates a #GParamSpec for properties using #ClutterColor.
  *
  * Return value: the newly created #GParamSpec
- *
- * Since: 0.8
  */
 GParamSpec *
 clutter_param_spec_color (const gchar        *name,

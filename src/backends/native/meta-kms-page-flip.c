@@ -21,9 +21,11 @@
 
 #include "backends/native/meta-kms-page-flip-private.h"
 
+#include "backends/native/meta-kms-crtc.h"
 #include "backends/native/meta-kms-impl.h"
 #include "backends/native/meta-kms-private.h"
 #include "backends/native/meta-kms-update.h"
+#include "backends/native/meta-kms-crtc.h"
 
 typedef struct _MetaKmsPageFlipClosure
 {
@@ -149,6 +151,8 @@ meta_kms_page_flip_data_flipped (MetaKms  *kms,
 
   meta_assert_not_in_kms_impl (kms);
 
+  meta_kms_crtc_on_scanout_started (page_flip_data->crtc);
+
   for (l = page_flip_data->closures; l; l = l->next)
     {
       MetaKmsPageFlipClosure *closure = l->data;
@@ -186,6 +190,12 @@ meta_kms_page_flip_data_set_timings_in_impl (MetaKmsPageFlipData *page_flip_data
   MetaKms *kms = meta_kms_from_impl_device (page_flip_data->impl_device);
 
   meta_assert_in_kms_impl (kms);
+
+  meta_topic (META_DEBUG_KMS,
+              "Setting page flip timings for CRTC (%u, %s), sequence: %u, sec: %u, usec: %u",
+              meta_kms_crtc_get_id (page_flip_data->crtc),
+              meta_kms_impl_device_get_path (page_flip_data->impl_device),
+              sequence, sec, usec);
 
   page_flip_data->sequence = sequence;
   page_flip_data->sec = sec;

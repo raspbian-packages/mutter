@@ -15,7 +15,7 @@ Applied-upstream: no, this is a workaround
  2 files changed, 10 insertions(+)
 
 diff --git a/src/tests/meta-ref-test.c b/src/tests/meta-ref-test.c
-index 84ac887..78a5a74 100644
+index f66b074..ba6beb0 100644
 --- a/src/tests/meta-ref-test.c
 +++ b/src/tests/meta-ref-test.c
 @@ -508,6 +508,11 @@ meta_ref_test_verify_view (ClutterStageView *view,

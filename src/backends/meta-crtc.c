@@ -137,6 +137,34 @@ meta_crtc_get_config (MetaCrtc *crtc)
   return priv->config;
 }
 
+size_t
+meta_crtc_get_gamma_lut_size (MetaCrtc *crtc)
+{
+  return META_CRTC_GET_CLASS (crtc)->get_gamma_lut_size (crtc);
+}
+
+MetaGammaLut *
+meta_crtc_get_gamma_lut (MetaCrtc *crtc)
+{
+  return META_CRTC_GET_CLASS (crtc)->get_gamma_lut (crtc);
+}
+
+void
+meta_crtc_set_gamma_lut (MetaCrtc           *crtc,
+                         const MetaGammaLut *lut)
+{
+  return META_CRTC_GET_CLASS (crtc)->set_gamma_lut (crtc, lut);
+}
+
+void
+meta_gamma_lut_free (MetaGammaLut *lut)
+{
+  g_free (lut->red);
+  g_free (lut->green);
+  g_free (lut->blue);
+  g_free (lut);
+}
+
 static void
 meta_crtc_set_property (GObject      *object,
                         guint         prop_id,

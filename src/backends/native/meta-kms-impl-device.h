@@ -43,6 +43,15 @@ typedef struct _MetaKmsDeviceCaps
   gboolean addfb2_modifiers;
 } MetaKmsDeviceCaps;
 
+
+typedef struct _MetaKmsEnum
+{
+  const char *name;
+  gboolean valid;
+  uint64_t value;
+  uint64_t bitmask;
+} MetaKmsEnum;
+
 typedef struct _MetaKmsProp MetaKmsProp;
 
 struct _MetaKmsProp
@@ -50,13 +59,16 @@ struct _MetaKmsProp
   const char *name;
   uint32_t type;
   MetaKmsPropType internal_type;
-  void (* parse) (MetaKmsImplDevice  *impl_device,
-                  MetaKmsProp        *prop,
-                  drmModePropertyPtr  drm_prop,
-                  uint64_t            value,
-                  gpointer            user_data);
+
+  unsigned int num_enum_values;
+  MetaKmsEnum *enum_values;
+  uint64_t default_value;
+
+  uint64_t range_min;
+  uint64_t range_max;
 
   uint32_t prop_id;
+  uint64_t value;
 };
 
 #define META_TYPE_KMS_IMPL_DEVICE (meta_kms_impl_device_get_type ())
@@ -139,9 +151,9 @@ void meta_kms_impl_device_hold_fd (MetaKmsImplDevice *impl_device);
 
 void meta_kms_impl_device_unhold_fd (MetaKmsImplDevice *impl_device);
 
-MetaKmsUpdateChanges meta_kms_impl_device_update_states (MetaKmsImplDevice *impl_device,
-                                                         uint32_t           crtc_id,
-                                                         uint32_t           connector_id);
+MetaKmsResourceChanges meta_kms_impl_device_update_states (MetaKmsImplDevice *impl_device,
+                                                           uint32_t           crtc_id,
+                                                           uint32_t           connector_id);
 
 void meta_kms_impl_device_notify_modes_set (MetaKmsImplDevice *impl_device);
 
@@ -149,13 +161,12 @@ MetaKmsPlane * meta_kms_impl_device_add_fake_plane (MetaKmsImplDevice *impl_devi
                                                     MetaKmsPlaneType   plane_type,
                                                     MetaKmsCrtc       *crtc);
 
-void meta_kms_impl_device_init_prop_table (MetaKmsImplDevice *impl_device,
-                                           uint32_t          *drm_props,
-                                           uint64_t          *drm_props_values,
-                                           int                n_drm_props,
-                                           MetaKmsProp       *props,
-                                           int                n_props,
-                                           gpointer           user_data);
+void meta_kms_impl_device_update_prop_table (MetaKmsImplDevice *impl_device,
+                                             uint32_t          *drm_props,
+                                             uint64_t          *drm_props_values,
+                                             int                n_drm_props,
+                                             MetaKmsProp       *props,
+                                             int                n_props);
 
 void meta_kms_impl_device_reload_prop_values (MetaKmsImplDevice *impl_device,
                                               uint32_t          *drm_props,
@@ -177,5 +188,8 @@ gboolean meta_kms_impl_device_init_mode_setting (MetaKmsImplDevice  *impl_device
                                                  GError            **error);
 
 void meta_kms_impl_device_prepare_shutdown (MetaKmsImplDevice *impl_device);
+
+uint64_t meta_kms_prop_convert_value (MetaKmsProp *prop,
+                                      uint64_t     value);
 
 #endif /* META_KMS_IMPL_DEVICE_H */

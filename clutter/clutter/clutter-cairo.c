@@ -40,15 +40,13 @@
  * Utility function for setting the source color of @cr using
  * a #ClutterColor. This function is the equivalent of:
  *
- * |[
+ * ```c
  *   cairo_set_source_rgba (cr,
  *                          color->red / 255.0,
  *                          color->green / 255.0,
  *                          color->blue / 255.0,
  *                          color->alpha / 255.0);
- * ]|
- *
- * Since: 1.0
+ * ```
  */
 void
 clutter_cairo_set_source_color (cairo_t            *cr,
@@ -75,8 +73,6 @@ clutter_cairo_set_source_color (cairo_t            *cr,
  * @cr: a Cairo context
  *
  * Utility function to clear a Cairo context.
- *
- * Since: 1.12
  */
 void
 clutter_cairo_clear (cairo_t *cr)

@@ -32,6 +32,12 @@ typedef struct _MetaKmsCrtcPropTable
   MetaKmsProp props[META_KMS_CRTC_N_PROPS];
 } MetaKmsCrtcPropTable;
 
+typedef struct
+{
+  MetaDrmBuffer *front, *back;
+  gboolean back_is_set;
+} PlaneState;
+
 struct _MetaKmsCrtc
 {
   GObject parent;
@@ -44,6 +50,8 @@ struct _MetaKmsCrtc
   MetaKmsCrtcState current_state;
 
   MetaKmsCrtcPropTable prop_table;
+
+  GHashTable *plane_states;
 };
 
 G_DEFINE_TYPE (MetaKmsCrtc, meta_kms_crtc, G_TYPE_OBJECT)
@@ -86,6 +94,15 @@ meta_kms_crtc_get_prop_name (MetaKmsCrtc     *crtc,
   return crtc->prop_table.props[prop].name;
 }
 
+uint64_t
+meta_kms_crtc_get_prop_drm_value (MetaKmsCrtc     *crtc,
+                                  MetaKmsCrtcProp  property,
+                                  uint64_t         value)
+{
+  MetaKmsProp *prop = &crtc->prop_table.props[property];
+  return meta_kms_prop_convert_value (prop, value);
+}
+
 gboolean
 meta_kms_crtc_is_active (MetaKmsCrtc *crtc)
 {
@@ -114,6 +131,13 @@ read_gamma_state (MetaKmsCrtc       *crtc,
   crtc_state->gamma.green = g_new0 (uint16_t, drm_crtc->gamma_size);
   crtc_state->gamma.blue = g_new0 (uint16_t, drm_crtc->gamma_size);
 
+      memset (crtc_state->gamma.red, 0,
+              crtc_state->gamma.size * sizeof (uint16_t));
+      memset (crtc_state->gamma.green, 0,
+              crtc_state->gamma.size * sizeof (uint16_t));
+      memset (crtc_state->gamma.blue, 0,
+              crtc_state->gamma.size * sizeof (uint16_t));
+
   drmModeCrtcGetGamma (meta_kms_impl_device_get_fd (impl_device),
                        crtc->id,
                        crtc_state->gamma.size,
@@ -122,56 +146,38 @@ read_gamma_state (MetaKmsCrtc       *crtc,
                        crtc_state->gamma.blue);
 }
 
-static MetaKmsUpdateChanges
+static MetaKmsResourceChanges
 meta_kms_crtc_state_changes (MetaKmsCrtcState *state,
                              MetaKmsCrtcState *other_state)
 {
   if (state->is_active != other_state->is_active)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (!meta_rectangle_equal (&state->rect, &other_state->rect))
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->is_drm_mode_valid != other_state->is_drm_mode_valid)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (!meta_drm_mode_equal (&state->drm_mode, &other_state->drm_mode))
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->gamma.size != other_state->gamma.size)
-    return META_KMS_UPDATE_CHANGE_GAMMA;
+    return META_KMS_RESOURCE_CHANGE_GAMMA;
 
   if (memcmp (state->gamma.blue, other_state->gamma.blue,
               state->gamma.size * sizeof (uint16_t)) != 0)
-    return META_KMS_UPDATE_CHANGE_GAMMA;
+    return META_KMS_RESOURCE_CHANGE_GAMMA;
 
   if (memcmp (state->gamma.green, other_state->gamma.green,
               state->gamma.size * sizeof (uint16_t)) != 0)
-    return META_KMS_UPDATE_CHANGE_GAMMA;
+    return META_KMS_RESOURCE_CHANGE_GAMMA;
 
   if (memcmp (state->gamma.red, other_state->gamma.red,
               state->gamma.size * sizeof (uint16_t)) != 0)
-    return META_KMS_UPDATE_CHANGE_GAMMA;
+    return META_KMS_RESOURCE_CHANGE_GAMMA;
 
-  return META_KMS_UPDATE_CHANGE_NONE;
-}
-
-static int
-find_prop_idx (MetaKmsProp *prop,
-               uint32_t    *drm_props,
-               int          n_drm_props)
-{
-  int i;
-
-  g_return_val_if_fail (prop->prop_id > 0, -1);
-
-  for (i = 0; i < n_drm_props; i++)
-    {
-      if (drm_props[i] == prop->prop_id)
-        return i;
-    }
-
-  return -1;
+  return META_KMS_RESOURCE_CHANGE_NONE;
 }
 
 static void
@@ -183,16 +189,22 @@ clear_gamma_state (MetaKmsCrtcState *crtc_state)
   g_clear_pointer (&crtc_state->gamma.blue, g_free);
 }
 
-static MetaKmsUpdateChanges
+static MetaKmsResourceChanges
 meta_kms_crtc_read_state (MetaKmsCrtc             *crtc,
                           MetaKmsImplDevice       *impl_device,
                           drmModeCrtc             *drm_crtc,
                           drmModeObjectProperties *drm_props)
 {
   MetaKmsCrtcState crtc_state = {0};
-  MetaKmsUpdateChanges changes = META_KMS_UPDATE_CHANGE_NONE;
+  MetaKmsResourceChanges changes = META_KMS_RESOURCE_CHANGE_NONE;
   MetaKmsProp *active_prop;
-  int active_idx;
+
+  meta_kms_impl_device_update_prop_table (impl_device,
+                                          drm_props->props,
+                                          drm_props->prop_values,
+                                          drm_props->count_props,
+                                          crtc->prop_table.props,
+                                          META_KMS_CRTC_N_PROPS);
 
   crtc_state.rect = (MetaRectangle) {
     .x = drm_crtc->x,
@@ -205,24 +217,18 @@ meta_kms_crtc_read_state (MetaKmsCrtc             *crtc,
   crtc_state.drm_mode = drm_crtc->mode;
 
   active_prop = &crtc->prop_table.props[META_KMS_CRTC_PROP_ACTIVE];
+
   if (active_prop->prop_id)
-    {
-      active_idx = find_prop_idx (active_prop,
-                                  drm_props->props,
-                                  drm_props->count_props);
-      crtc_state.is_active = !!drm_props->prop_values[active_idx];
-    }
+    crtc_state.is_active = !!active_prop->value;
   else
-    {
-      crtc_state.is_active = drm_crtc->mode_valid;
-    }
+    crtc_state.is_active = drm_crtc->mode_valid;
 
   read_gamma_state (crtc, &crtc_state, impl_device, drm_crtc);
 
   if (!crtc_state.is_active)
     {
       if (crtc->current_state.is_active)
-        changes |= META_KMS_UPDATE_CHANGE_FULL;
+        changes |= META_KMS_RESOURCE_CHANGE_FULL;
     }
   else
     {
@@ -238,18 +244,18 @@ meta_kms_crtc_read_state (MetaKmsCrtc             *crtc,
               crtc->current_state.is_drm_mode_valid
                 ? crtc->current_state.drm_mode.name
                 : "(nil)",
-              changes == META_KMS_UPDATE_CHANGE_NONE
+              changes == META_KMS_RESOURCE_CHANGE_NONE
                 ? "no"
                 : "yes");
 
   return changes;
 }
 
-MetaKmsUpdateChanges
+MetaKmsResourceChanges
 meta_kms_crtc_update_state (MetaKmsCrtc *crtc)
 {
   MetaKmsImplDevice *impl_device;
-  MetaKmsUpdateChanges changes;
+  MetaKmsResourceChanges changes;
   int fd;
   drmModeCrtc *drm_crtc;
   drmModeObjectProperties *drm_props;
@@ -265,7 +271,7 @@ meta_kms_crtc_update_state (MetaKmsCrtc *crtc)
       crtc->current_state.is_active = FALSE;
       crtc->current_state.rect = (MetaRectangle) { };
       crtc->current_state.is_drm_mode_valid = FALSE;
-      changes = META_KMS_UPDATE_CHANGE_FULL;
+      changes = META_KMS_RESOURCE_CHANGE_FULL;
       goto out;
     }
 
@@ -351,26 +357,11 @@ meta_kms_crtc_predict_state (MetaKmsCrtc   *crtc,
 }
 
 static void
-parse_active (MetaKmsImplDevice  *impl_device,
-              MetaKmsProp        *prop,
-              drmModePropertyPtr  drm_prop,
-              uint64_t            drm_prop_value,
-              gpointer            user_data)
-{
-  MetaKmsCrtc *crtc = user_data;
-
-  crtc->current_state.is_active = !!drm_prop_value;
-}
-
-static void
 init_properties (MetaKmsCrtc       *crtc,
                  MetaKmsImplDevice *impl_device,
                  drmModeCrtc       *drm_crtc)
 {
   MetaKmsCrtcPropTable *prop_table = &crtc->prop_table;
-  int fd;
-  drmModeObjectProperties *drm_props;
-  int i;
 
   *prop_table = (MetaKmsCrtcPropTable) {
     .props = {
@@ -383,7 +374,6 @@ init_properties (MetaKmsCrtc       *crtc,
         {
           .name = "ACTIVE",
           .type = DRM_MODE_PROP_RANGE,
-          .parse = parse_active,
         },
       [META_KMS_CRTC_PROP_GAMMA_LUT] =
         {
@@ -392,32 +382,6 @@ init_properties (MetaKmsCrtc       *crtc,
         },
     }
   };
-
-  fd = meta_kms_impl_device_get_fd (impl_device);
-  drm_props = drmModeObjectGetProperties (fd,
-                                          drm_crtc->crtc_id,
-                                          DRM_MODE_OBJECT_CRTC);
-
-  meta_kms_impl_device_init_prop_table (impl_device,
-                                        drm_props->props,
-                                        drm_props->prop_values,
-                                        drm_props->count_props,
-                                        crtc->prop_table.props,
-                                        META_KMS_CRTC_N_PROPS,
-                                        crtc);
-
-  drmModeFreeObjectProperties (drm_props);
-
-  for (i = 0; i < META_KMS_CRTC_N_PROPS; i++)
-    {
-      meta_topic (META_DEBUG_KMS,
-                  "%s (%s) CRTC %u property '%s' is %s",
-                  meta_kms_impl_device_get_path (impl_device),
-                  meta_kms_impl_device_get_driver_name (impl_device),
-                  drm_crtc->crtc_id,
-                  prop_table->props[i].name,
-                  prop_table->props[i].prop_id ? "supported" : "unsupported");
-    }
 }
 
 MetaKmsCrtc *
@@ -454,20 +418,91 @@ meta_kms_crtc_new (MetaKmsImplDevice  *impl_device,
   return crtc;
 }
 
+void
+meta_kms_crtc_remember_plane_buffer (MetaKmsCrtc   *crtc,
+                                     uint32_t       plane_id,
+                                     MetaDrmBuffer *buffer)
+{
+  gpointer key = GUINT_TO_POINTER (plane_id);
+  PlaneState *plane_state;
+
+  plane_state = g_hash_table_lookup (crtc->plane_states, key);
+  if (plane_state == NULL)
+    {
+      plane_state = g_new0 (PlaneState, 1);
+      g_hash_table_insert (crtc->plane_states, key, plane_state);
+    }
+
+  plane_state->back_is_set = TRUE;  /* note buffer may be NULL */
+  g_set_object (&plane_state->back, buffer);
+}
+
+static void
+swap_plane_buffers (gpointer key,
+                    gpointer value,
+                    gpointer user_data)
+{
+  PlaneState *plane_state = value;
+
+  if (plane_state->back_is_set)
+    {
+      g_set_object (&plane_state->front, plane_state->back);
+      g_clear_object (&plane_state->back);
+      plane_state->back_is_set = FALSE;
+    }
+}
+
+void
+meta_kms_crtc_on_scanout_started (MetaKmsCrtc *crtc)
+{
+  g_hash_table_foreach (crtc->plane_states, swap_plane_buffers, NULL);
+}
+
+void
+meta_kms_crtc_release_buffers (MetaKmsCrtc *crtc)
+{
+  g_hash_table_remove_all (crtc->plane_states);
+}
+
+static void
+meta_kms_crtc_dispose (GObject *object)
+{
+  MetaKmsCrtc *crtc = META_KMS_CRTC (object);
+
+  meta_kms_crtc_release_buffers (crtc);
+
+  G_OBJECT_CLASS (meta_kms_crtc_parent_class)->dispose (object);
+}
+
 static void
 meta_kms_crtc_finalize (GObject *object)
 {
   MetaKmsCrtc *crtc = META_KMS_CRTC (object);
 
   clear_gamma_state (&crtc->current_state);
+  g_hash_table_unref (crtc->plane_states);
 
   G_OBJECT_CLASS (meta_kms_crtc_parent_class)->finalize (object);
+}
+
+static void
+destroy_plane_state (gpointer data)
+{
+  PlaneState *plane_state = data;
+
+  g_clear_object (&plane_state->front);
+  g_clear_object (&plane_state->back);
+  g_free (plane_state);
 }
 
 static void
 meta_kms_crtc_init (MetaKmsCrtc *crtc)
 {
   crtc->current_state.gamma.size = 0;
+  crtc->plane_states = g_hash_table_new_full (NULL,
+                                              NULL,
+                                              NULL,
+                                              destroy_plane_state);
 }
 
 static void
@@ -475,5 +510,6 @@ meta_kms_crtc_class_init (MetaKmsCrtcClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+  object_class->dispose = meta_kms_crtc_dispose;
   object_class->finalize = meta_kms_crtc_finalize;
 }

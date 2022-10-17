@@ -23,39 +23,39 @@
  */
 
 /**
- * SECTION:clutter-click-action
- * @Title: ClutterClickAction
- * @Short_Description: Action for clickable actors
+ * ClutterClickAction:
+ * 
+ * Action for clickable actors
  *
- * #ClutterClickAction is a sub-class of #ClutterAction that implements
+ * #ClutterClickAction is a sub-class of [class@Action] that implements
  * the logic for clickable actors, by using the low level events of
- * #ClutterActor, such as #ClutterActor::button-press-event and
- * #ClutterActor::button-release-event, to synthesize the high level
- * #ClutterClickAction::clicked signal.
+ * [class@Actor], such as [signal@Actor::button-press-event] and
+ * [signal@Actor::button-release-event], to synthesize the high level
+ * [signal@ClickAction::clicked] signal.
  *
- * To use #ClutterClickAction you just need to apply it to a #ClutterActor
- * using clutter_actor_add_action() and connect to the
- * #ClutterClickAction::clicked signal:
+ * To use #ClutterClickAction you just need to apply it to a [class@Actor]
+ * using [method@Actor.add_action] and connect to the
+ * [signal@ClickAction::clicked] signal:
  *
- * |[
+ * ```c
  *   ClutterAction *action = clutter_click_action_new ();
  *
  *   clutter_actor_add_action (actor, action);
  *
  *   g_signal_connect (action, "clicked", G_CALLBACK (on_clicked), NULL);
- * ]|
+ * ```
  *
  * #ClutterClickAction also supports long press gestures: a long press is
  * activated if the pointer remains pressed within a certain threshold (as
- * defined by the #ClutterClickAction:long-press-threshold property) for a
+ * defined by the [property@ClickAction:long-press-threshold] property) for a
  * minimum amount of time (as the defined by the
- * #ClutterClickAction:long-press-duration property).
- * The #ClutterClickAction::long-press signal is emitted multiple times,
- * using different #ClutterLongPressState values; to handle long presses
- * you should connect to the #ClutterClickAction::long-press signal and
+ * [property@ClickAction:long-press-duration] property).
+ * The [signal@ClickAction::long-press] signal is emitted multiple times,
+ * using different [enum@LongPressState] values; to handle long presses
+ * you should connect to the [signal@ClickAction::long-press] signal and
  * handle the different states:
  *
- * |[
+ * ```c
  *   static gboolean
  *   on_long_press (ClutterClickAction    *action,
  *                  ClutterActor          *actor,
@@ -64,32 +64,27 @@
  *     switch (state)
  *       {
  *       case CLUTTER_LONG_PRESS_QUERY:
- *         /&ast; return TRUE if the actor should support long press
- *          &ast; gestures, and FALSE otherwise; this state will be
- *          &ast; emitted on button presses
- *          &ast;/
+ *         // return TRUE if the actor should support long press
+ *         // gestures, and FALSE otherwise; this state will be
+ *         // emitted on button presses
  *         return TRUE;
  *
  *       case CLUTTER_LONG_PRESS_ACTIVATE:
- *         /&ast; this state is emitted if the minimum duration has
- *          &ast; been reached without the gesture being cancelled.
- *          &ast; the return value is not used
- *          &ast;/
+ *         // this state is emitted if the minimum duration has
+ *         // been reached without the gesture being cancelled.
+ *         // the return value is not used
  *         return TRUE;
  *
  *       case CLUTTER_LONG_PRESS_CANCEL:
- *         /&ast; this state is emitted if the long press was cancelled;
- *          &ast; for instance, the pointer went outside the actor or the
- *          &ast; allowed threshold, or the button was released before
- *          &ast; the minimum duration was reached. the return value is
- *          &ast; not used
- *          &ast;/
+ *         // this state is emitted if the long press was cancelled;
+ *         // for instance, the pointer went outside the actor or the
+ *         // allowed threshold, or the button was released before
+ *         // the minimum duration was reached. the return value is
+ *         // not used
  *         return FALSE;
  *       }
  *   }
- * ]|
- *
- * #ClutterClickAction is available since Clutter 1.4
+ * ```
  */
 
 #include "clutter-build-config.h"
@@ -365,7 +360,7 @@ clutter_click_action_handle_event (ClutterAction      *action,
       G_GNUC_FALLTHROUGH;
     case CLUTTER_BUTTON_RELEASE:
       if (!priv->is_held)
-        return CLUTTER_EVENT_STOP;
+        return CLUTTER_EVENT_PROPAGATE;
 
       if ((has_button && clutter_event_get_button (event) != priv->press_button) ||
           clutter_event_get_device (event) != priv->press_device ||
@@ -547,8 +542,6 @@ clutter_click_action_class_init (ClutterClickActionClass *klass)
    * ClutterClickAction:pressed:
    *
    * Whether the clickable actor should be in "pressed" state
-   *
-   * Since: 1.4
    */
   obj_props[PROP_PRESSED] =
     g_param_spec_boolean ("pressed",
@@ -561,8 +554,6 @@ clutter_click_action_class_init (ClutterClickActionClass *klass)
    * ClutterClickAction:held:
    *
    * Whether the clickable actor has the pointer grabbed
-   *
-   * Since: 1.4
    */
   obj_props[PROP_HELD] =
     g_param_spec_boolean ("held",
@@ -578,9 +569,7 @@ clutter_click_action_class_init (ClutterClickActionClass *klass)
    * press gesture, in milliseconds.
    *
    * A value of -1 will make the #ClutterClickAction use the value of
-   * the #ClutterSettings:long-press-duration property.
-   *
-   * Since: 1.8
+   * the [property@Settings:long-press-duration] property.
    */
   obj_props[PROP_LONG_PRESS_DURATION] =
     g_param_spec_int ("long-press-duration",
@@ -597,9 +586,7 @@ clutter_click_action_class_init (ClutterClickActionClass *klass)
    * a long press gesture is cancelled, in pixels.
    *
    * A value of -1 will make the #ClutterClickAction use the value of
-   * the #ClutterSettings:dnd-drag-threshold property.
-   *
-   * Since: 1.8
+   * the [property@Settings:dnd-drag-threshold] property.
    */
   obj_props[PROP_LONG_PRESS_THRESHOLD] =
     g_param_spec_int ("long-press-threshold",
@@ -618,11 +605,9 @@ clutter_click_action_class_init (ClutterClickActionClass *klass)
    * @action: the #ClutterClickAction that emitted the signal
    * @actor: the #ClutterActor attached to the @action
    *
-   * The ::clicked signal is emitted when the #ClutterActor to which
+   * The signal is emitted when the [class@Actor] to which
    * a #ClutterClickAction has been applied should respond to a
    * pointer button press and release events
-   *
-   * Since: 1.4
    */
   click_signals[CLICKED] =
     g_signal_new (I_("clicked"),
@@ -639,7 +624,7 @@ clutter_click_action_class_init (ClutterClickActionClass *klass)
    * @actor: the #ClutterActor attached to the @action
    * @state: the long press state
    *
-   * The ::long-press signal is emitted during the long press gesture
+   * The signal is emitted during the long press gesture
    * handling.
    *
    * This signal can be emitted multiple times with different states.
@@ -653,12 +638,10 @@ clutter_click_action_class_init (ClutterClickActionClass *klass)
    * %CLUTTER_LONG_PRESS_CANCEL state if the long press was cancelled.
    *
    * It is possible to forcibly cancel a long press detection using
-   * clutter_click_action_release().
+   * [method@ClickAction.release].
    *
    * Return value: Only the %CLUTTER_LONG_PRESS_QUERY state uses the
    *   returned value of the handler; other states will ignore it
-   *
-   * Since: 1.8
    */
   click_signals[LONG_PRESS] =
     g_signal_new (I_("long-press"),
@@ -688,8 +671,6 @@ clutter_click_action_init (ClutterClickAction *self)
  * Creates a new #ClutterClickAction instance
  *
  * Return value: the newly created #ClutterClickAction
- *
- * Since: 1.4
  */
 ClutterAction *
 clutter_click_action_new (void)
@@ -702,15 +683,13 @@ clutter_click_action_new (void)
  * @action: a #ClutterClickAction
  *
  * Emulates a release of the pointer button, which ungrabs the pointer
- * and unsets the #ClutterClickAction:pressed state.
+ * and unsets the [property@ClickAction:pressed] state.
  *
  * This function will also cancel the long press gesture if one was
  * initiated.
  *
  * This function is useful to break a grab, for instance after a certain
  * amount of time has passed.
- *
- * Since: 1.4
  */
 void
 clutter_click_action_release (ClutterClickAction *action)
@@ -736,8 +715,6 @@ clutter_click_action_release (ClutterClickAction *action)
  * Retrieves the button that was pressed.
  *
  * Return value: the button value
- *
- * Since: 1.4
  */
 guint
 clutter_click_action_get_button (ClutterClickAction *action)
@@ -758,8 +735,6 @@ clutter_click_action_get_button (ClutterClickAction *action)
  * Retrieves the modifier state of the click action.
  *
  * Return value: the modifier state parameter, or 0
- *
- * Since: 1.6
  */
 ClutterModifierType
 clutter_click_action_get_state (ClutterClickAction *action)
@@ -780,8 +755,6 @@ clutter_click_action_get_state (ClutterClickAction *action)
  * @press_y: (out): return location for the Y coordinate, or %NULL
  *
  * Retrieves the screen coordinates of the button press.
- *
- * Since: 1.8
  */
 void
 clutter_click_action_get_coords (ClutterClickAction *action,

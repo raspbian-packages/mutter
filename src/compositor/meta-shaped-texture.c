@@ -4,6 +4,8 @@
  *
  * Copyright (C) 2008 Intel Corporation
  * Copyright (C) 2012 Red Hat, Inc.
+ * Copyright (C) 2021 Canonical Ltd.
+ * Copyright (C) 2022 Neil Moore
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -41,24 +43,10 @@
 
 #include "cogl/cogl.h"
 #include "compositor/clutter-utils.h"
-#include "compositor/meta-texture-tower.h"
+#include "compositor/meta-texture-mipmap.h"
 #include "compositor/region-utils.h"
 #include "core/boxes-private.h"
 #include "meta/meta-shaped-texture.h"
-
-/* MAX_MIPMAPPING_FPS needs to be as small as possible for the best GPU
- * performance, but higher than the refresh rate of commonly slow updating
- * windows like top or a blinking cursor, so that such windows do get
- * mipmapped.
- */
-#define MAX_MIPMAPPING_FPS 5
-#define MIN_MIPMAP_AGE_USEC (G_USEC_PER_SEC / MAX_MIPMAPPING_FPS)
-
-/* MIN_FAST_UPDATES_BEFORE_UNMIPMAP allows windows to update themselves
- * occasionally without causing mipmapping to be disabled, so long as such
- * an update takes fewer update_area calls than:
- */
-#define MIN_FAST_UPDATES_BEFORE_UNMIPMAP 20
 
 static void meta_shaped_texture_dispose  (GObject    *object);
 
@@ -82,8 +70,6 @@ struct _MetaShapedTexture
 {
   GObject parent;
 
-  MetaTextureTower *paint_tower;
-
   CoglTexture *texture;
   CoglTexture *mask_texture;
   CoglSnippet *snippet;
@@ -95,6 +81,8 @@ struct _MetaShapedTexture
   CoglPipeline *masked_tower_pipeline;
   CoglPipeline *unblended_pipeline;
   CoglPipeline *unblended_tower_pipeline;
+
+  MetaTextureMipmap *texture_mipmap;
 
   gboolean is_y_inverted;
 
@@ -115,11 +103,6 @@ struct _MetaShapedTexture
   int tex_width, tex_height;
   int fallback_width, fallback_height;
   int dst_width, dst_height;
-
-  gint64 prev_invalidation, last_invalidation;
-  guint fast_updates;
-  guint remipmap_timeout_id;
-  gint64 earliest_remipmap;
 
   int buffer_scale;
 
@@ -154,8 +137,7 @@ invalidate_size (MetaShapedTexture *stex)
 static void
 meta_shaped_texture_init (MetaShapedTexture *stex)
 {
-  stex->paint_tower = meta_texture_tower_new ();
-
+  stex->texture_mipmap = meta_texture_mipmap_new ();
   stex->buffer_scale = 1;
   stex->texture = NULL;
   stex->mask_texture = NULL;
@@ -257,11 +239,7 @@ meta_shaped_texture_dispose (GObject *object)
 {
   MetaShapedTexture *stex = (MetaShapedTexture *) object;
 
-  g_clear_handle_id (&stex->remipmap_timeout_id, g_source_remove);
-
-  if (stex->paint_tower)
-    meta_texture_tower_free (stex->paint_tower);
-  stex->paint_tower = NULL;
+  g_clear_pointer (&stex->texture_mipmap, meta_texture_mipmap_free);
 
   g_clear_pointer (&stex->texture, cogl_object_unref);
 
@@ -332,49 +310,8 @@ get_base_pipeline (MetaShapedTexture *stex,
         }
     }
 
-  if (stex->transform != META_MONITOR_TRANSFORM_NORMAL)
-    {
-      graphene_euler_t euler;
-
-      graphene_matrix_translate (&matrix,
-                                 &GRAPHENE_POINT3D_INIT (-0.5, -0.5, 0.0));
-      switch (stex->transform)
-        {
-        case META_MONITOR_TRANSFORM_90:
-          graphene_euler_init_with_order (&euler, 0.0, 0.0, 90.0,
-                                          GRAPHENE_EULER_ORDER_SYXZ);
-          break;
-        case META_MONITOR_TRANSFORM_180:
-          graphene_euler_init_with_order (&euler, 0.0, 0.0, 180.0,
-                                          GRAPHENE_EULER_ORDER_SYXZ);
-          break;
-        case META_MONITOR_TRANSFORM_270:
-          graphene_euler_init_with_order (&euler, 0.0, 0.0, 270.0,
-                                          GRAPHENE_EULER_ORDER_SYXZ);
-          break;
-        case META_MONITOR_TRANSFORM_FLIPPED:
-          graphene_euler_init_with_order (&euler, 0.0, 180.0, 0.0,
-                                          GRAPHENE_EULER_ORDER_SYXZ);
-          break;
-        case META_MONITOR_TRANSFORM_FLIPPED_90:
-          graphene_euler_init_with_order (&euler, 180.0, 0.0, 90.0,
-                                          GRAPHENE_EULER_ORDER_SYXZ);
-          break;
-        case META_MONITOR_TRANSFORM_FLIPPED_180:
-          graphene_euler_init_with_order (&euler, 0.0, 180.0, 180.0,
-                                          GRAPHENE_EULER_ORDER_SYXZ);
-          break;
-        case META_MONITOR_TRANSFORM_FLIPPED_270:
-          graphene_euler_init_with_order (&euler, 180.0, 0.0, 270.0,
-                                          GRAPHENE_EULER_ORDER_SYXZ);
-          break;
-        case META_MONITOR_TRANSFORM_NORMAL:
-          g_assert_not_reached ();
-        }
-      graphene_matrix_rotate_euler (&matrix, &euler);
-      graphene_matrix_translate (&matrix,
-                                 &GRAPHENE_POINT3D_INIT (0.5, 0.5, 0.0));
-    }
+  meta_monitor_transform_transform_matrix (stex->transform,
+                                           &matrix);
 
   cogl_pipeline_set_layer_matrix (pipeline, 1, &matrix);
 
@@ -618,27 +555,8 @@ set_cogl_texture (MetaShapedTexture *stex,
       update_size (stex);
     }
 
-  /* NB: We don't queue a redraw of the actor here because we don't
-   * know how much of the buffer has changed with respect to the
-   * previous buffer. We only queue a redraw in response to surface
-   * damage. */
-
-  if (stex->create_mipmaps)
-    meta_texture_tower_set_base_texture (stex->paint_tower, cogl_tex);
-}
-
-static gboolean
-texture_is_idle_and_not_mipmapped (gpointer user_data)
-{
-  MetaShapedTexture *stex = META_SHAPED_TEXTURE (user_data);
-
-  if ((g_get_monotonic_time () - stex->earliest_remipmap) < 0)
-    return G_SOURCE_CONTINUE;
-
-  clutter_content_invalidate (CLUTTER_CONTENT (stex));
-  stex->remipmap_timeout_id = 0;
-
-  return G_SOURCE_REMOVE;
+  meta_texture_mipmap_set_base_texture (stex->texture_mipmap, stex->texture);
+  meta_texture_mipmap_invalidate (stex->texture_mipmap);
 }
 
 static inline void
@@ -656,7 +574,6 @@ static void
 do_paint_content (MetaShapedTexture   *stex,
                   ClutterPaintNode    *root_node,
                   ClutterPaintContext *paint_context,
-                  CoglTexture         *paint_tex,
                   ClutterActorBox     *alloc,
                   uint8_t              opacity)
 {
@@ -665,7 +582,9 @@ do_paint_content (MetaShapedTexture   *stex,
   gboolean use_opaque_region;
   cairo_region_t *blended_tex_region;
   CoglContext *ctx;
-  CoglPipelineFilter filter;
+  CoglPipelineFilter min_filter, mag_filter;
+  MetaTransforms transforms;
+  CoglTexture *paint_tex = stex->texture;
   CoglFramebuffer *framebuffer;
   int sample_width, sample_height;
   gboolean debug_paint_opaque_region;
@@ -712,10 +631,29 @@ do_paint_content (MetaShapedTexture   *stex,
   if (meta_actor_painting_untransformed (framebuffer,
                                          dst_width, dst_height,
                                          sample_width, sample_height,
-                                         NULL, NULL))
-    filter = COGL_PIPELINE_FILTER_NEAREST;
+                                         &transforms))
+    {
+      min_filter = COGL_PIPELINE_FILTER_NEAREST;
+      mag_filter = COGL_PIPELINE_FILTER_NEAREST;
+    }
   else
-    filter = COGL_PIPELINE_FILTER_LINEAR;
+    {
+      min_filter = COGL_PIPELINE_FILTER_LINEAR;
+      mag_filter = COGL_PIPELINE_FILTER_LINEAR;
+
+      /* If we're painting a texture below half its native resolution
+       * then mipmapping is required to avoid aliasing. If it's above
+       * half then sticking with COGL_PIPELINE_FILTER_LINEAR will look
+       * and perform better.
+       */
+      if (stex->create_mipmaps &&
+          transforms.x_scale < 0.5 &&
+          transforms.y_scale < 0.5)
+        {
+          paint_tex = meta_texture_mipmap_get_paint_texture (stex->texture_mipmap);
+          min_filter = COGL_PIPELINE_FILTER_LINEAR_MIPMAP_NEAREST;
+        }
+    }
 
   ctx = clutter_backend_get_cogl_context (clutter_get_default_backend ());
 
@@ -777,7 +715,7 @@ do_paint_content (MetaShapedTexture   *stex,
 
           opaque_pipeline = get_unblended_pipeline (stex, ctx, paint_tex);
           cogl_pipeline_set_layer_texture (opaque_pipeline, 0, paint_tex);
-          cogl_pipeline_set_layer_filters (opaque_pipeline, 0, filter, filter);
+          cogl_pipeline_set_layer_filters (opaque_pipeline, 0, min_filter, mag_filter);
 
           n_rects = cairo_region_num_rectangles (region);
           for (i = 0; i < n_rects; i++)
@@ -825,11 +763,11 @@ do_paint_content (MetaShapedTexture   *stex,
         {
           blended_pipeline = get_masked_pipeline (stex, ctx, paint_tex);
           cogl_pipeline_set_layer_texture (blended_pipeline, 1, stex->mask_texture);
-          cogl_pipeline_set_layer_filters (blended_pipeline, 1, filter, filter);
+          cogl_pipeline_set_layer_filters (blended_pipeline, 1, min_filter, mag_filter);
         }
 
       cogl_pipeline_set_layer_texture (blended_pipeline, 0, paint_tex);
-      cogl_pipeline_set_layer_filters (blended_pipeline, 0, filter, filter);
+      cogl_pipeline_set_layer_filters (blended_pipeline, 0, min_filter, mag_filter);
 
       CoglColor color;
       cogl_color_init_from_4ub (&color, opacity, opacity, opacity, opacity);
@@ -894,50 +832,6 @@ do_paint_content (MetaShapedTexture   *stex,
   g_clear_pointer (&blended_tex_region, cairo_region_destroy);
 }
 
-static CoglTexture *
-select_texture_for_paint (MetaShapedTexture   *stex,
-                          ClutterPaintContext *paint_context)
-{
-  CoglTexture *texture = NULL;
-  int64_t now;
-
-  if (!stex->texture)
-    return NULL;
-
-  now = g_get_monotonic_time ();
-
-  if (stex->create_mipmaps && stex->last_invalidation)
-    {
-      int64_t age = now - stex->last_invalidation;
-
-      if (age >= MIN_MIPMAP_AGE_USEC ||
-          stex->fast_updates < MIN_FAST_UPDATES_BEFORE_UNMIPMAP)
-        {
-          texture = meta_texture_tower_get_paint_texture (stex->paint_tower,
-                                                          paint_context);
-        }
-    }
-
-  if (!texture)
-    {
-      texture = stex->texture;
-
-      if (stex->create_mipmaps)
-        {
-          /* Minus 1000 to ensure we don't fail the age test in timeout */
-          stex->earliest_remipmap = now + MIN_MIPMAP_AGE_USEC - 1000;
-
-          if (!stex->remipmap_timeout_id)
-            stex->remipmap_timeout_id =
-              g_timeout_add (MIN_MIPMAP_AGE_USEC / 1000,
-                             texture_is_idle_and_not_mipmapped,
-                             stex);
-        }
-    }
-
-  return texture;
-}
-
 static void
 meta_shaped_texture_paint_content (ClutterContent      *content,
                                    ClutterActor        *actor,
@@ -946,7 +840,6 @@ meta_shaped_texture_paint_content (ClutterContent      *content,
 {
   MetaShapedTexture *stex = META_SHAPED_TEXTURE (content);
   ClutterActorBox alloc;
-  CoglTexture *paint_tex = NULL;
   uint8_t opacity;
 
   if (stex->clip_region && cairo_region_is_empty (stex->clip_region))
@@ -967,14 +860,13 @@ meta_shaped_texture_paint_content (ClutterContent      *content,
    * Setting the texture quality to high without SGIS_generate_mipmap
    * support for TFP textures will result in fallbacks to XGetImage.
    */
-  paint_tex = select_texture_for_paint (stex, paint_context);
-  if (!paint_tex)
+  if (stex->texture == NULL)
     return;
 
   opacity = clutter_actor_get_paint_opacity (actor);
   clutter_actor_get_content_box (actor, &alloc);
 
-  do_paint_content (stex, root_node, paint_context, paint_tex, &alloc, opacity);
+  do_paint_content (stex, root_node, paint_context, &alloc, opacity);
 }
 
 static gboolean
@@ -1012,10 +904,10 @@ meta_shaped_texture_set_create_mipmaps (MetaShapedTexture *stex,
 
   if (create_mipmaps != stex->create_mipmaps)
     {
-      CoglTexture *base_texture;
       stex->create_mipmaps = create_mipmaps;
-      base_texture = create_mipmaps ? stex->texture : NULL;
-      meta_texture_tower_set_base_texture (stex->paint_tower, base_texture);
+
+      if (!stex->create_mipmaps)
+        meta_texture_mipmap_clear (stex->texture_mipmap);
     }
 }
 
@@ -1144,25 +1036,7 @@ meta_shaped_texture_update_area (MetaShapedTexture     *stex,
                                      clip);
     }
 
-  meta_texture_tower_update_area (stex->paint_tower,
-                                  x,
-                                  y,
-                                  width,
-                                  height);
-
-  stex->prev_invalidation = stex->last_invalidation;
-  stex->last_invalidation = g_get_monotonic_time ();
-
-  if (stex->prev_invalidation)
-    {
-      gint64 interval = stex->last_invalidation - stex->prev_invalidation;
-      gboolean fast_update = interval < MIN_MIPMAP_AGE_USEC;
-
-      if (!fast_update)
-        stex->fast_updates = 0;
-      else if (stex->fast_updates < MIN_FAST_UPDATES_BEFORE_UNMIPMAP)
-        stex->fast_updates++;
-    }
+  meta_texture_mipmap_invalidate (stex->texture_mipmap);
 
   return TRUE;
 }
@@ -1214,8 +1088,6 @@ meta_shaped_texture_set_snippet (MetaShapedTexture *stex,
   g_clear_pointer (&stex->snippet, cogl_object_unref);
   if (snippet)
     stex->snippet = cogl_object_ref (snippet);
-
-  meta_texture_tower_set_snippet (stex->paint_tower, snippet);
 }
 
 /**

@@ -63,8 +63,11 @@ struct _MetaBackendClass
 
   void (* post_init) (MetaBackend *backend);
 
+  MetaBackendCapabilities (* get_capabilities) (MetaBackend *backend);
+
   MetaMonitorManager * (* create_monitor_manager) (MetaBackend *backend,
                                                    GError     **error);
+  MetaColorManager * (* create_color_manager) (MetaBackend *backend);
   MetaCursorRenderer * (* get_cursor_renderer) (MetaBackend        *backend,
                                                 ClutterInputDevice *device);
   MetaCursorTracker * (* create_cursor_tracker) (MetaBackend *backend);
@@ -124,6 +127,9 @@ MetaIdleMonitor * meta_backend_get_idle_monitor (MetaBackend        *backend,
                                                  ClutterInputDevice *device);
 
 MetaIdleManager * meta_backend_get_idle_manager (MetaBackend *backend);
+
+META_EXPORT_TEST
+MetaColorManager * meta_backend_get_color_manager (MetaBackend *backend);
 
 META_EXPORT_TEST
 MetaOrientationManager * meta_backend_get_orientation_manager (MetaBackend *backend);
@@ -204,5 +210,8 @@ gboolean meta_backend_is_hw_cursors_inhibited (MetaBackend *backend);
 
 void meta_backend_update_from_event (MetaBackend  *backend,
                                      ClutterEvent *event);
+
+char * meta_backend_get_vendor_name (MetaBackend *backend,
+                                     const char  *pnp_id);
 
 #endif /* META_BACKEND_PRIVATE_H */

@@ -95,20 +95,14 @@ static gboolean
 is_child (MetaWaylandSurface *surface,
           MetaWaylandSurface *sibling)
 {
-  if (surface->sub.parent == sibling)
-    return TRUE;
-  else
-    return FALSE;
+   return surface->sub.parent == sibling;
 }
 
 static gboolean
 is_sibling (MetaWaylandSurface *surface,
             MetaWaylandSurface *sibling)
 {
-  if (surface->sub.parent == sibling->sub.parent)
-    return TRUE;
-  else
-    return FALSE;
+  return surface != sibling && surface->sub.parent == sibling->sub.parent;
 }
 
 static gboolean
@@ -227,7 +221,7 @@ meta_wayland_subsurface_notify_subsurface_state_changed (MetaWaylandSurfaceRole 
     return meta_wayland_surface_notify_subsurface_state_changed (parent);
 }
 
-static double
+static int
 meta_wayland_subsurface_get_geometry_scale (MetaWaylandActorSurface *actor_surface)
 {
   MetaWaylandSurfaceRole *surface_role =
@@ -348,6 +342,7 @@ subsurface_handle_pending_subsurface_destroyed (struct wl_listener *listener,
     wl_container_of (listener, op, subsurface_destroy_listener);
 
   op->surface = NULL;
+  wl_list_remove (&op->subsurface_destroy_listener.link);
 }
 
 static void
@@ -358,6 +353,7 @@ subsurface_handle_pending_sibling_destroyed (struct wl_listener *listener,
     wl_container_of (listener, op, sibling_destroy_listener);
 
   op->sibling = NULL;
+  wl_list_remove (&op->sibling_destroy_listener.link);
 }
 
 void
@@ -493,6 +489,7 @@ surface_handle_parent_surface_destroyed (struct wl_listener *listener,
 
   g_node_unlink (surface->subsurface_branch_node);
   surface->sub.parent = NULL;
+  wl_list_remove (&surface->sub.parent_destroy_listener.link);
 }
 
 static gboolean

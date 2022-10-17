@@ -23,16 +23,15 @@
  */
 
 /**
- * SECTION:clutter-layout-meta
- * @short_description: Wrapper for actors inside a layout manager
+ * ClutterLayoutMeta:
+ * 
+ * Wrapper for actors inside a layout manager
  *
- * #ClutterLayoutMeta is a wrapper object created by #ClutterLayoutManager
+ * #ClutterLayoutMeta is a wrapper object created by [class@LayoutManager]
  * implementations in order to store child-specific data and properties.
  *
- * A #ClutterLayoutMeta wraps a #ClutterActor inside a #ClutterContainer
- * using a #ClutterLayoutManager.
- *
- * #ClutterLayoutMeta is available since Clutter 1.2
+ * A #ClutterLayoutMeta wraps a [class@Actor] inside a [iface@Container]
+ * using a [class@LayoutManager].
  */
 
 #include "clutter-build-config.h"
@@ -108,9 +107,7 @@ clutter_layout_meta_class_init (ClutterLayoutMetaClass *klass)
   /**
    * ClutterLayoutMeta:manager:
    *
-   * The #ClutterLayoutManager that created this #ClutterLayoutMeta.
-   *
-   * Since: 1.2
+   * The [class@LayoutManager] that created this #ClutterLayoutMeta.
    */
   pspec = g_param_spec_object ("manager",
                                P_("Manager"),
@@ -134,8 +131,6 @@ clutter_layout_meta_init (ClutterLayoutMeta *self)
  * Retrieves the actor wrapped by @data
  *
  * Return value: (transfer none): a #ClutterLayoutManager
- *
- * Since: 1.2
  */
 ClutterLayoutManager *
 clutter_layout_meta_get_manager (ClutterLayoutMeta *data)

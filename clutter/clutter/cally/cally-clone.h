@@ -41,14 +41,6 @@ typedef struct _CallyClone        CallyClone;
 typedef struct _CallyCloneClass   CallyCloneClass;
 typedef struct _CallyClonePrivate CallyClonePrivate;
 
-/**
- * CallyClone:
- *
- * The <structname>CallyClone</structname> structure contains only private
- * data and should be accessed using the provided API
- *
- * Since: 1.4
- */
 struct _CallyClone
 {
   /*< private >*/
@@ -62,8 +54,6 @@ struct _CallyClone
  *
  * The <structname>CallyCloneClass</structname> structure contains only
  * private data
- *
- * Since: 1.4
  */
 struct _CallyCloneClass
 {

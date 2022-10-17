@@ -23,6 +23,7 @@
 #include <glib.h>
 #include <stdint.h>
 
+#include "backends/native/meta-kms-plane-private.h"
 #include "backends/native/meta-kms-types.h"
 #include "backends/native/meta-kms-update.h"
 
@@ -50,8 +51,7 @@ typedef struct _MetaKmsPlaneAssignment
   MetaRectangle dst_rect;
   MetaKmsAssignPlaneFlag flags;
   MetaKmsFbDamage *fb_damage;
-
-  uint64_t rotation;
+  MetaKmsPlaneRotation rotation;
 
   struct {
     gboolean is_valid;
@@ -82,6 +82,11 @@ typedef struct _MetaKmsConnectorUpdate
     gboolean has_update;
     gboolean is_enabled;
   } privacy_screen;
+
+  struct {
+    gboolean has_update;
+    uint64_t value;
+  } max_bpc;
 } MetaKmsConnectorUpdate;
 
 typedef struct _MetaKmsPageFlipListener
@@ -132,8 +137,14 @@ uint64_t meta_kms_update_get_sequence_number (MetaKmsUpdate *update);
 META_EXPORT_TEST
 MetaKmsDevice * meta_kms_update_get_device (MetaKmsUpdate *update);
 
+gboolean meta_kms_update_includes_crtc (MetaKmsUpdate *update,
+                                        MetaKmsCrtc   *crtc);
+
+void meta_kms_update_include_crtc (MetaKmsUpdate *update,
+                                   MetaKmsCrtc   *crtc);
+
 void meta_kms_plane_assignment_set_rotation (MetaKmsPlaneAssignment *plane_assignment,
-                                             uint64_t                rotation);
+                                             MetaKmsPlaneRotation    rotation);
 
 META_EXPORT_TEST
 MetaKmsPlaneAssignment * meta_kms_update_get_primary_plane_assignment (MetaKmsUpdate *update,

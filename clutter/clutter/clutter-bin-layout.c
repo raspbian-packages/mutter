@@ -23,8 +23,9 @@
  */
 
 /**
- * SECTION:clutter-bin-layout
- * @short_description: A simple layout manager
+ * ClutterBinLayout:
+ * 
+ * A simple layout manager
  *
  * #ClutterBinLayout is a layout manager which implements the following
  * policy:
@@ -39,8 +40,6 @@
  *
  * The [bin-layout example](https://git.gnome.org/browse/clutter/tree/examples/bin-layout.c?h=clutter-1.18)
  * shows how to pack actors inside a #ClutterBinLayout.
- *
- * #ClutterBinLayout is available since Clutter 1.2
  */
 
 #include "clutter-build-config.h"
@@ -619,8 +618,6 @@ clutter_bin_layout_class_init (ClutterBinLayoutClass *klass)
    * The default horizontal alignment policy for actors managed
    * by the #ClutterBinLayout
    *
-   * Since: 1.2
-   *
    * Deprecated: 1.12: Use the #ClutterActor:x-expand and the
    *   #ClutterActor:x-align properties on #ClutterActor instead.
    */
@@ -638,8 +635,6 @@ clutter_bin_layout_class_init (ClutterBinLayoutClass *klass)
    *
    * The default vertical alignment policy for actors managed
    * by the #ClutterBinLayout
-   *
-   * Since: 1.2
    *
    * Deprecated: 1.12: Use the #ClutterActor:y-expand and the
    *   #ClutterActor:y-align properties on #ClutterActor instead.
@@ -684,8 +679,6 @@ clutter_bin_layout_init (ClutterBinLayout *self)
  * Creates a new #ClutterBinLayout layout manager
  *
  * Return value: the newly created layout manager
- *
- * Since: 1.2
  */
 ClutterLayoutManager *
 clutter_bin_layout_new (ClutterBinAlignment x_align,

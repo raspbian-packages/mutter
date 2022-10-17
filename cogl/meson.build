@@ -51,7 +51,7 @@ if have_egl
   ]
 endif
 
-if have_x11
+if have_x11_client
   cogl_pkg_deps += [
     x11_dep,
   ]
@@ -117,11 +117,5 @@ endif
 supported_cogl_debug_c_args = cc.get_supported_arguments(cogl_debug_c_args)
 cogl_c_args += cogl_debug_c_args
 
-if have_cogl_tests
-  subdir('test-fixtures')
-endif
 subdir('cogl')
 subdir('cogl-pango')
-if have_cogl_tests
-  subdir('tests')
-endif

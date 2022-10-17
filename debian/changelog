@@ -1,17 +1,96 @@
-mutter (42.4-2) unstable; urgency=medium
+mutter (43.0-3) unstable; urgency=medium
+
+  * Cherry-pick patch to fix Night Light availability in GNOME Settings
+    (Closes: #1020941) (LP: #1990207)
+  * Cherry-pick patches to avoid crash when ICC color profile is invalid
+    (Closes: #1021680) (LP: #1993114)
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Mon, 17 Oct 2022 06:57:50 -0400
+
+mutter (43.0-2) unstable; urgency=medium
+
+  * Release to unstable (Closes: #1009990, #1019266, #1020515)
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Tue, 27 Sep 2022 19:00:48 -0400
+
+mutter (43.0-1) experimental; urgency=medium
 
   * Team upload
-  * d/control.in, d/gbp.conf: Set up branches for an unstable upload
-  * d/p/tests-Give-mutter-test-runner-the-RUNPATH-to-find-Clutter.patch:
-    Add patch to fix missing RUNPATH in tests, fixing an autopkgtest
-    regression in 42.4.
-    - Note that this does not resolve a different autopkgtest regression
-      in 42.4, in environments where /dev/dri/card0 exists but is
-      inaccessible. However, the /dev/dri/card0 issue is not fatal for
-      Debian's production infrastructure, which uses autopkgtest-virt-lxc
-      and therefore does not provide /dev/dri/card0 at all.
 
- -- Simon McVittie <smcv@debian.org>  Wed, 17 Aug 2022 17:54:28 +0100
+  [ Simon McVittie ]
+  * Team upload
+  * New upstream release
+  * d/copyright: Update
+  * Standards-Version: 4.6.1 (no changes required)
+  * d/libmutter-11-0.symbols: Add new symbols
+
+  [ Jeremy Bicha ]
+  * Mark as Linux-any
+    - Build tests indicate mutter doesn't work on Hurd or kFreeBSD
+    - Mutter is only used by GNOME Shell and Budgie, neither of which
+      are currently available on those architectures for other reasons
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 18 Sep 2022 20:18:26 +0100
+
+mutter (43~rc-2) experimental; urgency=medium
+
+  [ Simon McVittie ]
+  * d/control: Drop compatibility with old libgdk-pixbuf2.0-dev package
+
+  [ Marco Trevisan (Treviño) ]
+  * debian/patches: Update triple-buffering patch against newest version
+    (LP: #1969422, #1988625)
+
+ -- Marco Trevisan (Treviño) <marco@ubuntu.com>  Thu, 08 Sep 2022 17:35:16 +0200
+
+mutter (43~rc-1) experimental; urgency=medium
+
+  * New upstream release
+  * Build-Depend on libcolord-dev & liblcms2-dev
+  * debian/*.symbols: Update
+  * Drop Consistently-pass-timestamp….patch: Applied in new release
+  * Refresh 2 patches
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Tue, 06 Sep 2022 14:07:28 -0400
+
+mutter (43~beta-4) experimental; urgency=medium
+
+  [ Marco Trevisan (Treviño) ]
+  * debian/control: Remove <!nocheck> from xvfb-run
+
+  [ Jeremy Bicha ]
+  * debian/tests/libmutter-11-dev: fix a reference to mutter-10
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Thu, 25 Aug 2022 05:28:09 -0400
+
+mutter (43~beta-3) experimental; urgency=medium
+
+  * Add patches from Ubuntu:
+    - Support-Dynamic-triple-double-buffering.patch
+    - backends-native-kms-crtc-Don-t-compare-gamma-values-on-un.patch
+      + Avoid memory errors when comparing gamma values
+    - wayland-data-device-Allow-any-drag-timestamp....patch
+      + Allow any drag timestamp as drag start serial
+  * debian/libmutter-11-0.symbols: Add new symbols from triple buffering patch
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Sun, 21 Aug 2022 12:27:28 -0400
+
+mutter (43~beta-2) experimental; urgency=medium
+
+  * Update mutter-10 to mutter-11 in more places
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Sun, 21 Aug 2022 10:35:35 -0400
+
+mutter (43~beta-1) experimental; urgency=medium
+
+  * New upstream release
+  * Rename packages for API bump (mutter-10 -> mutter-11)
+  * debian/libmutter-11-0.symbols: Update
+  * debian/control.in: Bump minimum libwayland and wayland-protocols
+  * Refresh patches
+  * Add temporary patch to skip broken build test
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Tue, 16 Aug 2022 12:07:41 -0400
 
 mutter (42.4-1) unstable; urgency=medium
 

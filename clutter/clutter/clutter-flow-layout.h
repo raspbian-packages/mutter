@@ -44,14 +44,6 @@ typedef struct _ClutterFlowLayout               ClutterFlowLayout;
 typedef struct _ClutterFlowLayoutPrivate        ClutterFlowLayoutPrivate;
 typedef struct _ClutterFlowLayoutClass          ClutterFlowLayoutClass;
 
-/**
- * ClutterFlowLayout:
- *
- * The #ClutterFlowLayout structure contains only private data
- * and should be accessed using the provided API
- *
- * Since: 1.2
- */
 struct _ClutterFlowLayout
 {
   /*< private >*/
@@ -65,8 +57,6 @@ struct _ClutterFlowLayout
  *
  * The #ClutterFlowLayoutClass structure contains only private data
  * and should be accessed using the provided API
- *
- * Since: 1.2
  */
 struct _ClutterFlowLayoutClass
 {

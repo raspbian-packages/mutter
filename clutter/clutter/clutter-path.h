@@ -49,22 +49,12 @@ typedef struct _ClutterPathPrivate ClutterPathPrivate;
  * @node: the node
  * @data: (closure): optional data passed to the function
  *
- * This function is passed to clutter_path_foreach() and will be
+ * This function is passed to [method@Path.foreach] and will be
  * called for each node contained in the path.
- *
- * Since: 1.0
  */
 typedef void (* ClutterPathCallback) (const ClutterPathNode *node,
                                       gpointer               data);
 
-/**
- * ClutterPath:
- *
- * The #ClutterPath struct contains only private data and should
- * be accessed with the functions below.
- *
- * Since: 1.0
- */
 struct _ClutterPath
 {
   /*< private >*/
@@ -77,8 +67,6 @@ struct _ClutterPath
  * ClutterPathClass:
  *
  * The #ClutterPathClass struct contains only private data.
- *
- * Since: 1.0
  */
 struct _ClutterPathClass
 {

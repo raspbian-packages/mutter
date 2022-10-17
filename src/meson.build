@@ -22,16 +22,23 @@ mutter_pkg_deps = [
 ]
 
 mutter_pkg_private_deps = [
+  colord_dep,
+  lcms2_dep,
   gmodule_no_export_dep,
   gnome_settings_daemon_dep,
   json_glib_dep,
-  libcanberra_dep,
   xkbcommon_dep,
 ]
 
 if have_gnome_desktop
   mutter_pkg_private_deps += [
     gnome_desktop_dep,
+  ]
+endif
+
+if have_sound_player
+  mutter_pkg_private_deps += [
+    libcanberra_dep,
   ]
 endif
 
@@ -181,6 +188,15 @@ mutter_sources = [
   'backends/meta-backend-private.h',
   'backends/meta-barrier.c',
   'backends/meta-barrier-private.h',
+  'backends/meta-color-device.c',
+  'backends/meta-color-device.h',
+  'backends/meta-color-manager.c',
+  'backends/meta-color-manager.h',
+  'backends/meta-color-manager-private.h',
+  'backends/meta-color-profile.c',
+  'backends/meta-color-profile.h',
+  'backends/meta-color-store.c',
+  'backends/meta-color-store.h',
   'backends/meta-crtc-mode.c',
   'backends/meta-crtc-mode.h',
   'backends/meta-crtc.c',
@@ -252,58 +268,6 @@ mutter_sources = [
   'backends/meta-viewport-info.h',
   'backends/meta-virtual-monitor.c',
   'backends/meta-virtual-monitor.h',
-  'backends/x11/cm/meta-backend-x11-cm.c',
-  'backends/x11/cm/meta-backend-x11-cm.h',
-  'backends/x11/cm/meta-cursor-sprite-xfixes.c',
-  'backends/x11/cm/meta-cursor-sprite-xfixes.h',
-  'backends/x11/cm/meta-renderer-x11-cm.c',
-  'backends/x11/cm/meta-renderer-x11-cm.h',
-  'backends/x11/meta-backend-x11.c',
-  'backends/x11/meta-backend-x11.h',
-  'backends/x11/meta-barrier-x11.c',
-  'backends/x11/meta-barrier-x11.h',
-  'backends/x11/meta-clutter-backend-x11.c',
-  'backends/x11/meta-clutter-backend-x11.h',
-  'backends/x11/meta-crtc-xrandr.c',
-  'backends/x11/meta-crtc-xrandr.h',
-  'backends/x11/meta-cursor-renderer-x11.c',
-  'backends/x11/meta-cursor-renderer-x11.h',
-  'backends/x11/meta-cursor-tracker-x11.c',
-  'backends/x11/meta-cursor-tracker-x11.h',
-  'backends/x11/meta-event-x11.c',
-  'backends/x11/meta-event-x11.h',
-  'backends/x11/meta-gpu-xrandr.c',
-  'backends/x11/meta-gpu-xrandr.h',
-  'backends/x11/meta-input-device-x11.c',
-  'backends/x11/meta-input-device-x11.h',
-  'backends/x11/meta-input-device-tool-x11.c',
-  'backends/x11/meta-input-device-tool-x11.h',
-  'backends/x11/meta-input-settings-x11.c',
-  'backends/x11/meta-input-settings-x11.h',
-  'backends/x11/meta-seat-x11.c',
-  'backends/x11/meta-seat-x11.h',
-  'backends/x11/meta-keymap-x11.c',
-  'backends/x11/meta-keymap-x11.h',
-  'backends/x11/meta-monitor-manager-xrandr.c',
-  'backends/x11/meta-monitor-manager-xrandr.h',
-  'backends/x11/meta-output-xrandr.c',
-  'backends/x11/meta-output-xrandr.h',
-  'backends/x11/meta-renderer-x11.c',
-  'backends/x11/meta-renderer-x11.h',
-  'backends/x11/meta-stage-x11.c',
-  'backends/x11/meta-stage-x11.h',
-  'backends/x11/meta-virtual-input-device-x11.c',
-  'backends/x11/meta-virtual-input-device-x11.h',
-  'backends/x11/meta-xkb-a11y-x11.c',
-  'backends/x11/meta-xkb-a11y-x11.h',
-  'backends/x11/nested/meta-backend-x11-nested.c',
-  'backends/x11/nested/meta-backend-x11-nested.h',
-  'backends/x11/nested/meta-cursor-renderer-x11-nested.c',
-  'backends/x11/nested/meta-cursor-renderer-x11-nested.h',
-  'backends/x11/nested/meta-stage-x11-nested.c',
-  'backends/x11/nested/meta-stage-x11-nested.h',
-  'backends/x11/nested/meta-renderer-x11-nested.c',
-  'backends/x11/nested/meta-renderer-x11-nested.h',
   'compositor/clutter-utils.c',
   'compositor/clutter-utils.h',
   'compositor/cogl-utils.c',
@@ -320,8 +284,8 @@ mutter_sources = [
   'compositor/meta-background-private.h',
   'compositor/meta-compositor-server.c',
   'compositor/meta-compositor-server.h',
-  'compositor/meta-compositor-x11.c',
-  'compositor/meta-compositor-x11.h',
+  'compositor/meta-compositor-view.c',
+  'compositor/meta-compositor-view.h',
   'compositor/meta-cullable.c',
   'compositor/meta-cullable.h',
   'compositor/meta-dnd-actor.c',
@@ -340,16 +304,10 @@ mutter_sources = [
   'compositor/meta-shaped-texture-private.h',
   'compositor/meta-surface-actor.c',
   'compositor/meta-surface-actor.h',
-  'compositor/meta-surface-actor-x11.c',
-  'compositor/meta-surface-actor-x11.h',
-  'compositor/meta-sync-ring.c',
-  'compositor/meta-sync-ring.h',
-  'compositor/meta-texture-tower.c',
-  'compositor/meta-texture-tower.h',
+  'compositor/meta-texture-mipmap.c',
+  'compositor/meta-texture-mipmap.h',
   'compositor/meta-window-actor.c',
   'compositor/meta-window-actor-private.h',
-  'compositor/meta-window-actor-x11.c',
-  'compositor/meta-window-actor-x11.h',
   'compositor/meta-window-group.c',
   'compositor/meta-window-group-private.h',
   'compositor/meta-window-shape.c',
@@ -381,8 +339,6 @@ mutter_sources = [
   'core/meta-clipboard-manager.c',
   'core/meta-clipboard-manager.h',
   'core/meta-close-dialog.c',
-  'core/meta-close-dialog-default.c',
-  'core/meta-close-dialog-default-private.h',
   'core/meta-context-main.c',
   'core/meta-context-main.h',
   'core/meta-context-private.h',
@@ -420,49 +376,122 @@ mutter_sources = [
   'core/window-private.h',
   'core/workspace.c',
   'core/workspace-private.h',
-  'ui/frames.c',
-  'ui/frames.h',
-  'ui/theme.c',
-  'ui/theme-private.h',
-  'ui/ui.c',
-  'ui/ui.h',
-  'x11/atomnames.h',
-  'x11/events.c',
-  'x11/events.h',
-  'x11/group.c',
-  'x11/group-private.h',
-  'x11/group-props.c',
-  'x11/group-props.h',
-  'x11/iconcache.c',
-  'x11/iconcache.h',
-  'x11/meta-selection-source-x11.c',
-  'x11/meta-selection-source-x11-private.h',
-  'x11/meta-startup-notification-x11.c',
-  'x11/meta-startup-notification-x11.h',
-  'x11/meta-x11-display.c',
-  'x11/meta-x11-display-private.h',
-  'x11/meta-x11-errors.c',
-  'x11/meta-x11-selection.c',
-  'x11/meta-x11-selection-private.h',
-  'x11/meta-x11-selection-input-stream.c',
-  'x11/meta-x11-selection-input-stream-private.h',
-  'x11/meta-x11-selection-output-stream.c',
-  'x11/meta-x11-selection-output-stream-private.h',
-  'x11/meta-x11-stack.c',
-  'x11/meta-x11-stack-private.h',
-  'x11/meta-x11-window-control.c',
-  'x11/meta-x11-window-control.h',
-  'x11/mutter-Xatomtype.h',
-  'x11/session.c',
-  'x11/session.h',
-  'x11/window-props.c',
-  'x11/window-props.h',
-  'x11/window-x11.c',
-  'x11/window-x11.h',
-  'x11/window-x11-private.h',
-  'x11/xprops.c',
-  'x11/xprops.h',
 ]
+
+if have_x11
+  mutter_sources += [
+    'backends/x11/cm/meta-backend-x11-cm.c',
+    'backends/x11/cm/meta-backend-x11-cm.h',
+    'backends/x11/cm/meta-cursor-sprite-xfixes.c',
+    'backends/x11/cm/meta-cursor-sprite-xfixes.h',
+    'backends/x11/cm/meta-renderer-x11-cm.c',
+    'backends/x11/cm/meta-renderer-x11-cm.h',
+    'backends/x11/meta-backend-x11.c',
+    'backends/x11/meta-backend-x11.h',
+    'backends/x11/meta-barrier-x11.c',
+    'backends/x11/meta-barrier-x11.h',
+    'backends/x11/meta-clutter-backend-x11.c',
+    'backends/x11/meta-clutter-backend-x11.h',
+    'backends/x11/meta-color-manager-x11.c',
+    'backends/x11/meta-color-manager-x11.h',
+    'backends/x11/meta-crtc-xrandr.c',
+    'backends/x11/meta-crtc-xrandr.h',
+    'backends/x11/meta-cursor-renderer-x11.c',
+    'backends/x11/meta-cursor-renderer-x11.h',
+    'backends/x11/meta-cursor-tracker-x11.c',
+    'backends/x11/meta-cursor-tracker-x11.h',
+    'backends/x11/meta-event-x11.c',
+    'backends/x11/meta-event-x11.h',
+    'backends/x11/meta-gpu-xrandr.c',
+    'backends/x11/meta-gpu-xrandr.h',
+    'backends/x11/meta-input-device-x11.c',
+    'backends/x11/meta-input-device-x11.h',
+    'backends/x11/meta-input-device-tool-x11.c',
+    'backends/x11/meta-input-device-tool-x11.h',
+    'backends/x11/meta-input-settings-x11.c',
+    'backends/x11/meta-input-settings-x11.h',
+    'backends/x11/meta-seat-x11.c',
+    'backends/x11/meta-seat-x11.h',
+    'backends/x11/meta-keymap-x11.c',
+    'backends/x11/meta-keymap-x11.h',
+    'backends/x11/meta-monitor-manager-xrandr.c',
+    'backends/x11/meta-monitor-manager-xrandr.h',
+    'backends/x11/meta-output-xrandr.c',
+    'backends/x11/meta-output-xrandr.h',
+    'backends/x11/meta-renderer-x11.c',
+    'backends/x11/meta-renderer-x11.h',
+    'backends/x11/meta-stage-x11.c',
+    'backends/x11/meta-stage-x11.h',
+    'backends/x11/meta-virtual-input-device-x11.c',
+    'backends/x11/meta-virtual-input-device-x11.h',
+    'backends/x11/meta-xkb-a11y-x11.c',
+    'backends/x11/meta-xkb-a11y-x11.h',
+    'backends/x11/nested/meta-backend-x11-nested.c',
+    'backends/x11/nested/meta-backend-x11-nested.h',
+    'backends/x11/nested/meta-cursor-renderer-x11-nested.c',
+    'backends/x11/nested/meta-cursor-renderer-x11-nested.h',
+    'backends/x11/nested/meta-stage-x11-nested.c',
+    'backends/x11/nested/meta-stage-x11-nested.h',
+    'backends/x11/nested/meta-renderer-x11-nested.c',
+    'backends/x11/nested/meta-renderer-x11-nested.h',
+  ]
+endif
+
+if have_x11_client
+  mutter_sources += [
+    'compositor/meta-compositor-x11.c',
+    'compositor/meta-compositor-x11.h',
+    'compositor/meta-surface-actor-x11.c',
+    'compositor/meta-surface-actor-x11.h',
+    'compositor/meta-sync-ring.c',
+    'compositor/meta-sync-ring.h',
+    'compositor/meta-window-actor-x11.c',
+    'compositor/meta-window-actor-x11.h',
+    'ui/frames.c',
+    'ui/frames.h',
+    'ui/theme.c',
+    'ui/theme-private.h',
+    'ui/ui.c',
+    'ui/ui.h',
+    'x11/atomnames.h',
+    'x11/events.c',
+    'x11/events.h',
+    'x11/group.c',
+    'x11/group-private.h',
+    'x11/group-props.c',
+    'x11/group-props.h',
+    'x11/iconcache.c',
+    'x11/iconcache.h',
+    'x11/meta-selection-source-x11.c',
+    'x11/meta-selection-source-x11-private.h',
+    'x11/meta-startup-notification-x11.c',
+    'x11/meta-startup-notification-x11.h',
+    'x11/meta-x11-display.c',
+    'x11/meta-x11-display-private.h',
+    'x11/meta-x11-errors.c',
+    'x11/meta-x11-selection.c',
+    'x11/meta-x11-selection-private.h',
+    'x11/meta-x11-selection-input-stream.c',
+    'x11/meta-x11-selection-input-stream-private.h',
+    'x11/meta-x11-selection-output-stream.c',
+    'x11/meta-x11-selection-output-stream-private.h',
+    'x11/meta-x11-stack.c',
+    'x11/meta-x11-stack-private.h',
+    'x11/meta-x11-window-control.c',
+    'x11/meta-x11-window-control.h',
+    'x11/mutter-Xatomtype.h',
+    'x11/session.c',
+    'x11/session.h',
+    'x11/window-props.c',
+    'x11/window-props.h',
+    'x11/window-x11.c',
+    'x11/window-x11.h',
+    'x11/window-x11-private.h',
+    'x11/xprops.c',
+    'x11/xprops.h',
+  ]
+endif
+
 
 if have_egl_device
   mutter_sources += [
@@ -552,20 +581,14 @@ if have_wayland
     'wayland/meta-wayland-data-device.h',
     'wayland/meta-wayland-data-device-primary.c',
     'wayland/meta-wayland-data-device-primary.h',
-    'wayland/meta-wayland-data-device-primary-legacy.c',
-    'wayland/meta-wayland-data-device-primary-legacy.h',
     'wayland/meta-wayland-data-offer.c',
     'wayland/meta-wayland-data-offer.h',
     'wayland/meta-wayland-data-offer-primary.c',
     'wayland/meta-wayland-data-offer-primary.h',
-    'wayland/meta-wayland-data-offer-primary-legacy.c',
-    'wayland/meta-wayland-data-offer-primary-legacy.h',
     'wayland/meta-wayland-data-source.c',
     'wayland/meta-wayland-data-source.h',
     'wayland/meta-wayland-data-source-primary.c',
     'wayland/meta-wayland-data-source-primary.h',
-    'wayland/meta-wayland-data-source-primary-legacy.c',
-    'wayland/meta-wayland-data-source-primary-legacy.h',
     'wayland/meta-wayland-dma-buf.c',
     'wayland/meta-wayland-dma-buf.h',
     'wayland/meta-wayland-dnd-surface.c',
@@ -581,8 +604,6 @@ if have_wayland
     'wayland/meta-wayland-input-device.h',
     'wayland/meta-wayland-keyboard.c',
     'wayland/meta-wayland-keyboard.h',
-    'wayland/meta-wayland-legacy-xdg-shell.c',
-    'wayland/meta-wayland-legacy-xdg-shell.h',
     'wayland/meta-wayland-outputs.c',
     'wayland/meta-wayland-outputs.h',
     'wayland/meta-wayland-pointer.c',
@@ -608,6 +629,8 @@ if have_wayland
     'wayland/meta-wayland-seat.h',
     'wayland/meta-wayland-shell-surface.c',
     'wayland/meta-wayland-shell-surface.h',
+    'wayland/meta-wayland-single-pixel-buffer.c',
+    'wayland/meta-wayland-single-pixel-buffer.h',
     'wayland/meta-wayland-subsurface.c',
     'wayland/meta-wayland-subsurface.h',
     'wayland/meta-wayland-surface.c',
@@ -646,18 +669,23 @@ if have_wayland
     'wayland/meta-wayland-xdg-shell.h',
     'wayland/meta-window-wayland.c',
     'wayland/meta-window-wayland.h',
-    'wayland/meta-window-xwayland.c',
-    'wayland/meta-window-xwayland.h',
-    'wayland/meta-xwayland.c',
-    'wayland/meta-xwayland-grab-keyboard.c',
-    'wayland/meta-xwayland-grab-keyboard.h',
-    'wayland/meta-xwayland.h',
-    'wayland/meta-xwayland-private.h',
-    'wayland/meta-xwayland-dnd.c',
-    'wayland/meta-xwayland-dnd-private.h',
-    'wayland/meta-xwayland-surface.c',
-    'wayland/meta-xwayland-surface.h',
   ]
+
+  if have_xwayland
+    mutter_sources += [
+      'wayland/meta-window-xwayland.c',
+      'wayland/meta-window-xwayland.h',
+      'wayland/meta-xwayland.c',
+      'wayland/meta-xwayland-grab-keyboard.c',
+      'wayland/meta-xwayland-grab-keyboard.h',
+      'wayland/meta-xwayland.h',
+      'wayland/meta-xwayland-private.h',
+      'wayland/meta-xwayland-dnd.c',
+      'wayland/meta-xwayland-dnd-private.h',
+      'wayland/meta-xwayland-surface.c',
+      'wayland/meta-xwayland-surface.h',
+    ]
+  endif
 endif
 
 if have_native_backend
@@ -785,6 +813,8 @@ if have_native_backend
     'backends/native/meta-xkb-utils.h',
     'compositor/meta-compositor-native.c',
     'compositor/meta-compositor-native.h',
+    'compositor/meta-compositor-view-native.c',
+    'compositor/meta-compositor-view-native.h',
   ]
 endif
 
@@ -837,6 +867,13 @@ dbus_idle_monitor_built_sources = gnome.gdbus_codegen('meta-dbus-idle-monitor',
     object_manager: true,
   )
 mutter_built_sources += dbus_idle_monitor_built_sources
+
+dbus_input_mapping_built_sources = gnome.gdbus_codegen('meta-dbus-input-mapping',
+    join_paths(dbus_interfaces_dir, 'org.gnome.Mutter.InputMapping.xml'),
+    interface_prefix: 'org.gnome.Mutter.',
+    namespace: 'MetaDBus',
+  )
+mutter_built_sources += dbus_input_mapping_built_sources
 
 if have_profiler
   mutter_sources += [
@@ -900,6 +937,20 @@ dbus_rtkit_built_sources = gnome.gdbus_codegen('meta-dbus-rtkit1',
 )
 mutter_built_sources += dbus_rtkit_built_sources
 
+dbus_gsd_color_built_sources = gnome.gdbus_codegen('meta-dbus-gsd-color',
+    join_paths(dbus_interfaces_dir, 'org.gnome.SettingsDaemon.Color.xml'),
+    interface_prefix: 'org.gnome.',
+    namespace: 'MetaDbus',
+)
+mutter_built_sources += dbus_gsd_color_built_sources
+
+dbus_gsd_power_screen_built_sources = gnome.gdbus_codegen('meta-dbus-gsd-power-screen',
+    join_paths(dbus_interfaces_dir, 'org.gnome.SettingsDaemon.Power.Screen.xml'),
+    interface_prefix: 'org.gnome.',
+    namespace: 'MetaDbus',
+)
+mutter_built_sources += dbus_gsd_power_screen_built_sources
+
 wayland_protocol_server_headers = []
 wayland_protocol_client_headers = []
 wayland_protocol_sources = []
@@ -910,7 +961,6 @@ if have_wayland
   #  - protocol stability ('private', 'stable' or 'unstable')
   #  - protocol version (if stability is 'unstable')
   wayland_protocols = [
-    ['gtk-primary-selection', 'private', ],
     ['gtk-shell', 'private', ],
     ['keyboard-shortcuts-inhibit', 'unstable', 'v1', ],
     ['linux-dmabuf', 'unstable', 'v1', ],
@@ -919,13 +969,13 @@ if have_wayland
     ['presentation-time', 'stable', ],
     ['primary-selection', 'unstable', 'v1', ],
     ['relative-pointer', 'unstable', 'v1', ],
+    ['single-pixel-buffer', 'staging', 'v1', ],
     ['tablet', 'unstable', 'v2', ],
     ['text-input', 'unstable', 'v3', ],
     ['viewporter', 'stable', ],
     ['xdg-activation', 'staging', 'v1', ],
     ['xdg-foreign', 'unstable', 'v1', ],
     ['xdg-output', 'unstable', 'v1', ],
-    ['xdg-shell', 'unstable', 'v6', ],
     ['xdg-shell', 'stable', ],
     ['xwayland-keyboard-grab', 'unstable', 'v1', ],
   ]
@@ -1046,7 +1096,7 @@ libmutter_dep = declare_dependency(
   ],
 )
 
-executable('mutter',
+mutter = executable('mutter',
   sources: [
     files('core/mutter.c'),
   ],
@@ -1059,25 +1109,26 @@ executable('mutter',
   install_dir: bindir,
   install: true,
 )
-
-executable('mutter-restart-helper',
-  sources: [
-    files('core/restart-helper.c'),
-  ],
-  include_directories: [
-    top_includepath,
-  ],
-  c_args: [
-    mutter_c_args,
-    '-DG_LOG_DOMAIN="mutter-restart-helper"',
-  ],
-  dependencies: [
-    x11_dep,
-    xcomposite_dep,
-  ],
-  install_dir: libexecdir,
-  install: true,
-)
+if have_x11
+  executable('mutter-restart-helper',
+    sources: [
+      files('core/restart-helper.c'),
+    ],
+    include_directories: [
+      top_includepath,
+    ],
+    c_args: [
+      mutter_c_args,
+      '-DG_LOG_DOMAIN="mutter-restart-helper"',
+    ],
+    dependencies: [
+      x11_dep,
+      xcomposite_dep,
+    ],
+    install_dir: libexecdir,
+    install: true,
+  )
+endif
 
 if have_introspection
   mutter_introspected_sources = []

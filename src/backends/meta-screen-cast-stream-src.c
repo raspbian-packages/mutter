@@ -249,6 +249,7 @@ draw_cursor_sprite_via_offscreen (MetaScreenCastStreamSrc  *src,
                                   CoglTexture              *cursor_texture,
                                   int                       bitmap_width,
                                   int                       bitmap_height,
+                                  MetaMonitorTransform      transform,
                                   uint8_t                  *bitmap_data,
                                   GError                  **error)
 {
@@ -265,6 +266,7 @@ draw_cursor_sprite_via_offscreen (MetaScreenCastStreamSrc  *src,
   CoglFramebuffer *fb;
   CoglPipeline *pipeline;
   CoglColor clear_color;
+  graphene_matrix_t matrix;
 
   bitmap_texture = cogl_texture_2d_new_with_size (cogl_context,
                                                   bitmap_width, bitmap_height);
@@ -290,6 +292,12 @@ draw_cursor_sprite_via_offscreen (MetaScreenCastStreamSrc  *src,
   cogl_pipeline_set_layer_filters (pipeline, 0,
                                    COGL_PIPELINE_FILTER_LINEAR,
                                    COGL_PIPELINE_FILTER_LINEAR);
+
+  graphene_matrix_init_identity (&matrix);
+  meta_monitor_transform_transform_matrix (transform,
+                                           &matrix);
+  cogl_pipeline_set_layer_matrix (pipeline, 0, &matrix);
+
   cogl_color_init_from_4ub (&clear_color, 0, 0, 0, 0);
   cogl_framebuffer_clear (fb, COGL_BUFFER_BIT_COLOR, &clear_color);
   cogl_framebuffer_draw_rectangle (fb, pipeline,
@@ -310,6 +318,7 @@ gboolean
 meta_screen_cast_stream_src_draw_cursor_into (MetaScreenCastStreamSrc  *src,
                                               CoglTexture              *cursor_texture,
                                               float                     scale,
+                                              MetaMonitorTransform      transform,
                                               uint8_t                  *data,
                                               GError                  **error)
 {
@@ -322,7 +331,8 @@ meta_screen_cast_stream_src_draw_cursor_into (MetaScreenCastStreamSrc  *src,
   height = texture_height * scale;
 
   if (texture_width == width &&
-      texture_height == height)
+      texture_height == height &&
+      transform == META_MONITOR_TRANSFORM_NORMAL)
     {
       cogl_texture_get_data (cursor_texture,
                              COGL_PIXEL_FORMAT_RGBA_8888_PRE,
@@ -335,6 +345,7 @@ meta_screen_cast_stream_src_draw_cursor_into (MetaScreenCastStreamSrc  *src,
                                              cursor_texture,
                                              width,
                                              height,
+                                             transform,
                                              data,
                                              error))
         return FALSE;
@@ -396,7 +407,8 @@ meta_screen_cast_stream_src_set_cursor_sprite_metadata (MetaScreenCastStreamSrc 
                                                         MetaCursorSprite        *cursor_sprite,
                                                         int                      x,
                                                         int                      y,
-                                                        float                    scale)
+                                                        float                    scale,
+                                                        MetaMonitorTransform     transform)
 {
   CoglTexture *cursor_texture;
   struct spa_meta_bitmap *spa_meta_bitmap;
@@ -447,6 +459,7 @@ meta_screen_cast_stream_src_set_cursor_sprite_metadata (MetaScreenCastStreamSrc 
   if (!meta_screen_cast_stream_src_draw_cursor_into (src,
                                                      cursor_texture,
                                                      scale,
+                                                     transform,
                                                      bitmap_data,
                                                      &error))
     {
@@ -598,6 +611,7 @@ meta_screen_cast_stream_src_maybe_record_frame (MetaScreenCastStreamSrc  *src,
   MetaRectangle crop_rect;
   struct pw_buffer *buffer;
   struct spa_buffer *spa_buffer;
+  struct spa_meta_header *header;
   uint8_t *data = NULL;
   uint64_t now_us;
   g_autoptr (GError) error = NULL;
@@ -640,9 +654,17 @@ meta_screen_cast_stream_src_maybe_record_frame (MetaScreenCastStreamSrc  *src,
   spa_buffer = buffer->buffer;
   data = spa_buffer->datas[0].data;
 
+  header = spa_buffer_find_meta_data (spa_buffer,
+                                      SPA_META_Header,
+                                      sizeof (*header));
+
   if (spa_buffer->datas[0].type != SPA_DATA_DmaBuf && !data)
     {
       g_critical ("Invalid buffer data");
+      if (header)
+        header->flags = SPA_META_HEADER_FLAG_CORRUPTED;
+
+      pw_stream_queue_buffer (priv->pipewire_stream, buffer);
       return;
     }
 
@@ -657,6 +679,7 @@ meta_screen_cast_stream_src_maybe_record_frame (MetaScreenCastStreamSrc  *src,
           spa_data->chunk->size = spa_data->maxsize;
           spa_data->chunk->stride =
             meta_screen_cast_stream_src_calculate_stride (src, spa_data);
+          spa_data->chunk->flags = SPA_CHUNK_FLAG_NONE;
 
           /* Update VideoCrop if needed */
           spa_meta_video_crop =
@@ -686,16 +709,24 @@ meta_screen_cast_stream_src_maybe_record_frame (MetaScreenCastStreamSrc  *src,
         {
           g_warning ("Failed to record screen cast frame: %s", error->message);
           spa_buffer->datas[0].chunk->size = 0;
+          spa_buffer->datas[0].chunk->flags = SPA_CHUNK_FLAG_CORRUPTED;
         }
     }
   else
     {
       spa_buffer->datas[0].chunk->size = 0;
+      spa_buffer->datas[0].chunk->flags = SPA_CHUNK_FLAG_CORRUPTED;
     }
 
   maybe_record_cursor (src, spa_buffer);
 
   priv->last_frame_timestamp_us = now_us;
+
+  if (header)
+    {
+      header->pts = now_us * SPA_NSEC_PER_USEC;
+      header->flags = 0;
+    }
 
   pw_stream_queue_buffer (priv->pipewire_stream, buffer);
 }
@@ -792,7 +823,7 @@ on_stream_param_changed (void                 *data,
   uint8_t params_buffer[1024];
   int32_t width, height, stride, size;
   struct spa_pod_builder pod_builder;
-  const struct spa_pod *params[3];
+  const struct spa_pod *params[4];
   const int bpp = 4;
   int buffer_types;
 
@@ -836,6 +867,12 @@ on_stream_param_changed (void                 *data,
     SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
     SPA_PARAM_META_type, SPA_POD_Id (SPA_META_Cursor),
     SPA_PARAM_META_size, SPA_POD_Int (CURSOR_META_SIZE (384, 384)));
+
+  params[3] = spa_pod_builder_add_object (
+    &pod_builder,
+    SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
+    SPA_PARAM_META_type, SPA_POD_Id (SPA_META_Header),
+    SPA_PARAM_META_size, SPA_POD_Int (sizeof (struct spa_meta_header)));
 
   pw_stream_update_params (priv->pipewire_stream, params, G_N_ELEMENTS (params));
 

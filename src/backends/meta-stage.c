@@ -58,6 +58,8 @@ struct _MetaOverlay
   CoglPipeline *pipeline;
   CoglTexture *texture;
 
+  MetaMonitorTransform buffer_transform;
+
   graphene_rect_t current_rect;
   graphene_rect_t previous_rect;
   gboolean previous_is_valid;
@@ -102,9 +104,10 @@ meta_overlay_free (MetaOverlay *overlay)
 }
 
 static void
-meta_overlay_set (MetaOverlay     *overlay,
-                  CoglTexture     *texture,
-                  graphene_rect_t *rect)
+meta_overlay_set (MetaOverlay          *overlay,
+                  CoglTexture          *texture,
+                  graphene_rect_t      *rect,
+                  MetaMonitorTransform  buffer_transform)
 {
   if (overlay->texture != texture)
     {
@@ -114,6 +117,18 @@ meta_overlay_set (MetaOverlay     *overlay,
         cogl_pipeline_set_layer_texture (overlay->pipeline, 0, texture);
       else
         cogl_pipeline_set_layer_texture (overlay->pipeline, 0, NULL);
+    }
+
+  if (overlay->buffer_transform != buffer_transform)
+    {
+      graphene_matrix_t matrix;
+
+      graphene_matrix_init_identity (&matrix);
+      meta_monitor_transform_transform_matrix (buffer_transform,
+                                               &matrix);
+      cogl_pipeline_set_layer_matrix (overlay->pipeline, 0, &matrix);
+
+      overlay->buffer_transform = buffer_transform;
     }
 
   overlay->current_rect = *rect;
@@ -317,12 +332,35 @@ meta_stage_class_init (MetaStageClass *klass)
 }
 
 static void
+key_focus_actor_changed (ClutterStage *stage,
+                         GParamSpec   *param,
+                         gpointer      user_data)
+{
+  ClutterActor *key_focus = clutter_stage_get_key_focus (stage);
+
+  /* If there's no explicit key focus, clutter_stage_get_key_focus()
+   * returns the stage.
+   */
+  if (key_focus == CLUTTER_ACTOR (stage))
+    key_focus = NULL;
+
+  meta_stage_set_active (META_STAGE (stage), key_focus != NULL);
+}
+
+static void
 meta_stage_init (MetaStage *stage)
 {
   int i;
 
   for (i = 0; i < N_WATCH_MODES; i++)
     stage->watchers[i] = g_ptr_array_new_with_free_func (g_free);
+
+  if (meta_is_wayland_compositor ())
+    {
+      g_signal_connect (stage,
+                        "notify::key-focus",
+                        G_CALLBACK (key_focus_actor_changed), NULL);
+    }
 }
 
 ClutterActor *
@@ -404,12 +442,13 @@ meta_stage_remove_cursor_overlay (MetaStage   *stage,
 }
 
 void
-meta_stage_update_cursor_overlay (MetaStage       *stage,
-                                  MetaOverlay     *overlay,
-                                  CoglTexture     *texture,
-                                  graphene_rect_t *rect)
+meta_stage_update_cursor_overlay (MetaStage            *stage,
+                                  MetaOverlay          *overlay,
+                                  CoglTexture          *texture,
+                                  graphene_rect_t      *rect,
+                                  MetaMonitorTransform  buffer_transform)
 {
-  meta_overlay_set (overlay, texture, rect);
+  meta_overlay_set (overlay, texture, rect, buffer_transform);
   queue_redraw_for_overlay (stage, overlay);
 }
 

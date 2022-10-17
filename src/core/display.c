@@ -1443,7 +1443,6 @@ meta_display_sync_wayland_input_focus (MetaDisplay *display)
   else
     meta_topic (META_DEBUG_FOCUS, "Focus change has no effect, because there is no matching wayland surface");
 
-  meta_stage_set_active (stage, focus_window == NULL);
   meta_wayland_compositor_set_input_focus (compositor, focus_window);
 
   clutter_stage_repick_device (CLUTTER_STAGE (stage),
@@ -1997,8 +1996,7 @@ meta_display_end_grab_op (MetaDisplay *display,
   meta_topic (META_DEBUG_WINDOW_OPS,
               "Ending grab op %u at time %u", grab_op, timestamp);
 
-  if (display->event_route == META_EVENT_ROUTE_NORMAL ||
-      display->event_route == META_EVENT_ROUTE_COMPOSITOR_GRAB)
+  if (display->event_route == META_EVENT_ROUTE_NORMAL)
     return;
 
   g_assert (grab_window != NULL);
@@ -2116,47 +2114,6 @@ meta_display_queue_retheme_all_windows (MetaDisplay *display)
     }
 
   g_slist_free (windows);
-}
-
-/*
- * Stores whether syncing is currently enabled.
- */
-static gboolean is_syncing = FALSE;
-
-/**
- * meta_is_syncing:
- *
- * Returns whether X synchronisation is currently enabled.
- *
- * FIXME: This is *only* called by meta_display_open(), but by that time
- * we have already turned syncing on or off on startup, and we don't
- * have any way to do so while Mutter is running, so it's rather
- * pointless.
- *
- * Returns: %TRUE if we must wait for events whenever we send X requests;
- * %FALSE otherwise.
- */
-gboolean
-meta_is_syncing (void)
-{
-  return is_syncing;
-}
-
-/**
- * meta_set_syncing:
- * @setting: whether to turn syncing on or off
- *
- * A handy way to turn on synchronisation on or off for every display.
- */
-void
-meta_set_syncing (gboolean setting)
-{
-  if (setting != is_syncing)
-    {
-      is_syncing = setting;
-      if (meta_get_display ())
-        XSynchronize (meta_get_display ()->x11_display->xdisplay, is_syncing);
-    }
 }
 
 /**
@@ -2868,20 +2825,11 @@ meta_display_modifiers_accelerator_activate (MetaDisplay *display)
 gboolean
 meta_display_supports_extended_barriers (MetaDisplay *display)
 {
-#ifdef HAVE_NATIVE_BACKEND
-  if (META_IS_BACKEND_NATIVE (meta_get_backend ()))
-    return TRUE;
-#endif
+  MetaContext *context = meta_display_get_context (display);
+  MetaBackend *backend = meta_context_get_backend (context);
 
-  if (META_IS_BACKEND_X11_CM (meta_get_backend ()))
-    {
-      if (meta_is_wayland_compositor())
-        return FALSE;
-
-      return META_X11_DISPLAY_HAS_XINPUT_23 (display->x11_display);
-    }
-
-  return FALSE;
+  return !!(meta_backend_get_capabilities (backend) &
+            META_BACKEND_CAPABILITY_BARRIERS);
 }
 
 /**
@@ -4023,7 +3971,7 @@ update_window_visibilities (MetaDisplay *display,
   g_list_foreach (should_show, (GFunc) meta_window_update_visibility, NULL);
   COGL_TRACE_END (MetaDisplayShowWindows);
 
-  COGL_TRACE_BEGIN (MetaDisplayHideWindows, "Display: Show windows");
+  COGL_TRACE_BEGIN (MetaDisplayHideWindows, "Display: Hide windows");
   g_list_foreach (should_hide, (GFunc) meta_window_update_visibility, NULL);
   COGL_TRACE_END (MetaDisplayHideWindows);
 

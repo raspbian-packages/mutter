@@ -33,8 +33,6 @@
 #ifndef __COGL_MACROS_H__
 #define __COGL_MACROS_H__
 
-#include <cogl/cogl-version.h>
-
 /* These macros are used to mark deprecated functions, and thus have
  * to be exposed in a public header.
  *
@@ -76,5 +74,6 @@
 #endif /* COGL_DISABLE_DEPRECATION_WARNINGS */
 
 #define COGL_EXPORT __attribute__((visibility("default"))) extern
+#define COGL_EXPORT_TEST __attribute__((visibility("default"))) extern
 
 #endif /* __COGL_MACROS_H__ */

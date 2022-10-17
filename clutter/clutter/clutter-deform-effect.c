@@ -26,10 +26,9 @@
  */
 
 /**
- * SECTION:clutter-deform-effect
- * @Title: ClutterDeformEffect
- * @Short_Description: A base class for effects deforming the geometry
- *   of an actor
+ * ClutterDeformEffect:
+ * 
+ * A base class for effects deforming the geometry of an actor
  *
  * #ClutterDeformEffect is an abstract class providing all the plumbing
  * for creating effects that result in the deformation of an actor's
@@ -38,8 +37,6 @@
  * #ClutterDeformEffect uses offscreen buffers to render the contents of
  * a #ClutterActor and then the Cogl vertex buffers API to submit the
  * geometry to the GPU.
- *
- * #ClutterDeformEffect is available since Clutter 1.4
  *
  * ## Implementing ClutterDeformEffect
  *
@@ -596,8 +593,6 @@ clutter_deform_effect_class_init (ClutterDeformEffectClass *klass)
    *
    * The number of horizontal tiles. The bigger the number, the
    * smaller the tiles
-   *
-   * Since: 1.4
    */
   obj_props[PROP_X_TILES] =
     g_param_spec_uint ("x-tiles",
@@ -612,8 +607,6 @@ clutter_deform_effect_class_init (ClutterDeformEffectClass *klass)
    *
    * The number of vertical tiles. The bigger the number, the
    * smaller the tiles
-   *
-   * Since: 1.4
    */
   obj_props[PROP_Y_TILES] =
     g_param_spec_uint ("y-tiles",
@@ -630,8 +623,6 @@ clutter_deform_effect_class_init (ClutterDeformEffectClass *klass)
    * to which this effect has been applied
    *
    * By default, no material will be used
-   *
-   * Since: 1.4
    */
   obj_props[PROP_BACK_MATERIAL] =
     g_param_spec_boxed ("back-material",
@@ -672,8 +663,6 @@ clutter_deform_effect_init (ClutterDeformEffect *self)
  *
  * The #ClutterDeformEffect will take a reference on the material's
  * handle
- *
- * Since: 1.4
  */
 void
 clutter_deform_effect_set_back_material (ClutterDeformEffect *effect,
@@ -705,8 +694,6 @@ clutter_deform_effect_set_back_material (ClutterDeformEffect *effect,
  * Return value: (transfer none): a handle for the material, or %NULL.
  *   The returned material is owned by the #ClutterDeformEffect and it
  *   should not be freed directly
- *
- * Since: 1.4
  */
 CoglHandle
 clutter_deform_effect_get_back_material (ClutterDeformEffect *effect)
@@ -727,8 +714,6 @@ clutter_deform_effect_get_back_material (ClutterDeformEffect *effect)
  *
  * More tiles allow a finer grained deformation at the expenses
  * of computation
- *
- * Since: 1.4
  */
 void
 clutter_deform_effect_set_n_tiles (ClutterDeformEffect *effect,
@@ -782,8 +767,6 @@ clutter_deform_effect_set_n_tiles (ClutterDeformEffect *effect,
  *
  * Retrieves the number of horizontal and vertical tiles used to sub-divide
  * the actor's geometry during the effect
- *
- * Since: 1.4
  */
 void
 clutter_deform_effect_get_n_tiles (ClutterDeformEffect *effect,
@@ -803,10 +786,8 @@ clutter_deform_effect_get_n_tiles (ClutterDeformEffect *effect,
  * clutter_deform_effect_invalidate:
  * @effect: a #ClutterDeformEffect
  *
- * Invalidates the @effect<!-- -->'s vertices and, if it is associated
+ * Invalidates the `effect`'s vertices and, if it is associated
  * to an actor, it will queue a redraw
- *
- * Since: 1.4
  */
 void
 clutter_deform_effect_invalidate (ClutterDeformEffect *effect)

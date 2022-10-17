@@ -55,7 +55,6 @@
 #include "clutter-backend-private.h"
 #include "clutter-debug.h"
 #include "clutter-event-private.h"
-#include "clutter-feature.h"
 #include "clutter-input-device-private.h"
 #include "clutter-input-pointer-a11y-private.h"
 #include "clutter-graphene.h"
@@ -152,8 +151,6 @@ _clutter_context_get_show_fps (void)
  * implementation available
  *
  * Return value: %TRUE if Clutter has accessibility support enabled
- *
- * Since: 1.4
  */
 gboolean
 clutter_get_accessibility_enabled (void)
@@ -168,8 +165,6 @@ clutter_get_accessibility_enabled (void)
  * as setting the environment variable
  * CLUTTER_DISABLE_ACCESSIBILITY. For the same reason, this method
  * should be called before clutter_init().
- *
- * Since: 1.14
  */
 void
 clutter_disable_accessibility (void)
@@ -287,7 +282,7 @@ _clutter_threads_dispatch_free (gpointer data)
  * it will call @function while holding the Clutter lock. It is logically
  * equivalent to the following implementation:
  *
- * |[
+ * ```c
  * static gboolean
  * idle_safe_callback (gpointer data)
  * {
@@ -315,7 +310,7 @@ _clutter_threads_dispatch_free (gpointer data)
  *                           closure,
  *                           g_free)
  * }
- *]|
+ * ```
  *
  * This function should be used by threaded applications to make sure
  * that @func is emitted under the Clutter threads lock and invoked
@@ -323,7 +318,7 @@ _clutter_threads_dispatch_free (gpointer data)
  * it can be used to update the UI using the results from a worker
  * thread:
  *
- * |[
+ * ```c
  * static gboolean
  * update_ui (gpointer data)
  * {
@@ -352,11 +347,9 @@ _clutter_threads_dispatch_free (gpointer data)
  *                                  update_ui,
  *                                  closure,
  *                                  NULL);
- * ]|
+ * ```
  *
  * Return value: the ID (greater than 0) of the event source.
- *
- * Since: 0.4
  */
 guint
 clutter_threads_add_idle_full (gint           priority,
@@ -387,8 +380,6 @@ clutter_threads_add_idle_full (gint           priority,
  * default priority.
  *
  * Return value: the ID (greater than 0) of the event source.
- *
- * Since: 0.4
  */
 guint
 clutter_threads_add_idle (GSourceFunc func,
@@ -425,8 +416,6 @@ clutter_threads_add_idle (GSourceFunc func,
  * See also clutter_threads_add_idle_full().
  *
  * Return value: the ID (greater than 0) of the event source.
- *
- * Since: 0.4
  */
 guint
 clutter_threads_add_timeout_full (gint           priority,
@@ -459,8 +448,6 @@ clutter_threads_add_timeout_full (gint           priority,
  * Simple wrapper around clutter_threads_add_timeout_full().
  *
  * Return value: the ID (greater than 0) of the event source.
- *
- * Since: 0.4
  */
 guint
 clutter_threads_add_timeout (guint       interval,
@@ -522,10 +509,7 @@ clutter_init_real (ClutterMainContext  *clutter_context,
   if (clutter_paint_debug_flags & CLUTTER_DEBUG_PAINT_DAMAGE_REGION)
     g_message ("Enabling damaged region");
 
-  /* this will take care of initializing Cogl's state and
-   * query the GL machinery for features
-   */
-  if (!clutter_feature_init (clutter_context, error))
+  if (!_clutter_backend_create_context (clutter_context->backend, error))
     return FALSE;
 
   clutter_text_direction = clutter_get_text_direction ();
@@ -759,8 +743,6 @@ remove_device_for_event (ClutterStage *stage,
  *
  * This function is only useful when embedding Clutter inside another
  * toolkit, and it should never be called by applications.
- *
- * Since: 0.4
  */
 void
 clutter_do_event (ClutterEvent *event)
@@ -1000,8 +982,6 @@ _clutter_process_event (ClutterEvent *event)
  *
  * Return value: (transfer none): the #PangoFontMap instance. The returned
  *   value is owned by Clutter and it should never be unreferenced.
- *
- * Since: 1.0
  */
 PangoFontMap *
 clutter_get_font_map (void)
@@ -1023,8 +1003,6 @@ typedef struct _ClutterRepaintFunction
  * @handle_id: an unsigned integer greater than zero
  *
  * Removes the repaint function with @handle_id as its id
- *
- * Since: 1.0
  */
 void
 clutter_threads_remove_repaint_func (guint handle_id)
@@ -1095,8 +1073,6 @@ clutter_threads_remove_repaint_func (guint handle_id)
  * Return value: the ID (greater than 0) of the repaint function. You
  *   can use the returned integer to remove the repaint function by
  *   calling clutter_threads_remove_repaint_func().
- *
- * Since: 1.0
  */
 guint
 clutter_threads_add_repaint_func (GSourceFunc    func,
@@ -1142,8 +1118,6 @@ clutter_threads_add_repaint_func (GSourceFunc    func,
  * Return value: the ID (greater than 0) of the repaint function. You
  *   can use the returned integer to remove the repaint function by
  *   calling clutter_threads_remove_repaint_func().
- *
- * Since: 1.10
  */
 guint
 clutter_threads_add_repaint_func_full (ClutterRepaintFlags flags,
@@ -1243,11 +1217,9 @@ _clutter_run_repaint_functions (ClutterRepaintFlags flags)
  * environment variable.
  *
  * The default text direction can be overridden on a per-actor basis by using
- * clutter_actor_set_text_direction().
+ * [method@Actor.set_text_direction].
  *
  * Return value: the default text direction
- *
- * Since: 1.2
  */
 ClutterTextDirection
 clutter_get_default_text_direction (void)

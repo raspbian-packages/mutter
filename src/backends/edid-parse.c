@@ -31,6 +31,22 @@
 
 #include "backends/edid.h"
 
+/* VESA E-EDID */
+#define EDID_BLOCK_LENGTH   128
+#define EDID_EXT_FLAG_ADDR  0x7E
+#define EDID_EXT_TAG_ADDR   0x00
+
+/* VESA reserved IDs for extension blocks */
+#define EDID_EXT_ID_CTA     0x02
+
+/* CTA-861 extension block */
+#define EDID_EXT_CTA_REVISION_ADDR                        0x01
+#define EDID_EXT_CTA_DESCRIPTOR_OFFSET_ADDR               0x02
+#define EDID_EXT_CTA_DATA_BLOCK_OFFSET                    0x04
+#define EDID_EXT_CTA_TAG_EXTENDED                         0x07
+#define EDID_EXT_CTA_TAG_EXTENDED_COLORIMETRY             0x0705
+#define EDID_EXT_CTA_TAG_EXTENDED_HDR_STATIC_METADATA     0x0706
+
 static int
 get_bit (int in, int bit)
 {
@@ -45,16 +61,30 @@ get_bits (int in, int begin, int end)
   return (in >> begin) & mask;
 }
 
-static int
-decode_header (const uchar *edid)
+static void
+decode_check_sum (const uint8_t *edid,
+                  MetaEdidInfo  *info)
+{
+  int i;
+  uint8_t check = 0;
+
+  for (i = 0; i < 128; ++i)
+    check += edid[i];
+
+  info->checksum = check;
+}
+
+static gboolean
+decode_header (const uint8_t *edid)
 {
   if (memcmp (edid, "\x00\xff\xff\xff\xff\xff\xff\x00", 8) == 0)
     return TRUE;
   return FALSE;
 }
 
-static int
-decode_vendor_and_product_identification (const uchar *edid, MonitorInfo *info)
+static gboolean
+decode_vendor_and_product_identification (const uint8_t *edid,
+                                          MetaEdidInfo  *info)
 {
   int is_model_year;
 
@@ -108,8 +138,9 @@ decode_vendor_and_product_identification (const uchar *edid, MonitorInfo *info)
   return TRUE;
 }
 
-static int
-decode_edid_version (const uchar *edid, MonitorInfo *info)
+static gboolean
+decode_edid_version (const uint8_t *edid,
+                     MetaEdidInfo  *info)
 {
   info->major_version = edid[0x12];
   info->minor_version = edid[0x13];
@@ -117,8 +148,9 @@ decode_edid_version (const uchar *edid, MonitorInfo *info)
   return TRUE;
 }
 
-static int
-decode_display_parameters (const uchar *edid, MonitorInfo *info)
+static gboolean
+decode_display_parameters (const uint8_t *edid,
+                           MetaEdidInfo  *info)
 {
   /* Digital vs Analog */
   info->is_digital = get_bit (edid[0x14], 7);
@@ -132,9 +164,14 @@ decode_display_parameters (const uchar *edid, MonitorInfo *info)
           -1, 6, 8, 10, 12, 14, 16, -1
         };
 
-      static const Interface interfaces[6] =
+      static const MetaEdidInterface interfaces[6] =
         {
-          UNDEFINED, DVI, HDMI_A, HDMI_B, MDDI, DISPLAY_PORT
+          META_EDID_INTERFACE_UNDEFINED,
+          META_EDID_INTERFACE_DVI,
+          META_EDID_INTERFACE_HDMI_A,
+          META_EDID_INTERFACE_HDMI_B,
+          META_EDID_INTERFACE_MDDI,
+          META_EDID_INTERFACE_DISPLAY_PORT
         };
 
       bits = get_bits (edid[0x14], 4, 6);
@@ -145,7 +182,7 @@ decode_display_parameters (const uchar *edid, MonitorInfo *info)
       if (bits <= 5)
         info->connector.digital.interface = interfaces[bits];
       else
-        info->connector.digital.interface = UNDEFINED;
+        info->connector.digital.interface = META_EDID_INTERFACE_UNDEFINED;
     }
   else
     {
@@ -220,9 +257,12 @@ decode_display_parameters (const uchar *edid, MonitorInfo *info)
   else
     {
       int bits = get_bits (edid[0x18], 3, 4);
-      ColorType color_type[4] =
+      MetaEdidColorType color_type[4] =
         {
-          MONOCHROME, RGB, OTHER_COLOR, UNDEFINED_COLOR
+          META_EDID_COLOR_TYPE_MONOCHROME,
+          META_EDID_COLOR_TYPE_RGB,
+          META_EDID_COLOR_TYPE_OTHER_COLOR,
+          META_EDID_COLOR_TYPE_UNDEFINED
         };
 
       info->connector.analog.color_type = color_type[bits];
@@ -252,8 +292,9 @@ decode_fraction (int high, int low)
   return result;
 }
 
-static int
-decode_color_characteristics (const uchar *edid, MonitorInfo *info)
+static gboolean
+decode_color_characteristics (const uint8_t *edid,
+                              MetaEdidInfo  *info)
 {
   info->red_x = decode_fraction (edid[0x1b], get_bits (edid[0x19], 6, 7));
   info->red_y = decode_fraction (edid[0x1c], get_bits (edid[0x19], 5, 4));
@@ -268,9 +309,10 @@ decode_color_characteristics (const uchar *edid, MonitorInfo *info)
 }
 
 static int
-decode_established_timings (const uchar *edid, MonitorInfo *info)
+decode_established_timings (const uint8_t *edid,
+                            MetaEdidInfo  *info)
 {
-  static const Timing established[][8] =
+  static const MetaEdidTiming established[][8] =
     {
       {
         { 800, 600, 60 },
@@ -320,8 +362,9 @@ decode_established_timings (const uchar *edid, MonitorInfo *info)
   return TRUE;
 }
 
-static int
-decode_standard_timings (const uchar *edid, MonitorInfo *info)
+static gboolean
+decode_standard_timings (const uint8_t *edid,
+                         MetaEdidInfo  *info)
 {
   int i;
 
@@ -353,7 +396,9 @@ decode_standard_timings (const uchar *edid, MonitorInfo *info)
 }
 
 static void
-decode_lf_string (const uchar *s, int n_chars, char *result)
+decode_lf_string (const uint8_t *s,
+                  int            n_chars,
+                  char          *result)
 {
   int i;
   for (i = 0; i < n_chars; ++i)
@@ -376,8 +421,8 @@ decode_lf_string (const uchar *s, int n_chars, char *result)
 }
 
 static void
-decode_display_descriptor (const uchar *desc,
-			   MonitorInfo *info)
+decode_display_descriptor (const uint8_t *desc,
+			   MetaEdidInfo  *info)
 {
   switch (desc[0x03])
     {
@@ -414,15 +459,22 @@ decode_display_descriptor (const uchar *desc,
 }
 
 static void
-decode_detailed_timing (const uchar *timing,
-			DetailedTiming *detailed)
+decode_detailed_timing (const uint8_t          *timing,
+			MetaEdidDetailedTiming *detailed)
 {
   int bits;
-  StereoType stereo[] =
+  MetaEdidStereoType stereo[] =
     {
-      NO_STEREO, NO_STEREO, FIELD_RIGHT, FIELD_LEFT,
-      TWO_WAY_RIGHT_ON_EVEN, TWO_WAY_LEFT_ON_EVEN,
-      FOUR_WAY_INTERLEAVED, SIDE_BY_SIDE
+      META_EDID_STEREO_TYPE_NO_STEREO,
+      META_EDID_STEREO_TYPE_NO_STEREO,
+      META_EDID_STEREO_TYPE_FIELD_RIGHT,
+      META_EDID_STEREO_TYPE_FIELD_LEFT,
+
+      META_EDID_STEREO_TYPE_TWO_WAY_RIGHT_ON_EVEN,
+      META_EDID_STEREO_TYPE_TWO_WAY_LEFT_ON_EVEN,
+
+      META_EDID_STEREO_TYPE_FOUR_WAY_INTERLEAVED,
+      META_EDID_STEREO_TYPE_SIDE_BY_SIDE
     };
 
   detailed->pixel_clock = (timing[0x00] | timing[0x01] << 8) * 10000;
@@ -476,8 +528,9 @@ decode_detailed_timing (const uchar *timing,
     }
 }
 
-static int
-decode_descriptors (const uchar *edid, MonitorInfo *info)
+static gboolean
+decode_descriptors (const uint8_t *edid,
+                    MetaEdidInfo  *info)
 {
   int i;
   int timing_idx;
@@ -503,23 +556,129 @@ decode_descriptors (const uchar *edid, MonitorInfo *info)
   return TRUE;
 }
 
-static void
-decode_check_sum (const uchar *edid,
-		  MonitorInfo *info)
+static gboolean
+decode_ext_cta_colorimetry (const uint8_t *data_block,
+                            MetaEdidInfo  *info)
 {
-  int i;
-  uchar check = 0;
-
-  for (i = 0; i < 128; ++i)
-    check += edid[i];
-
-  info->checksum = check;
+  /* CTA-861-H: Table 78 - Colorimetry Data Block (CDB) */
+  info->colorimetry = (data_block[3] << 8) + data_block[2];
+  return TRUE;
 }
 
-MonitorInfo *
-decode_edid (const uchar *edid)
+static gboolean
+decode_ext_cta_hdr_static_metadata (const uint8_t *data_block,
+                                    MetaEdidInfo  *info)
 {
-  MonitorInfo *info = g_new0 (MonitorInfo, 1);
+  /* CTA-861-H: Table 92 - HDR Static Metadata Data Block (HDR SMDB) */
+  int size;
+
+  info->hdr_static_metadata.available = TRUE;
+  info->hdr_static_metadata.tf = data_block[2];
+  info->hdr_static_metadata.sm = data_block[3];
+
+  size = get_bits (data_block[0], 0, 5);
+  if (size > 3)
+    info->hdr_static_metadata.max_luminance = data_block[4];
+  if (size > 4)
+    info->hdr_static_metadata.max_fal = data_block[5];
+  if (size > 5)
+    info->hdr_static_metadata.min_luminance = data_block[6];
+
+  return TRUE;
+}
+
+static gboolean
+decode_ext_cta (const uint8_t *cta_block,
+                MetaEdidInfo  *info)
+{
+  const uint8_t *data_block;
+  uint8_t data_block_end;
+  uint8_t data_block_offset;
+  int size;
+  int tag;
+
+  /* The CTA extension block is a number of data blocks followed by a number
+   * of (timing) descriptors. We only parse the data blocks. */
+
+  /* CTA-861-H Table 58: CTA Extension Version 3 */
+  data_block_end = cta_block[EDID_EXT_CTA_DESCRIPTOR_OFFSET_ADDR];
+  data_block_offset = EDID_EXT_CTA_DATA_BLOCK_OFFSET;
+
+  /* Table 58:
+   * If d=0, then no detailed timing descriptors are provided, and no data is
+   * provided in the data block collection */
+  if (data_block_end == 0)
+    return TRUE;
+
+  /* Table 58:
+   * If no data is provided in the data block collection, then d=4 */
+  if (data_block_end == 4)
+    return TRUE;
+
+  if (data_block_end < 4)
+    return FALSE;
+
+  while (data_block_offset < data_block_end)
+    {
+      /* CTA-861-H 7.4: CTA Data Block Collection */
+      data_block = cta_block + data_block_offset;
+      size = get_bits (data_block[0], 0, 4) + 1;
+      tag = get_bits (data_block[0], 5, 7);
+
+      data_block_offset += size;
+
+      /* CTA Data Block extended tag type is the second byte */
+      if (tag == EDID_EXT_CTA_TAG_EXTENDED)
+        tag = (tag << 8) + data_block[1];
+
+      switch (tag)
+        {
+        case EDID_EXT_CTA_TAG_EXTENDED_COLORIMETRY:
+          if (!decode_ext_cta_colorimetry (data_block, info))
+            return FALSE;
+          break;
+        case EDID_EXT_CTA_TAG_EXTENDED_HDR_STATIC_METADATA:
+          if (!decode_ext_cta_hdr_static_metadata (data_block, info))
+            return FALSE;
+          break;
+        }
+    }
+
+  return TRUE;
+}
+
+static gboolean
+decode_extensions (const uint8_t *edid,
+                   MetaEdidInfo  *info)
+{
+  int blocks;
+  int i;
+  const uint8_t *block = NULL;
+
+  blocks = edid[EDID_EXT_FLAG_ADDR];
+
+  for (i = 0; i < blocks; i++)
+    {
+      block = edid + EDID_BLOCK_LENGTH * (i + 1);
+
+      switch (block[EDID_EXT_TAG_ADDR])
+        {
+        case EDID_EXT_ID_CTA:
+          if (!decode_ext_cta (block, info))
+            return FALSE;
+          break;
+        }
+    }
+
+  return TRUE;
+}
+
+MetaEdidInfo *
+meta_edid_info_new_parse (const uint8_t *edid)
+{
+  MetaEdidInfo *info;
+
+  info = g_new0 (MetaEdidInfo, 1);
 
   decode_check_sum (edid, info);
 
@@ -530,7 +689,8 @@ decode_edid (const uchar *edid)
       && decode_color_characteristics (edid, info)
       && decode_established_timings (edid, info)
       && decode_standard_timings (edid, info)
-      && decode_descriptors (edid, info))
+      && decode_descriptors (edid, info)
+      && decode_extensions (edid, info))
     {
       return info;
     }

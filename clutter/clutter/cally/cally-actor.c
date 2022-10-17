@@ -23,12 +23,11 @@
  */
 
 /**
- * SECTION:cally-actor
- * @Title: CallyActor
- * @short_description: Implementation of the ATK interfaces for #ClutterActor
- * @see_also: #ClutterActor
+ * CallyActor:
+ * 
+ * Implementation of the ATK interfaces for [class@Clutter.Actor]
  *
- * #CallyActor implements the required ATK interfaces of #ClutterActor
+ * #CallyActor implements the required ATK interfaces of [class@Clutter.Actor]
  * exposing the common elements on each actor (position, extents, etc).
  */
 
@@ -194,8 +193,6 @@ G_DEFINE_TYPE_WITH_CODE (CallyActor,
  * Creates a new #CallyActor for the given @actor
  *
  * Return value: the newly created #AtkObject
- *
- * Since: 1.4
  */
 AtkObject *
 cally_actor_new (ClutterActor *actor)
@@ -1035,8 +1032,6 @@ _cally_actor_get_action_info (CallyActor *cally_actor,
  * Adds a new action to be accessed with the #AtkAction interface.
  *
  * Return value: added action id, or -1 if failure
- *
- * Since: 1.4
  */
 guint
 cally_actor_add_action (CallyActor      *cally_actor,
@@ -1066,8 +1061,6 @@ cally_actor_add_action (CallyActor      *cally_actor,
  * Adds a new action to be accessed with the #AtkAction interface.
  *
  * Return value: added action id, or -1 if failure
- *
- * Since: 1.6
  */
 guint
 cally_actor_add_action_full (CallyActor          *cally_actor,
@@ -1104,11 +1097,9 @@ cally_actor_add_action_full (CallyActor          *cally_actor,
  * @cally_actor: a #CallyActor
  * @action_id: the action id
  *
- * Removes a action, using the @action_id returned by cally_actor_add_action()
+ * Removes a action, using the @action_id returned by [method@Actor.add_action]
  *
  * Return value: %TRUE if the operation was successful, %FALSE otherwise
- *
- * Since: 1.4
  */
 gboolean
 cally_actor_remove_action (CallyActor *cally_actor,
@@ -1138,11 +1129,9 @@ cally_actor_remove_action (CallyActor *cally_actor,
  * @action_name: the name of the action to remove
  *
  * Removes an action, using the @action_name used when the action was added
- * with cally_actor_add_action()
+ * with [method@Actor.add_action]
  *
  * Return value: %TRUE if the operation was successful, %FALSE otherwise
- *
- * Since: 1.4
  */
 gboolean
 cally_actor_remove_action_by_name (CallyActor  *cally_actor,

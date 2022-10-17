@@ -118,12 +118,7 @@ typedef void (*ClutterCallback) (ClutterActor *actor,
  */
 #define CLUTTER_CALLBACK(f)        ((ClutterCallback) (f))
 
-/**
- * ClutterActor:
- * @flags: #ClutterActorFlags
- *
- * Base class for actors.
- */
+
 struct _ClutterActor
 {
   /*< private >*/
@@ -311,8 +306,6 @@ struct _ClutterActorClass
  *
  * The contents of the #ClutterActorIter structure
  * are private and should only be accessed using the provided API.
- *
- * Since: 1.10
  */
 struct _ClutterActorIter
 {
@@ -624,6 +617,13 @@ void                            clutter_actor_set_content_repeat                
                                                                                  ClutterContentRepeat        repeat);
 CLUTTER_EXPORT
 ClutterContentRepeat            clutter_actor_get_content_repeat                (ClutterActor               *self);
+
+CLUTTER_EXPORT
+void clutter_actor_set_color_state (ClutterActor      *self,
+                                    ClutterColorState *color_state);
+CLUTTER_EXPORT
+ClutterColorState *clutter_actor_get_color_state (ClutterActor *self);
+
 CLUTTER_EXPORT
 void                            clutter_actor_get_content_box                   (ClutterActor               *self,
                                                                                  ClutterActorBox            *box);
@@ -900,9 +900,7 @@ void                            clutter_actor_uninhibit_culling                 
  * of interest, using g_object_bind_property(). This way, when the @item
  * in the #GListModel changes, the #ClutterActor changes as well.
  *
- * Returns: (transfer full): The newly created child #ClutterActor
- *
- * Since: 1.24
+ * Returns: (transfer full): The newly created child #ClutterActor4
  */
 typedef ClutterActor * (* ClutterActorCreateChildFunc) (gpointer item,
                                                         gpointer user_data);

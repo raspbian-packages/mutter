@@ -2333,7 +2333,8 @@ meta_test_monitor_lid_switch_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
-          .is_laptop_panel = TRUE
+          .is_laptop_panel = TRUE,
+          .serial = "0x123456a",
         },
         {
           .crtc = 1,
@@ -2343,7 +2344,8 @@ meta_test_monitor_lid_switch_config (void)
           .possible_crtcs = { 1 },
           .n_possible_crtcs = 1,
           .width_mm = 220,
-          .height_mm = 124
+          .height_mm = 124,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 2,
@@ -2517,7 +2519,8 @@ meta_test_monitor_lid_opened_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
-          .is_laptop_panel = TRUE
+          .is_laptop_panel = TRUE,
+          .serial = "0x123456a",
         },
         {
           .crtc = 1,
@@ -2527,7 +2530,8 @@ meta_test_monitor_lid_opened_config (void)
           .possible_crtcs = { 1 },
           .n_possible_crtcs = 1,
           .width_mm = 220,
-          .height_mm = 124
+          .height_mm = 124,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 2,
@@ -3025,7 +3029,8 @@ meta_test_monitor_lid_scaled_closed_opened (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
-          .is_laptop_panel = TRUE
+          .is_laptop_panel = TRUE,
+	  .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -3240,6 +3245,100 @@ meta_test_monitor_underscanning_config (void)
           .width_mm = 222,
           .height_mm = 125,
           .is_underscanning = TRUE,
+        }
+      },
+      .n_monitors = 1,
+      .logical_monitors = {
+        {
+          .monitors = { 0 },
+          .n_monitors = 1,
+          .layout = { .x = 0, .y = 0, .width = 1024, .height = 768 },
+          .scale = 1
+        }
+      },
+      .n_logical_monitors = 1,
+      .primary_logical_monitor = 0,
+      .n_outputs = 1,
+      .crtcs = {
+        {
+          .current_mode = 0,
+        }
+      },
+      .n_crtcs = 1,
+      .screen_width = 1024,
+      .screen_height = 768
+    }
+  };
+  MetaMonitorTestSetup *test_setup;
+
+  test_setup = meta_create_monitor_test_setup (test_backend,
+                                               &test_case.setup,
+                                               MONITOR_TEST_FLAG_NO_STORED);
+  emulate_hotplug (test_setup);
+  META_TEST_LOG_CALL ("Checking monitor configuration",
+                      meta_check_monitor_configuration (test_context,
+                                                        &test_case.expect));
+  check_monitor_test_clients_state ();
+}
+
+static void
+meta_test_monitor_max_bpc_config (void)
+{
+  MonitorTestCase test_case = {
+    .setup = {
+      .modes = {
+        {
+          .width = 1024,
+          .height = 768,
+          .refresh_rate = 60.0
+        }
+      },
+      .n_modes = 1,
+      .outputs = {
+        {
+          .crtc = 0,
+          .modes = { 0 },
+          .n_modes = 1,
+          .preferred_mode = 0,
+          .possible_crtcs = { 0 },
+          .n_possible_crtcs = 1,
+          .width_mm = 222,
+          .height_mm = 125,
+          .max_bpc = 8,
+        }
+      },
+      .n_outputs = 1,
+      .crtcs = {
+        {
+          .current_mode = 0
+        }
+      },
+      .n_crtcs = 1
+    },
+
+    .expect = {
+      .monitors = {
+        {
+          .outputs = { 0 },
+          .n_outputs = 1,
+          .modes = {
+            {
+              .width = 1024,
+              .height = 768,
+              .refresh_rate = 60.0,
+              .crtc_modes = {
+                {
+                  .output = 0,
+                  .crtc_mode = 0
+                }
+              }
+            }
+          },
+          .n_modes = 1,
+          .current_mode = 0,
+          .width_mm = 222,
+          .height_mm = 125,
+          .max_bpc = 8,
         }
       },
       .n_monitors = 1,
@@ -3558,6 +3657,254 @@ meta_test_monitor_switch_external_without_external (void)
                       meta_check_monitor_configuration (test_context,
                                                         &test_case.expect));
 
+  check_monitor_test_clients_state ();
+}
+
+static void
+meta_test_monitor_switch_config_remember_scale (void)
+{
+  MonitorTestCase test_case = {
+    .setup = {
+      .modes = {
+        {
+          .width = 1920,
+          .height = 1080,
+          .refresh_rate = 60.0
+        }
+      },
+      .n_modes = 1,
+      .outputs = {
+        {
+          .crtc = 0,
+          .modes = { 0 },
+          .n_modes = 1,
+          .preferred_mode = 0,
+          .possible_crtcs = { 0 },
+          .n_possible_crtcs = 1,
+          .width_mm = 222,
+          .height_mm = 125,
+          .is_laptop_panel = TRUE,
+          .serial = "0x1000",
+        },
+        {
+          .crtc = 1,
+          .modes = { 0 },
+          .n_modes = 1,
+          .preferred_mode = 0,
+          .possible_crtcs = { 1 },
+          .n_possible_crtcs = 1,
+          .width_mm = 220,
+          .height_mm = 124,
+          .serial = "0x1001",
+        }
+      },
+      .n_outputs = 2,
+      .crtcs = {
+        {
+          .current_mode = 0
+        },
+        {
+          .current_mode = 0
+        }
+      },
+      .n_crtcs = 2
+    },
+
+    .expect = {
+      .monitors = {
+        {
+          .outputs = { 0 },
+          .n_outputs = 1,
+          .modes = {
+            {
+              .width = 1920,
+              .height = 1080,
+              .refresh_rate = 60.0,
+              .crtc_modes = {
+                {
+                  .output = 0,
+                  .crtc_mode = 0
+                }
+              }
+            }
+          },
+          .n_modes = 1,
+          .current_mode = 0,
+          .width_mm = 222,
+          .height_mm = 125
+        },
+        {
+          .outputs = { 1 },
+          .n_outputs = 1,
+          .modes = {
+            {
+              .width = 1920,
+              .height = 1080,
+              .refresh_rate = 60.0,
+              .crtc_modes = {
+                {
+                  .output = 1,
+                  .crtc_mode = 0
+                }
+              }
+            }
+          },
+          .n_modes = 1,
+          .current_mode = 0,
+          .width_mm = 220,
+          .height_mm = 124
+        }
+      },
+      .n_monitors = 2,
+      .logical_monitors = {
+        {
+          .monitors = { 0 },
+          .n_monitors = 1,
+          .layout = { .x = 0, .y = 0, .width = 1920, .height = 1080 },
+          .scale = 1
+        },
+        {
+          .monitors = { 1 },
+          .n_monitors = 1,
+          .layout = { .x = 1920, .y = 0, .width = 1920, .height = 1080 },
+          .scale = 1
+        }
+      },
+      .n_logical_monitors = 2,
+      .primary_logical_monitor = 0,
+      .n_outputs = 2,
+      .crtcs = {
+        {
+          .current_mode = 0,
+        },
+        {
+          .current_mode = 0,
+          .x = 1920,
+        }
+      },
+      .n_crtcs = 2,
+      .n_tiled_monitors = 0,
+      .screen_width = 1920 * 2,
+      .screen_height = 1080
+    }
+  };
+  MetaMonitorTestSetup *test_setup;
+  MetaBackend *backend = meta_get_backend ();
+  MetaMonitorManager *monitor_manager =
+    meta_backend_get_monitor_manager (backend);
+
+  /*
+   * Check that default configuration is non-scaled linear.
+   */
+
+  test_setup = meta_create_monitor_test_setup (test_backend,
+                                               &test_case.setup,
+                                               MONITOR_TEST_FLAG_NONE);
+  emulate_hotplug (test_setup);
+  META_TEST_LOG_CALL ("Checking monitor configuration",
+                      meta_check_monitor_configuration (test_context,
+                                                        &test_case.expect));
+  check_monitor_test_clients_state ();
+
+  /*
+   * Reconfigure to both monitors having scale 2.
+   */
+
+  test_case.expect.logical_monitors[0] = (MonitorTestCaseLogicalMonitor) {
+    .monitors = { 0 },
+    .layout = {.x = 0, .y = 0, .width = 960, .height = 540 },
+    .scale = 2,
+    .n_monitors = 1,
+  };
+  test_case.expect.logical_monitors[1] = (MonitorTestCaseLogicalMonitor) {
+    .monitors = { 1 },
+    .layout = {.x = 960, .y = 0, .width = 960, .height = 540 },
+    .scale = 2,
+    .n_monitors = 1,
+  };
+  test_case.expect.n_logical_monitors = 2;
+  test_case.expect.crtcs[1].x = 960;
+  test_case.expect.screen_width = 960 * 2;
+  test_case.expect.screen_height = 540;
+
+  meta_set_custom_monitor_config (test_context, "switch-remember-scale.xml");
+  meta_monitor_manager_reconfigure (monitor_manager);
+  META_TEST_LOG_CALL ("Checking monitor configuration",
+                      meta_check_monitor_configuration (test_context,
+                                                        &test_case.expect));
+  check_monitor_test_clients_state ();
+
+  /*
+   * Check that switch to 'builtin' uses scale 2.
+   */
+
+  test_case.expect.n_logical_monitors = 1;
+  test_case.expect.screen_width = 960;
+  test_case.expect.monitors[1].current_mode = -1;
+  test_case.expect.crtcs[1].current_mode = -1;
+
+  meta_monitor_manager_switch_config (monitor_manager,
+                                      META_MONITOR_SWITCH_CONFIG_BUILTIN);
+  META_TEST_LOG_CALL ("Checking monitor configuration",
+                      meta_check_monitor_configuration (test_context,
+                                                        &test_case.expect));
+  check_monitor_test_clients_state ();
+
+  /*
+   * Check that switch to 'external' uses scale 2.
+   */
+
+  test_case.expect.logical_monitors[0].monitors[0] = 1;
+  test_case.expect.n_logical_monitors = 1;
+  test_case.expect.screen_width = 960;
+  test_case.expect.monitors[0].current_mode = -1;
+  test_case.expect.monitors[1].current_mode = 0;
+  test_case.expect.crtcs[0].current_mode = -1;
+  test_case.expect.crtcs[1].current_mode = 0;
+  test_case.expect.crtcs[1].x = 0;
+
+  meta_monitor_manager_switch_config (monitor_manager,
+                                      META_MONITOR_SWITCH_CONFIG_EXTERNAL);
+  META_TEST_LOG_CALL ("Checking monitor configuration",
+                      meta_check_monitor_configuration (test_context,
+                                                        &test_case.expect));
+  check_monitor_test_clients_state ();
+
+  /*
+   * Check that switch to 'linear' uses scale 2 for both.
+   */
+
+  test_case.expect.logical_monitors[0].monitors[0] = 1;
+  test_case.expect.logical_monitors[1].monitors[0] = 0;
+  test_case.expect.n_logical_monitors = 2;
+  test_case.expect.screen_width = 960 * 2;
+  test_case.expect.monitors[0].current_mode = 0;
+  test_case.expect.crtcs[0].current_mode = 0;
+  test_case.expect.crtcs[0].x = 960;
+
+  meta_monitor_manager_switch_config (monitor_manager,
+                                      META_MONITOR_SWITCH_CONFIG_ALL_LINEAR);
+  META_TEST_LOG_CALL ("Checking monitor configuration",
+                      meta_check_monitor_configuration (test_context,
+                                                        &test_case.expect));
+  check_monitor_test_clients_state ();
+
+  /*
+   * Check that switch to 'mirror' uses scale 2 for both.
+   */
+
+  test_case.expect.logical_monitors[0].monitors[0] = 0;
+  test_case.expect.logical_monitors[0].monitors[1] = 1;
+  test_case.expect.logical_monitors[0].n_monitors = 2;
+  test_case.expect.n_logical_monitors = 1;
+  test_case.expect.screen_width = 960;
+  test_case.expect.crtcs[0].x = 0;
+
+  meta_monitor_manager_switch_config (monitor_manager,
+                                      META_MONITOR_SWITCH_CONFIG_ALL_MIRROR);
+  META_TEST_LOG_CALL ("Checking monitor configuration",
+                      meta_check_monitor_configuration (test_context,
+                                                        &test_case.expect));
   check_monitor_test_clients_state ();
 }
 
@@ -4105,7 +4452,8 @@ meta_test_monitor_orientation_initial_stored_rotated (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
-          .is_laptop_panel = TRUE
+          .is_laptop_panel = TRUE,
+          .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -4265,7 +4613,8 @@ meta_test_monitor_orientation_initial_stored_rotated_no_touch (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
-          .is_laptop_panel = TRUE
+          .is_laptop_panel = TRUE,
+          .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -5165,7 +5514,8 @@ meta_test_monitor_custom_vertical_config (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456a",
         },
         {
           .crtc = 1,
@@ -5175,7 +5525,8 @@ meta_test_monitor_custom_vertical_config (void)
           .possible_crtcs = { 1 },
           .n_possible_crtcs = 1,
           .width_mm = 220,
-          .height_mm = 124
+          .height_mm = 124,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 2,
@@ -5309,7 +5660,8 @@ meta_test_monitor_custom_primary_config (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456a",
         },
         {
           .crtc = 1,
@@ -5319,7 +5671,8 @@ meta_test_monitor_custom_primary_config (void)
           .possible_crtcs = { 1 },
           .n_possible_crtcs = 1,
           .width_mm = 220,
-          .height_mm = 124
+          .height_mm = 124,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 2,
@@ -5448,7 +5801,8 @@ meta_test_monitor_custom_underscanning_config (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -5544,7 +5898,8 @@ meta_test_monitor_custom_scale_config (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -5645,7 +6000,8 @@ meta_test_monitor_custom_fractional_scale_config (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -5746,7 +6102,8 @@ meta_test_monitor_custom_high_precision_fractional_scale_config (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -5857,7 +6214,8 @@ meta_test_monitor_custom_tiled_config (void)
             .loc_v_tile = 0,
             .tile_w = 400,
             .tile_h = 600
-          }
+          },
+          .serial = "0x123456",
         },
         {
           .crtc = -1,
@@ -5876,7 +6234,8 @@ meta_test_monitor_custom_tiled_config (void)
             .loc_v_tile = 0,
             .tile_w = 400,
             .tile_h = 600
-          }
+          },
+          .serial = "0x123456",
         }
       },
       .n_outputs = 2,
@@ -6003,7 +6362,8 @@ meta_test_monitor_custom_tiled_custom_resolution_config (void)
             .loc_v_tile = 0,
             .tile_w = 400,
             .tile_h = 600
-          }
+          },
+          .serial = "0x123456",
         },
         {
           .crtc = -1,
@@ -6022,7 +6382,8 @@ meta_test_monitor_custom_tiled_custom_resolution_config (void)
             .loc_v_tile = 0,
             .tile_w = 400,
             .tile_h = 600
-          }
+          },
+          .serial = "0x123456",
         }
       },
       .n_outputs = 2,
@@ -6174,7 +6535,8 @@ meta_test_monitor_custom_tiled_non_preferred_config (void)
             .loc_v_tile = 0,
             .tile_w = 512,
             .tile_h = 768
-          }
+          },
+          .serial = "0x123456",
         },
         {
           .crtc = -1,
@@ -6193,7 +6555,8 @@ meta_test_monitor_custom_tiled_non_preferred_config (void)
             .loc_v_tile = 0,
             .tile_w = 512,
             .tile_h = 768
-          }
+          },
+          .serial = "0x123456",
         }
       },
       .n_outputs = 2,
@@ -6329,7 +6692,8 @@ meta_test_monitor_custom_mirrored_config (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456a",
         },
         {
           .crtc = 1,
@@ -6339,7 +6703,8 @@ meta_test_monitor_custom_mirrored_config (void)
           .possible_crtcs = { 1 },
           .n_possible_crtcs = 1,
           .width_mm = 220,
-          .height_mm = 124
+          .height_mm = 124,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 2,
@@ -6462,6 +6827,7 @@ meta_test_monitor_custom_first_rotated_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456a",
         },
         {
           .crtc = 1,
@@ -6472,6 +6838,7 @@ meta_test_monitor_custom_first_rotated_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 2,
@@ -6601,6 +6968,7 @@ meta_test_monitor_custom_second_rotated_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456a",
         },
         {
           .crtc = 1,
@@ -6611,6 +6979,7 @@ meta_test_monitor_custom_second_rotated_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 2,
@@ -6746,6 +7115,7 @@ meta_test_monitor_custom_second_rotated_tiled_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456a",
         },
         {
           .crtc = -1,
@@ -6764,7 +7134,8 @@ meta_test_monitor_custom_second_rotated_tiled_config (void)
             .loc_v_tile = 0,
             .tile_w = 400,
             .tile_h = 600
-          }
+          },
+          .serial = "0x123456b",
         },
         {
           .crtc = -1,
@@ -6783,7 +7154,8 @@ meta_test_monitor_custom_second_rotated_tiled_config (void)
             .loc_v_tile = 0,
             .tile_w = 400,
             .tile_h = 600
-          }
+          },
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 3,
@@ -6942,6 +7314,7 @@ meta_test_monitor_custom_second_rotated_nonnative_tiled_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456a",
         },
         {
           .crtc = -1,
@@ -6960,7 +7333,8 @@ meta_test_monitor_custom_second_rotated_nonnative_tiled_config (void)
             .loc_v_tile = 0,
             .tile_w = 400,
             .tile_h = 600
-          }
+          },
+          .serial = "0x123456b",
         },
         {
           .crtc = -1,
@@ -6979,7 +7353,8 @@ meta_test_monitor_custom_second_rotated_nonnative_tiled_config (void)
             .loc_v_tile = 0,
             .tile_w = 400,
             .tile_h = 600
-          }
+          },
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 3,
@@ -7133,6 +7508,7 @@ meta_test_monitor_custom_second_rotated_nonnative_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456a",
         },
         {
           .crtc = 1,
@@ -7143,6 +7519,7 @@ meta_test_monitor_custom_second_rotated_nonnative_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 2,
@@ -7292,7 +7669,8 @@ meta_test_monitor_custom_interlaced_config (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -7400,7 +7778,8 @@ meta_test_monitor_custom_oneoff (void)
           .possible_crtcs = { 0, 1 },
           .n_possible_crtcs = 2,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         },
         {
           .crtc = -1,
@@ -7534,7 +7913,8 @@ meta_test_monitor_custom_lid_switch_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
-          .is_laptop_panel = TRUE
+          .is_laptop_panel = TRUE,
+          .serial = "0x123456a",
         },
         {
           .crtc = -1,
@@ -7545,6 +7925,7 @@ meta_test_monitor_custom_lid_switch_config (void)
           .n_possible_crtcs = 1,
           .width_mm = 222,
           .height_mm = 125,
+          .serial = "0x123456b",
         }
       },
       .n_outputs = 1, /* Second one hot plugged later */
@@ -7747,7 +8128,8 @@ meta_test_monitor_migrated_rotated (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         }
       },
       .n_outputs = 1,
@@ -7893,7 +8275,8 @@ meta_test_monitor_migrated_wiggle_discard (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         }
       },
       .n_outputs = 1,
@@ -8171,7 +8554,8 @@ meta_test_monitor_migrated_wiggle (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         }
       },
       .n_outputs = 1,
@@ -8926,7 +9310,8 @@ meta_test_monitor_policy_system_only (void)
           .possible_crtcs = { 0 },
           .n_possible_crtcs = 1,
           .width_mm = 222,
-          .height_mm = 125
+          .height_mm = 125,
+          .serial = "0x123456",
         },
       },
       .n_outputs = 1,
@@ -9118,12 +9503,16 @@ init_monitor_tests (void)
                     meta_test_monitor_no_outputs);
   add_monitor_test ("/backends/monitor/underscanning-config",
                     meta_test_monitor_underscanning_config);
+  add_monitor_test ("/backends/monitor/max-bpc-config",
+                    meta_test_monitor_max_bpc_config);
   add_monitor_test ("/backends/monitor/preferred-non-first-mode",
                     meta_test_monitor_preferred_non_first_mode);
   add_monitor_test ("/backends/monitor/non-upright-panel",
                     meta_test_monitor_non_upright_panel);
   add_monitor_test ("/backends/monitor/switch-external-without-external",
                     meta_test_monitor_switch_external_without_external);
+  add_monitor_test ("/backends/monitor/switch-config-remember-scale",
+                    meta_test_monitor_switch_config_remember_scale);
 
   add_monitor_test ("/backends/monitor/orientation/is-managed",
                     meta_test_monitor_orientation_is_managed);

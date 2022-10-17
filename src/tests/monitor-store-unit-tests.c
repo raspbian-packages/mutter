@@ -48,6 +48,7 @@ typedef struct _MonitorStoreTestCaseMonitor
   const char *serial;
   MonitorStoreTestCaseMonitorMode mode;
   gboolean is_underscanning;
+  unsigned int max_bpc;
 } MonitorStoreTestCaseMonitor;
 
 typedef struct _MonitorStoreTestCaseLogicalMonitor
@@ -196,6 +197,12 @@ check_monitor_store_configuration (MetaMonitorConfigStore        *config_store,
           g_assert_cmpint (monitor_config->enable_underscanning,
                            ==,
                            test_monitor->is_underscanning);
+          g_assert_cmpint (monitor_config->has_max_bpc,
+                           ==,
+                           !!test_monitor->max_bpc);
+          g_assert_cmpint (monitor_config->max_bpc,
+                           ==,
+                           test_monitor->max_bpc);
         }
     }
 }
@@ -285,7 +292,7 @@ meta_test_monitor_store_vertical (void)
                 .connector = "DP-1",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456a",
                 .mode = {
                   .width = 1024,
                   .height = 768,
@@ -310,7 +317,7 @@ meta_test_monitor_store_vertical (void)
                 .connector = "DP-2",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456b",
                 .mode = {
                   .width = 800,
                   .height = 600,
@@ -354,7 +361,7 @@ meta_test_monitor_store_primary (void)
                 .connector = "DP-1",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456a",
                 .mode = {
                   .width = 1024,
                   .height = 768,
@@ -379,7 +386,7 @@ meta_test_monitor_store_primary (void)
                 .connector = "DP-2",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456b",
                 .mode = {
                   .width = 800,
                   .height = 600,
@@ -442,6 +449,51 @@ meta_test_monitor_store_underscanning (void)
   };
 
   meta_set_custom_monitor_config (test_context, "underscanning.xml");
+
+  check_monitor_store_configurations (&expect);
+}
+
+static void
+meta_test_monitor_store_max_bpc (void)
+{
+  MonitorStoreTestExpect expect = {
+    .configurations = {
+      {
+        .logical_monitors = {
+          {
+            .layout = {
+              .x = 0,
+              .y = 0,
+              .width = 1024,
+              .height = 768
+            },
+            .scale = 1,
+            .is_primary = TRUE,
+            .is_presentation = FALSE,
+            .monitors = {
+              {
+                .connector = "DP-1",
+                .vendor = "MetaProduct's Inc.",
+                .product = "MetaMonitor",
+                .serial = "0x123456",
+                .max_bpc = 12,
+                .mode = {
+                  .width = 1024,
+                  .height = 768,
+                  .refresh_rate = 60.000495910644531
+                }
+              }
+            },
+            .n_monitors = 1,
+          },
+        },
+        .n_logical_monitors = 1
+      }
+    },
+    .n_configurations = 1
+  };
+
+  meta_set_custom_monitor_config (test_context, "max-bpc.xml");
 
   check_monitor_store_configurations (&expect);
 }
@@ -617,7 +669,7 @@ meta_test_monitor_store_mirrored (void)
                 .connector = "DP-1",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456a",
                 .mode = {
                   .width = 800,
                   .height = 600,
@@ -628,7 +680,7 @@ meta_test_monitor_store_mirrored (void)
                 .connector = "DP-2",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456b",
                 .mode = {
                   .width = 800,
                   .height = 600,
@@ -673,7 +725,7 @@ meta_test_monitor_store_first_rotated (void)
                 .connector = "DP-1",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456a",
                 .mode = {
                   .width = 1024,
                   .height = 768,
@@ -699,7 +751,7 @@ meta_test_monitor_store_first_rotated (void)
                 .connector = "DP-2",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456b",
                 .mode = {
                   .width = 1024,
                   .height = 768,
@@ -744,7 +796,7 @@ meta_test_monitor_store_second_rotated (void)
                 .connector = "DP-1",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456a",
                 .mode = {
                   .width = 1024,
                   .height = 768,
@@ -770,7 +822,7 @@ meta_test_monitor_store_second_rotated (void)
                 .connector = "DP-2",
                 .vendor = "MetaProduct's Inc.",
                 .product = "MetaMonitor",
-                .serial = "0x123456",
+                .serial = "0x123456b",
                 .mode = {
                   .width = 1024,
                   .height = 768,
@@ -1013,6 +1065,8 @@ init_monitor_store_tests (void)
                    meta_test_monitor_store_primary);
   g_test_add_func ("/backends/monitor-store/underscanning",
                    meta_test_monitor_store_underscanning);
+  g_test_add_func ("/backends/monitor-store/max-bpc",
+                   meta_test_monitor_store_max_bpc);
   g_test_add_func ("/backends/monitor-store/scale",
                    meta_test_monitor_store_scale);
   g_test_add_func ("/backends/monitor-store/fractional-scale",

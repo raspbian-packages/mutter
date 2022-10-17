@@ -38,6 +38,25 @@ meta_crtc_virtual_new (uint64_t id)
                        NULL);
 }
 
+static size_t
+meta_crtc_virtual_get_gamma_lut_size (MetaCrtc *crtc)
+{
+  return 0;
+}
+
+static MetaGammaLut *
+meta_crtc_virtual_get_gamma_lut (MetaCrtc *crtc)
+{
+  return NULL;
+}
+
+static void
+meta_crtc_virtual_set_gamma_lut (MetaCrtc           *crtc,
+                                 const MetaGammaLut *lut)
+{
+  g_warn_if_reached ();
+}
+
 static gboolean
 meta_crtc_virtual_is_transform_handled (MetaCrtcNative       *crtc_native,
                                         MetaMonitorTransform  transform)
@@ -59,7 +78,12 @@ meta_crtc_virtual_init (MetaCrtcVirtual *crtc_virtual)
 static void
 meta_crtc_virtual_class_init (MetaCrtcVirtualClass *klass)
 {
+  MetaCrtcClass *crtc_class = META_CRTC_CLASS (klass);
   MetaCrtcNativeClass *crtc_native_class = META_CRTC_NATIVE_CLASS (klass);
+
+  crtc_class->get_gamma_lut_size = meta_crtc_virtual_get_gamma_lut_size;
+  crtc_class->get_gamma_lut = meta_crtc_virtual_get_gamma_lut;
+  crtc_class->set_gamma_lut = meta_crtc_virtual_set_gamma_lut;
 
   crtc_native_class->is_transform_handled =
     meta_crtc_virtual_is_transform_handled;

@@ -18,6 +18,11 @@ mutter_test_sources = [
 
 libmutter_test_name = 'mutter-test-' + libmutter_api_version
 
+cogl_test_utils = files (
+  'cogl-test-utils.c',
+  'cogl-test-utils.h',
+)
+
 clutter_test_utils = files (
   'clutter-test-utils.c',
   'clutter-test-utils.h',
@@ -63,9 +68,14 @@ pkg.generate(libmutter_test,
   version: meson.project_version(),
   variables: [
     'apiversion=' + libmutter_api_version,
+    'tests_datadir=${prefix}/share/mutter-' + libmutter_api_version + '/tests',
   ],
   install_dir: pcdir,
 )
+
+if have_cogl_tests
+  subdir('cogl')
+endif
 
 if have_clutter_tests
   subdir('clutter')
@@ -139,11 +149,22 @@ test_runner = executable('mutter-test-runner',
 
 meta_dbus_runner = find_program('meta-dbus-runner.py')
 
+tests_datadir = join_paths(pkgdatadir, 'tests')
+
+install_data('mutter_dbusrunner.py',
+  install_dir: tests_datadir,
+)
+install_subdir('dbusmock-templates',
+  install_dir: tests_datadir,
+)
+
 if have_installed_tests
-  install_data('meta-dbus-runner.py',
-    install_dir: mutter_installed_tests_libexecdir,
-  )
-  install_subdir('dbusmock-templates',
+  configure_file(
+    input: 'mutter-installed-dbus-session.py.in',
+    output: 'mutter-installed-dbus-session.py',
+    configuration: {'tests_datadir': tests_datadir},
+    install: true,
+    install_mode: 'rwxr-xr-x',
     install_dir: mutter_installed_tests_libexecdir,
   )
 endif
@@ -189,6 +210,11 @@ test_cases += [
     'sources': [ 'monitor-unit-tests.c', ],
   },
   {
+    'name': 'monitor-utils',
+    'suite': 'unit',
+    'sources': [ 'monitor-util-tests.c', ],
+  },
+  {
     'name': 'headless-start',
     'suite': 'backend',
     'sources': [ 'headless-start-test.c', ],
@@ -203,6 +229,21 @@ test_cases += [
     'name': 'anonymous-file',
     'suite': 'unit',
     'sources': [ 'anonymous-file.c', ],
+  },
+  {
+    'name': 'edid',
+    'suite': 'unit',
+    'sources': [ 'edid-tests.c', ],
+  },
+  {
+    'name': 'color-management',
+    'suite': 'unit',
+    'sources': [ 'color-management-tests.c', ],
+  },
+  {
+    'name': 'color-management-profile-conflict',
+    'suite': 'unit',
+    'sources': [ 'color-management-profile-conflict-test.c', ],
   },
 ]
 
@@ -262,12 +303,48 @@ if have_native_tests
     },
   ]
 
-  # Privileged tests
-  privileged_test_cases += [
+  # KMS tests
+  kms_test_variants = []
+  kms_atomic_variables = {'MUTTER_DEBUG_FORCE_KMS_MODE': 'atomic'}
+  kms_simple_variables = {'MUTTER_DEBUG_FORCE_KMS_MODE': 'simple'}
+  kms_variants = [
+    ['atomic', kms_atomic_variables],
+    ['simple', kms_simple_variables],
+  ]
+  foreach variant: kms_variants
+    name = variant[0]
+    variables = variant[1]
+    suffix = '-@0@'.format(name)
+
+    kms_test_env_variables = test_env_variables + variables
+    kms_test_variants += [[suffix, kms_test_env_variables]]
+  endforeach
+
+  kms_test_cases = [
+    {
+      'name': 'kms-force-atomic-sanity',
+      'suite': 'backends/native/kms',
+      'sources': [
+        'native-kms-force-atomic-sanity.c',
+      ],
+      'variants': [['', test_env_variables + kms_atomic_variables]],
+    },
+    {
+      'name': 'kms-force-simple-sanity',
+      'suite': 'backends/native/kms',
+      'sources': [
+        'native-kms-force-simple-sanity.c',
+      ],
+      'variants': [['', test_env_variables + kms_simple_variables]],
+    },
     {
       'name': 'kms-render',
       'suite': 'backends/native/kms',
-      'sources': [ 'native-kms-render.c' ],
+      'sources': [
+        'native-kms-render.c',
+        wayland_test_utils,
+      ],
+      'variants': kms_test_variants,
     },
     {
       'name': 'kms-device',
@@ -277,6 +354,7 @@ if have_native_tests
         'meta-kms-test-utils.h',
         'native-kms-device.c',
       ],
+      'variants': kms_test_variants,
     },
     {
       'name': 'kms-update',
@@ -286,8 +364,11 @@ if have_native_tests
         'meta-kms-test-utils.h',
         'native-kms-updates.c',
       ],
+      'variants': kms_test_variants,
     },
   ]
+
+  privileged_test_cases += kms_test_cases
 
   # Wayland tests
   test_cases += [
@@ -378,6 +459,12 @@ endforeach
 if have_kvm_tests or have_tty_tests
   privileged_tests = []
   foreach test_case: privileged_test_cases
+    if test_case.has_key('variants')
+      variants = test_case['variants']
+    else
+      variants = [['', test_env_variables, []]]
+    endif
+
     test_executable = executable('mutter-' + test_case['name'],
       sources: test_case['sources'],
       include_directories: tests_includes,
@@ -390,13 +477,22 @@ if have_kvm_tests or have_tty_tests
       install_dir: mutter_installed_tests_libexecdir,
       install_rpath: pkglibdir,
     )
-    privileged_tests += [
-      {
-        'name': test_case['name'],
-        'suite': test_case['suite'],
-        'executable': test_executable,
-      },
-    ]
+
+    foreach variant: variants
+      variant_env = environment()
+      foreach name, value: variant[1]
+        variant_env.set(name, value)
+      endforeach
+      privileged_tests += [
+        {
+          'name': '@0@@1@'.format(test_case['name'], variant[0]),
+          'suite': test_case['suite'],
+          'executable': test_executable,
+          'variables': variant[1],
+          'env': variant_env,
+        },
+      ]
+    endforeach
   endforeach
 
   if have_kvm_tests
@@ -407,10 +503,58 @@ if have_kvm_tests or have_tty_tests
     foreach test_case: privileged_tests
       test('tty-' + test_case['name'], test_case['executable'],
         suite: ['core', 'mutter/tty', 'mutter/tty/' + test_case['suite']],
-        env: test_env,
+        env: test_case['env'],
         is_parallel: false,
         timeout: 60,
       )
     endforeach
   endif
 endif
+
+#if have_x11
+#  test('x11', xvfb,
+#    args: [
+#      xvfb_args,
+#      find_program('x11-test.sh').full_path(),
+#      mutter.full_path(),
+#    ],
+#    depends: [mutter],
+#    suite: ['core', 'mutter/x11'],
+#    env: test_env,
+#    is_parallel: false,
+#    timeout: 60,
+#  )
+#endif
+
+tools_test_env = test_env
+tools_test_env.set('G_DEBUG', 'fatal-warnings')
+
+test('get-state-tool-gio', mutter,
+  args: [
+    '--headless',
+    '--mutter-plugin=@0@'.format(default_plugin.full_path()),
+    '--virtual-monitor', '800x600',
+    '--wayland-display', 'get-state-gio',
+    get_state_tool.full_path(),
+  ],
+  suite: ['tools'],
+  env: tools_test_env,
+  is_parallel: false,
+  timeout: 60,
+)
+
+test('get-state-tool-gdbus', mutter,
+  args: [
+    '--headless',
+    '--mutter-plugin=@0@'.format(default_plugin.full_path()),
+    '--virtual-monitor', '800x600',
+    '--wayland-display', 'get-state-gdbus',
+    '--',
+    get_state_tool.full_path(),
+    '--gdbus',
+  ],
+  suite: ['tools'],
+  env: tools_test_env,
+  is_parallel: false,
+  timeout: 60,
+)

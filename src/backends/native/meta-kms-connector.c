@@ -34,6 +34,12 @@
 typedef struct _MetaKmsConnectorPropTable
 {
   MetaKmsProp props[META_KMS_CONNECTOR_N_PROPS];
+  MetaKmsEnum dpms_enum[META_KMS_CONNECTOR_DPMS_N_PROPS];
+  MetaKmsEnum underscan_enum[META_KMS_CONNECTOR_UNDERSCAN_N_PROPS];
+  MetaKmsEnum privacy_screen_sw_enum[META_KMS_CONNECTOR_PRIVACY_SCREEN_N_PROPS];
+  MetaKmsEnum privacy_screen_hw_enum[META_KMS_CONNECTOR_PRIVACY_SCREEN_N_PROPS];
+  MetaKmsEnum scaling_mode_enum[META_KMS_CONNECTOR_SCALING_MODE_N_PROPS];
+  MetaKmsEnum panel_orientation_enum[META_KMS_CONNECTOR_PANEL_ORIENTATION_N_PROPS];
 } MetaKmsConnectorPropTable;
 
 struct _MetaKmsConnector
@@ -86,6 +92,15 @@ meta_kms_connector_get_prop_name (MetaKmsConnector     *connector,
                                   MetaKmsConnectorProp  prop)
 {
   return connector->prop_table.props[prop].name;
+}
+
+uint64_t
+meta_kms_connector_get_prop_drm_value (MetaKmsConnector     *connector,
+                                       MetaKmsConnectorProp  property,
+                                       uint64_t              value)
+{
+  MetaKmsProp *prop = &connector->prop_table.props[property];
+  return meta_kms_prop_convert_value (prop, value);
 }
 
 uint32_t
@@ -175,6 +190,19 @@ has_privacy_screen_software_toggle (MetaKmsConnector *connector)
     META_KMS_CONNECTOR_PROP_PRIVACY_SCREEN_SW_STATE) != 0;
 }
 
+const MetaKmsRange *
+meta_kms_connector_get_max_bpc (MetaKmsConnector *connector)
+{
+  const MetaKmsRange *range = NULL;
+
+  if (connector->current_state &&
+      meta_kms_connector_get_prop_id (connector,
+                                      META_KMS_CONNECTOR_PROP_MAX_BPC))
+    range = &connector->current_state->max_bpc;
+
+  return range;
+}
+
 static void
 sync_fd_held (MetaKmsConnector  *connector,
               MetaKmsImplDevice *impl_device)
@@ -198,42 +226,41 @@ sync_fd_held (MetaKmsConnector  *connector,
 
 static void
 set_panel_orientation (MetaKmsConnectorState *state,
-                       drmModePropertyPtr     prop,
-                       uint64_t               orientation)
+                       MetaKmsProp           *panel_orientation)
 {
-  const char *name;
+  MetaMonitorTransform transform;
+  MetaKmsConnectorPanelOrientation orientation = panel_orientation->value;
 
-  name = prop->enums[orientation].name;
-  if (strcmp (name, "Upside Down") == 0)
+  switch (orientation)
     {
-      state->panel_orientation_transform = META_MONITOR_TRANSFORM_180;
+    case META_KMS_CONNECTOR_PANEL_ORIENTATION_UPSIDE_DOWN:
+      transform = META_MONITOR_TRANSFORM_180;
+      break;
+    case META_KMS_CONNECTOR_PANEL_ORIENTATION_LEFT_SIDE_UP:
+      transform = META_MONITOR_TRANSFORM_90;
+      break;
+    case META_KMS_CONNECTOR_PANEL_ORIENTATION_RIGHT_SIDE_UP:
+      transform = META_MONITOR_TRANSFORM_270;
+      break;
+    default:
+      transform = META_MONITOR_TRANSFORM_NORMAL;
+      break;
     }
-  else if (strcmp (name, "Left Side Up") == 0)
-    {
-      /* Left side up, rotate 90 degrees counter clockwise to correct */
-      state->panel_orientation_transform = META_MONITOR_TRANSFORM_90;
-    }
-  else if (strcmp (name, "Right Side Up") == 0)
-    {
-      /* Right side up, rotate 270 degrees counter clockwise to correct */
-      state->panel_orientation_transform = META_MONITOR_TRANSFORM_270;
-    }
-  else
-    {
-      state->panel_orientation_transform = META_MONITOR_TRANSFORM_NORMAL;
-    }
+
+  state->panel_orientation_transform = transform;
 }
 
 static void
 set_privacy_screen (MetaKmsConnectorState *state,
                     MetaKmsConnector      *connector,
-                    drmModePropertyPtr     prop,
-                    uint64_t               value)
+                    MetaKmsProp           *hw_state)
 {
+  MetaKmsConnectorPrivacyScreen privacy_screen = hw_state->value;
+
   if (!meta_kms_connector_is_privacy_screen_supported (connector))
     return;
 
-  switch (value)
+  switch (privacy_screen)
     {
     case META_KMS_PRIVACY_SCREEN_HW_STATE_DISABLED:
       state->privacy_screen_state = META_PRIVACY_SCREEN_DISABLED;
@@ -251,7 +278,7 @@ set_privacy_screen (MetaKmsConnectorState *state,
       break;
     default:
       state->privacy_screen_state = META_PRIVACY_SCREEN_DISABLED;
-      g_warning ("Unknown privacy screen state: %" G_GUINT64_FORMAT, value);
+      g_warning ("Unknown privacy screen state: %u", privacy_screen);
     }
 
   if (!has_privacy_screen_software_toggle (connector))
@@ -264,42 +291,43 @@ state_set_properties (MetaKmsConnectorState *state,
                       MetaKmsConnector      *connector,
                       drmModeConnector      *drm_connector)
 {
-  int fd;
-  int i;
+  MetaKmsProp *props = connector->prop_table.props;
+  MetaKmsProp *prop;
 
-  fd = meta_kms_impl_device_get_fd (impl_device);
+  prop = &props[META_KMS_CONNECTOR_PROP_SUGGESTED_X];
+  if (prop->prop_id)
+    state->suggested_x = prop->value;
 
-  for (i = 0; i < drm_connector->count_props; i++)
+  prop = &props[META_KMS_CONNECTOR_PROP_SUGGESTED_Y];
+  if (prop->prop_id)
+    state->suggested_y = prop->value;
+
+  prop = &props[META_KMS_CONNECTOR_PROP_HOTPLUG_MODE_UPDATE];
+  if (prop->prop_id)
+    state->hotplug_mode_update = prop->value;
+
+  prop = &props[META_KMS_CONNECTOR_PROP_SCALING_MODE];
+  if (prop->prop_id)
+    state->has_scaling = TRUE;
+
+  prop = &props[META_KMS_CONNECTOR_PROP_PANEL_ORIENTATION];
+  if (prop->prop_id)
+    set_panel_orientation (state, prop);
+
+  prop = &props[META_KMS_CONNECTOR_PROP_NON_DESKTOP];
+  if (prop->prop_id)
+    state->non_desktop = prop->value;
+
+  prop = &props[META_KMS_CONNECTOR_PROP_PRIVACY_SCREEN_HW_STATE];
+  if (prop->prop_id)
+    set_privacy_screen (state, connector, prop);
+
+  prop = &props[META_KMS_CONNECTOR_PROP_MAX_BPC];
+  if (prop->prop_id)
     {
-      drmModePropertyPtr prop;
-
-      prop = drmModeGetProperty (fd, drm_connector->props[i]);
-      if (!prop)
-        continue;
-
-      if ((prop->flags & DRM_MODE_PROP_RANGE) &&
-          strcmp (prop->name, "suggested X") == 0)
-        state->suggested_x = drm_connector->prop_values[i];
-      else if ((prop->flags & DRM_MODE_PROP_RANGE) &&
-               strcmp (prop->name, "suggested Y") == 0)
-        state->suggested_y = drm_connector->prop_values[i];
-      else if ((prop->flags & DRM_MODE_PROP_RANGE) &&
-               strcmp (prop->name, "hotplug_mode_update") == 0)
-        state->hotplug_mode_update = drm_connector->prop_values[i];
-      else if (strcmp (prop->name, "scaling mode") == 0)
-        state->has_scaling = TRUE;
-      else if ((prop->flags & DRM_MODE_PROP_ENUM) &&
-               strcmp (prop->name, "panel orientation") == 0)
-        set_panel_orientation (state, prop, drm_connector->prop_values[i]);
-      else if ((prop->flags & DRM_MODE_PROP_RANGE) &&
-               strcmp (prop->name, "non-desktop") == 0)
-        state->non_desktop = drm_connector->prop_values[i];
-      else if (prop->prop_id == meta_kms_connector_get_prop_id (connector,
-                META_KMS_CONNECTOR_PROP_PRIVACY_SCREEN_HW_STATE))
-        set_privacy_screen (state, connector, prop,
-                            drm_connector->prop_values[i]);
-
-      drmModeFreeProperty (prop);
+      state->max_bpc.value = prop->value;
+      state->max_bpc.min_value = prop->range_min;
+      state->max_bpc.max_value = prop->range_max;
     }
 }
 
@@ -401,36 +429,15 @@ state_set_blobs (MetaKmsConnectorState *state,
                  MetaKmsImplDevice     *impl_device,
                  drmModeConnector      *drm_connector)
 {
-  int fd;
-  int i;
+  MetaKmsProp *prop;
 
-  fd = meta_kms_impl_device_get_fd (impl_device);
+  prop = &connector->prop_table.props[META_KMS_CONNECTOR_PROP_EDID];
+  if (prop->prop_id && prop->value)
+    state_set_edid (state, connector, impl_device, prop->value);
 
-  for (i = 0; i < drm_connector->count_props; i++)
-    {
-      drmModePropertyPtr prop;
-
-      prop = drmModeGetProperty (fd, drm_connector->props[i]);
-      if (!prop)
-        continue;
-
-      if (prop->flags & DRM_MODE_PROP_BLOB)
-        {
-          uint32_t blob_id;
-
-          blob_id = drm_connector->prop_values[i];
-
-          if (blob_id)
-            {
-              if (strcmp (prop->name, "EDID") == 0)
-                state_set_edid (state, connector, impl_device, blob_id);
-              else if (strcmp (prop->name, "TILE") == 0)
-                state_set_tile_info (state, connector, impl_device, blob_id);
-            }
-        }
-
-      drmModeFreeProperty (prop);
-    }
+  prop = &connector->prop_table.props[META_KMS_CONNECTOR_PROP_TILE];
+  if (prop->prop_id && prop->value)
+    state_set_tile_info (state, connector, impl_device, prop->value);
 }
 
 static void
@@ -582,80 +589,85 @@ kms_modes_equal (GList *modes,
   return TRUE;
 }
 
-static MetaKmsUpdateChanges
+static MetaKmsResourceChanges
 meta_kms_connector_state_changes (MetaKmsConnectorState *state,
                                   MetaKmsConnectorState *new_state)
 {
   if (state->current_crtc_id != new_state->current_crtc_id)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->common_possible_crtcs != new_state->common_possible_crtcs)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->common_possible_clones != new_state->common_possible_clones)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->encoder_device_idxs != new_state->encoder_device_idxs)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->width_mm != new_state->width_mm)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->height_mm != new_state->height_mm)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->has_scaling != new_state->has_scaling)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->non_desktop != new_state->non_desktop)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->subpixel_order != new_state->subpixel_order)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->suggested_x != new_state->suggested_x)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->suggested_y != new_state->suggested_y)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->hotplug_mode_update != new_state->hotplug_mode_update)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->panel_orientation_transform !=
       new_state->panel_orientation_transform)
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (!meta_tile_info_equal (&state->tile_info, &new_state->tile_info))
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if ((state->edid_data && !new_state->edid_data) || !state->edid_data ||
       !g_bytes_equal (state->edid_data, new_state->edid_data))
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (!kms_modes_equal (state->modes, new_state->modes))
-    return META_KMS_UPDATE_CHANGE_FULL;
+    return META_KMS_RESOURCE_CHANGE_FULL;
+
+  if (state->max_bpc.value != new_state->max_bpc.value ||
+      state->max_bpc.min_value != new_state->max_bpc.min_value ||
+      state->max_bpc.max_value != new_state->max_bpc.max_value)
+    return META_KMS_RESOURCE_CHANGE_FULL;
 
   if (state->privacy_screen_state != new_state->privacy_screen_state)
-    return META_KMS_UPDATE_CHANGE_PRIVACY_SCREEN;
+    return META_KMS_RESOURCE_CHANGE_PRIVACY_SCREEN;
 
-  return META_KMS_UPDATE_CHANGE_NONE;
+  return META_KMS_RESOURCE_CHANGE_NONE;
 }
 
 static void
-meta_kms_connector_update_state_changes (MetaKmsConnector      *connector,
-                                         MetaKmsUpdateChanges   changes,
-                                         MetaKmsConnectorState *new_state)
+meta_kms_connector_update_state_changes (MetaKmsConnector       *connector,
+                                         MetaKmsResourceChanges  changes,
+                                         MetaKmsConnectorState  *new_state)
 {
   MetaKmsConnectorState *current_state = connector->current_state;
 
-  g_return_if_fail (changes != META_KMS_UPDATE_CHANGE_FULL);
+  g_return_if_fail (changes != META_KMS_RESOURCE_CHANGE_FULL);
 
-  if (changes & META_KMS_UPDATE_CHANGE_PRIVACY_SCREEN)
+  if (changes & META_KMS_RESOURCE_CHANGE_PRIVACY_SCREEN)
     current_state->privacy_screen_state = new_state->privacy_screen_state;
 }
 
-static MetaKmsUpdateChanges
+static MetaKmsResourceChanges
 meta_kms_connector_read_state (MetaKmsConnector  *connector,
                                MetaKmsImplDevice *impl_device,
                                drmModeConnector  *drm_connector,
@@ -663,16 +675,23 @@ meta_kms_connector_read_state (MetaKmsConnector  *connector,
 {
   g_autoptr (MetaKmsConnectorState) state = NULL;
   g_autoptr (MetaKmsConnectorState) current_state = NULL;
-  MetaKmsUpdateChanges connector_changes;
-  MetaKmsUpdateChanges changes;
+  MetaKmsResourceChanges connector_changes;
+  MetaKmsResourceChanges changes;
 
   current_state = g_steal_pointer (&connector->current_state);
-  changes = META_KMS_UPDATE_CHANGE_NONE;
+  changes = META_KMS_RESOURCE_CHANGE_NONE;
+
+  meta_kms_impl_device_update_prop_table (impl_device,
+                                          drm_connector->props,
+                                          drm_connector->prop_values,
+                                          drm_connector->count_props,
+                                          connector->prop_table.props,
+                                          META_KMS_CONNECTOR_N_PROPS);
 
   if (!drm_connector)
     {
       if (current_state)
-        changes = META_KMS_UPDATE_CHANGE_FULL;
+        changes = META_KMS_RESOURCE_CHANGE_FULL;
       goto out;
     }
 
@@ -681,7 +700,7 @@ meta_kms_connector_read_state (MetaKmsConnector  *connector,
       if (drm_connector->connection != connector->connection)
         {
           connector->connection = drm_connector->connection;
-          changes |= META_KMS_UPDATE_CHANGE_FULL;
+          changes |= META_KMS_RESOURCE_CHANGE_FULL;
         }
 
       goto out;
@@ -705,17 +724,17 @@ meta_kms_connector_read_state (MetaKmsConnector  *connector,
   if (drm_connector->connection != connector->connection)
     {
       connector->connection = drm_connector->connection;
-      changes |= META_KMS_UPDATE_CHANGE_FULL;
+      changes |= META_KMS_RESOURCE_CHANGE_FULL;
     }
 
   if (!current_state)
-    connector_changes = META_KMS_UPDATE_CHANGE_FULL;
+    connector_changes = META_KMS_RESOURCE_CHANGE_FULL;
   else
     connector_changes = meta_kms_connector_state_changes (current_state, state);
 
   changes |= connector_changes;
 
-  if (!(changes & META_KMS_UPDATE_CHANGE_FULL))
+  if (!(changes & META_KMS_RESOURCE_CHANGE_FULL))
     {
       meta_kms_connector_update_state_changes (connector,
                                                connector_changes,
@@ -733,13 +752,13 @@ out:
   return changes;
 }
 
-MetaKmsUpdateChanges
+MetaKmsResourceChanges
 meta_kms_connector_update_state (MetaKmsConnector *connector,
                                  drmModeRes       *drm_resources)
 {
   MetaKmsImplDevice *impl_device;
   drmModeConnector *drm_connector;
-  MetaKmsUpdateChanges changes;
+  MetaKmsResourceChanges changes;
 
   impl_device = meta_kms_device_get_impl_device (connector->device);
   drm_connector = drmModeGetConnector (meta_kms_impl_device_get_fd (impl_device),
@@ -765,7 +784,7 @@ meta_kms_connector_disable (MetaKmsConnector *connector)
   current_state->current_crtc_id = 0;
 }
 
-void
+MetaKmsResourceChanges
 meta_kms_connector_predict_state (MetaKmsConnector *connector,
                                   MetaKmsUpdate    *update)
 {
@@ -773,10 +792,11 @@ meta_kms_connector_predict_state (MetaKmsConnector *connector,
   MetaKmsConnectorState *current_state;
   GList *mode_sets;
   GList *l;
+  MetaKmsResourceChanges changes = META_KMS_RESOURCE_CHANGE_NONE;
 
   current_state = connector->current_state;
   if (!current_state)
-    return;
+    return META_KMS_RESOURCE_CHANGE_NONE;
 
   mode_sets = meta_kms_update_get_mode_sets (update);
   for (l = mode_sets; l; l = l->next)
@@ -819,11 +839,19 @@ meta_kms_connector_predict_state (MetaKmsConnector *connector,
             {
               if (connector_update->privacy_screen.is_enabled)
                 {
+                  if (current_state->privacy_screen_state !=
+                      META_PRIVACY_SCREEN_ENABLED)
+                    changes |= META_KMS_RESOURCE_CHANGE_PRIVACY_SCREEN;
+
                   current_state->privacy_screen_state =
                     META_PRIVACY_SCREEN_ENABLED;
                 }
               else
                 {
+                  if (current_state->privacy_screen_state !=
+                      META_PRIVACY_SCREEN_DISABLED)
+                    changes |= META_KMS_RESOURCE_CHANGE_PRIVACY_SCREEN;
+
                   current_state->privacy_screen_state =
                     META_PRIVACY_SCREEN_DISABLED;
                 }
@@ -833,6 +861,8 @@ meta_kms_connector_predict_state (MetaKmsConnector *connector,
 
   impl_device = meta_kms_device_get_impl_device (connector->device);
   sync_fd_held (connector, impl_device);
+
+  return changes;
 }
 
 static void
@@ -853,11 +883,16 @@ init_properties (MetaKmsConnector  *connector,
         {
           .name = "DPMS",
           .type = DRM_MODE_PROP_ENUM,
+          .enum_values = prop_table->dpms_enum,
+          .num_enum_values = META_KMS_CONNECTOR_DPMS_N_PROPS,
         },
       [META_KMS_CONNECTOR_PROP_UNDERSCAN] =
         {
           .name = "underscan",
           .type = DRM_MODE_PROP_ENUM,
+          .enum_values = prop_table->underscan_enum,
+          .num_enum_values = META_KMS_CONNECTOR_UNDERSCAN_N_PROPS,
+          .default_value = META_KMS_CONNECTOR_UNDERSCAN_UNKNOWN,
         },
       [META_KMS_CONNECTOR_PROP_UNDERSCAN_HBORDER] =
         {
@@ -873,22 +908,175 @@ init_properties (MetaKmsConnector  *connector,
         {
           .name = "privacy-screen sw-state",
           .type = DRM_MODE_PROP_ENUM,
+          .enum_values = prop_table->privacy_screen_sw_enum,
+          .num_enum_values = META_KMS_CONNECTOR_PRIVACY_SCREEN_N_PROPS,
+          .default_value = META_KMS_CONNECTOR_PRIVACY_SCREEN_UNKNOWN,
         },
       [META_KMS_CONNECTOR_PROP_PRIVACY_SCREEN_HW_STATE] =
         {
           .name = "privacy-screen hw-state",
           .type = DRM_MODE_PROP_ENUM,
+          .enum_values = prop_table->privacy_screen_hw_enum,
+          .num_enum_values = META_KMS_CONNECTOR_PRIVACY_SCREEN_N_PROPS,
+          .default_value = META_KMS_CONNECTOR_PRIVACY_SCREEN_UNKNOWN,
+        },
+      [META_KMS_CONNECTOR_PROP_EDID] =
+        {
+          .name = "EDID",
+          .type = DRM_MODE_PROP_BLOB,
+        },
+      [META_KMS_CONNECTOR_PROP_TILE] =
+        {
+          .name = "TILE",
+          .type = DRM_MODE_PROP_BLOB,
+        },
+      [META_KMS_CONNECTOR_PROP_SUGGESTED_X] =
+        {
+          .name = "suggested X",
+          .type = DRM_MODE_PROP_RANGE,
+        },
+      [META_KMS_CONNECTOR_PROP_SUGGESTED_Y] =
+        {
+          .name = "suggested Y",
+          .type = DRM_MODE_PROP_RANGE,
+        },
+      [META_KMS_CONNECTOR_PROP_HOTPLUG_MODE_UPDATE] =
+        {
+          .name = "hotplug_mode_update",
+          .type = DRM_MODE_PROP_RANGE,
+        },
+      [META_KMS_CONNECTOR_PROP_SCALING_MODE] =
+        {
+          .name = "scaling mode",
+          .type = DRM_MODE_PROP_ENUM,
+          .enum_values = prop_table->scaling_mode_enum,
+          .num_enum_values = META_KMS_CONNECTOR_SCALING_MODE_N_PROPS,
+          .default_value = META_KMS_CONNECTOR_SCALING_MODE_UNKNOWN,
+        },
+      [META_KMS_CONNECTOR_PROP_PANEL_ORIENTATION] =
+        {
+          .name = "panel orientation",
+          .type = DRM_MODE_PROP_ENUM,
+          .enum_values = prop_table->panel_orientation_enum,
+          .num_enum_values = META_KMS_CONNECTOR_PANEL_ORIENTATION_N_PROPS,
+          .default_value = META_KMS_CONNECTOR_PANEL_ORIENTATION_UNKNOWN,
+        },
+      [META_KMS_CONNECTOR_PROP_NON_DESKTOP] =
+        {
+          .name = "non-desktop",
+          .type = DRM_MODE_PROP_RANGE,
+        },
+      [META_KMS_CONNECTOR_PROP_MAX_BPC] =
+        {
+          .name = "max bpc",
+          .type = DRM_MODE_PROP_RANGE,
+        },
+    },
+    .dpms_enum = {
+      [META_KMS_CONNECTOR_DPMS_ON] =
+        {
+          .name = "On",
+        },
+      [META_KMS_CONNECTOR_DPMS_STANDBY] =
+        {
+          .name = "Standby",
+        },
+      [META_KMS_CONNECTOR_DPMS_SUSPEND] =
+        {
+          .name = "Suspend",
+        },
+      [META_KMS_CONNECTOR_DPMS_OFF] =
+        {
+          .name = "Off",
+        },
+    },
+    .underscan_enum = {
+      [META_KMS_CONNECTOR_UNDERSCAN_OFF] =
+        {
+          .name = "off",
+        },
+      [META_KMS_CONNECTOR_UNDERSCAN_ON] =
+        {
+          .name = "on",
+        },
+      [META_KMS_CONNECTOR_UNDERSCAN_AUTO] =
+        {
+          .name = "auto",
+        },
+    },
+    .privacy_screen_sw_enum = {
+      [META_KMS_CONNECTOR_PRIVACY_SCREEN_ENABLED] =
+        {
+          .name = "Enabled",
+        },
+      [META_KMS_CONNECTOR_PRIVACY_SCREEN_DISABLED] =
+        {
+          .name = "Disabled",
+        },
+      [META_KMS_CONNECTOR_PRIVACY_SCREEN_ENABLED_LOCKED] =
+        {
+          .name = "Enabled-locked",
+        },
+      [META_KMS_CONNECTOR_PRIVACY_SCREEN_DISABLED_LOCKED] =
+        {
+          .name = "Disabled-locked",
+        },
+    },
+    .privacy_screen_hw_enum = {
+      [META_KMS_CONNECTOR_PRIVACY_SCREEN_ENABLED] =
+        {
+          .name = "Enabled",
+        },
+      [META_KMS_CONNECTOR_PRIVACY_SCREEN_DISABLED] =
+        {
+          .name = "Disabled",
+        },
+      [META_KMS_CONNECTOR_PRIVACY_SCREEN_ENABLED_LOCKED] =
+        {
+          .name = "Enabled-locked",
+        },
+      [META_KMS_CONNECTOR_PRIVACY_SCREEN_DISABLED_LOCKED] =
+        {
+          .name = "Disabled-locked",
+        },
+    },
+    .scaling_mode_enum = {
+      [META_KMS_CONNECTOR_SCALING_MODE_NONE] =
+        {
+          .name = "None",
+        },
+      [META_KMS_CONNECTOR_SCALING_MODE_FULL] =
+        {
+          .name = "Full",
+        },
+      [META_KMS_CONNECTOR_SCALING_MODE_CENTER] =
+        {
+          .name = "Center",
+        },
+      [META_KMS_CONNECTOR_SCALING_MODE_FULL_ASPECT] =
+        {
+          .name = "Full aspect",
+        },
+    },
+    .panel_orientation_enum = {
+      [META_KMS_CONNECTOR_PANEL_ORIENTATION_NORMAL] =
+        {
+          .name = "Normal",
+        },
+      [META_KMS_CONNECTOR_PANEL_ORIENTATION_UPSIDE_DOWN] =
+        {
+          .name = "Upside Down",
+        },
+      [META_KMS_CONNECTOR_PANEL_ORIENTATION_LEFT_SIDE_UP] =
+        {
+          .name = "Left Side Up",
+        },
+      [META_KMS_CONNECTOR_PANEL_ORIENTATION_RIGHT_SIDE_UP] =
+        {
+          .name = "Right Side Up",
         },
     }
   };
-
-  meta_kms_impl_device_init_prop_table (impl_device,
-                                        drm_connector->props,
-                                        drm_connector->prop_values,
-                                        drm_connector->count_props,
-                                        connector->prop_table.props,
-                                        META_KMS_CONNECTOR_N_PROPS,
-                                        NULL);
 }
 
 static char *

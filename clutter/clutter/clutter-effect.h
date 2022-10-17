@@ -44,14 +44,6 @@ G_BEGIN_DECLS
 
 typedef struct _ClutterEffectClass      ClutterEffectClass;
 
-/**
- * ClutterEffect:
- *
- * The #ClutterEffect structure contains only private data and should
- * be accessed using the provided API
- *
- * Since: 1.4
- */
 struct _ClutterEffect
 {
   /*< private >*/
@@ -67,8 +59,6 @@ struct _ClutterEffect
  * @pick: virtual function
  *
  * The #ClutterEffectClass structure contains only private data
- *
- * Since: 1.4
  */
 struct _ClutterEffectClass
 {

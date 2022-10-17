@@ -23,10 +23,9 @@
  */
 
 /**
- * SECTION:clutter-canvas
- * @Title: ClutterCanvas
- * @Short_Description: Content for 2D painting
- * @See_Also: #ClutterContent
+ * ClutterCanvas:
+ * 
+ * Content for 2D painting
  *
  * The #ClutterCanvas class is a #ClutterContent implementation that allows
  * drawing using the Cairo API on a 2D surface.
@@ -37,9 +36,7 @@
  * signal when invalidated using clutter_content_invalidate().
  *
  * See [canvas.c](https://git.gnome.org/browse/clutter/tree/examples/canvas.c?h=clutter-1.18)
- * for an example of how to use #ClutterCanvas.
- *
- * #ClutterCanvas is available since Clutter 1.10.
+ * for an example of how to use #ClutterCanvas..
  */
 
 #include "clutter-build-config.h"
@@ -235,8 +232,6 @@ clutter_canvas_class_init (ClutterCanvasClass *klass)
    * ClutterCanvas:width:
    *
    * The width of the canvas.
-   *
-   * Since: 1.10
    */
   obj_props[PROP_WIDTH] =
     g_param_spec_int ("width",
@@ -251,8 +246,6 @@ clutter_canvas_class_init (ClutterCanvasClass *klass)
    * ClutterCanvas:height:
    *
    * The height of the canvas.
-   *
-   * Since: 1.10
    */
   obj_props[PROP_HEIGHT] =
     g_param_spec_int ("height",
@@ -293,8 +286,6 @@ clutter_canvas_class_init (ClutterCanvasClass *klass)
    *
    * Return value: %TRUE if the signal emission should stop, and
    *   %FALSE otherwise
-   *
-   * Since: 1.10
    */
   canvas_signals[DRAW] =
     g_signal_new (I_("draw"),
@@ -342,9 +333,7 @@ clutter_canvas_paint_content (ClutterContent      *content,
     g_clear_pointer (&priv->texture, cogl_object_unref);
 
   if (priv->texture == NULL)
-    priv->texture = cogl_texture_new_from_bitmap (priv->buffer,
-                                                  COGL_TEXTURE_NO_SLICING,
-                                                  CLUTTER_CAIRO_FORMAT_ARGB32);
+    priv->texture = COGL_TEXTURE (cogl_texture_2d_new_from_bitmap (priv->buffer));
 
   if (priv->texture == NULL)
     return;
@@ -513,8 +502,6 @@ clutter_content_iface_init (ClutterContentInterface *iface)
  *
  * Return value: (transfer full): The newly allocated instance of
  *   #ClutterCanvas. Use g_object_unref() when done.
- *
- * Since: 1.10
  */
 ClutterContent *
 clutter_canvas_new (void)
@@ -577,15 +564,13 @@ clutter_canvas_invalidate_internal (ClutterCanvas *canvas,
  * the size, you can use the return value of the function to conditionally
  * call clutter_content_invalidate():
  *
- * |[
+ * ```c
  *   if (!clutter_canvas_set_size (canvas, width, height))
  *     clutter_content_invalidate (CLUTTER_CONTENT (canvas));
- * ]|
+ * ```
  *
  * Return value: this function returns %TRUE if the size change
  *   caused a content invalidation, and %FALSE otherwise
- *
- * Since: 1.10
  */
 gboolean
 clutter_canvas_set_size (ClutterCanvas *canvas,

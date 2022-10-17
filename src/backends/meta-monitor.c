@@ -194,13 +194,20 @@ meta_monitor_generate_spec (MetaMonitor *monitor)
   const MetaOutputInfo *output_info =
     meta_monitor_get_main_output_info (monitor);
   MetaMonitorSpec *monitor_spec;
+  const char *vendor;
+  const char *product;
+  const char *serial;
+
+  vendor = output_info->vendor;
+  product = output_info->product;
+  serial = output_info->serial;
 
   monitor_spec = g_new0 (MetaMonitorSpec, 1);
   *monitor_spec = (MetaMonitorSpec) {
     .connector = g_strdup (output_info->name),
-    .vendor = g_strdup (output_info->vendor),
-    .product = g_strdup (output_info->product),
-    .serial = g_strdup (output_info->serial),
+    .vendor = g_strdup (vendor ? vendor : "unknown"),
+    .product = g_strdup (product ? product : "unknown"),
+    .serial = g_strdup (serial ? serial : "unknown"),
   };
 
   priv->spec = monitor_spec;
@@ -230,9 +237,9 @@ diagonal_to_str (double d)
 }
 
 static char *
-meta_monitor_make_display_name (MetaMonitor        *monitor,
-                                MetaMonitorManager *monitor_manager)
+meta_monitor_make_display_name (MetaMonitor *monitor)
 {
+  MetaBackend *backend = meta_monitor_get_backend (monitor);
   g_autofree char *inches = NULL;
   g_autofree char *vendor_name = NULL;
   const char *vendor = NULL;
@@ -260,11 +267,9 @@ meta_monitor_make_display_name (MetaMonitor        *monitor,
     }
 
   vendor = meta_monitor_get_vendor (monitor);
-
-  if (g_strcmp0 (vendor, "unknown") != 0)
+  if (vendor)
     {
-      vendor_name = meta_monitor_manager_get_vendor_name (monitor_manager,
-                                                          vendor);
+      vendor_name = meta_backend_get_vendor_name (backend, vendor);
 
       if (!vendor_name)
         vendor_name = g_strdup (vendor);
@@ -349,6 +354,15 @@ meta_monitor_supports_underscanning (MetaMonitor *monitor)
 }
 
 gboolean
+meta_monitor_supports_color_transform (MetaMonitor *monitor)
+{
+  const MetaOutputInfo *output_info =
+    meta_monitor_get_main_output_info (monitor);
+
+  return output_info->supports_color_transform;
+}
+
+gboolean
 meta_monitor_is_underscanning (MetaMonitor *monitor)
 {
   MetaOutput *output;
@@ -356,6 +370,17 @@ meta_monitor_is_underscanning (MetaMonitor *monitor)
   output = meta_monitor_get_main_output (monitor);
 
   return meta_output_is_underscanning (output);
+}
+
+gboolean
+meta_monitor_get_max_bpc (MetaMonitor  *monitor,
+                          unsigned int *max_bpc)
+{
+  MetaOutput *output;
+
+  output = meta_monitor_get_main_output (monitor);
+
+  return meta_output_get_max_bpc (output, max_bpc);
 }
 
 gboolean
@@ -376,15 +401,45 @@ meta_monitor_is_laptop_panel (MetaMonitor *monitor)
 }
 
 gboolean
+meta_monitor_is_virtual (MetaMonitor *monitor)
+{
+  const MetaOutputInfo *output_info =
+    meta_monitor_get_main_output_info (monitor);
+
+  return output_info->is_virtual;
+}
+
+gboolean
 meta_monitor_is_same_as (MetaMonitor *monitor,
                          MetaMonitor *other_monitor)
 {
-  MetaMonitorPrivate *priv =
-    meta_monitor_get_instance_private (monitor);
-  MetaMonitorPrivate *other_priv =
-    meta_monitor_get_instance_private (other_monitor);
+  const MetaMonitorSpec *spec = meta_monitor_get_spec (monitor);
+  const MetaMonitorSpec *other_spec = meta_monitor_get_spec (other_monitor);
 
-  return priv->winsys_id == other_priv->winsys_id;
+  if ((g_strcmp0 (spec->vendor, "unknown") == 0 ||
+       g_strcmp0 (spec->product, "unknown") == 0 ||
+       g_strcmp0 (spec->serial, "unknown") == 0) &&
+      (g_strcmp0 (other_spec->vendor, "unknown") == 0 ||
+       g_strcmp0 (other_spec->product, "unknown") == 0 ||
+       g_strcmp0 (other_spec->serial, "unknown") == 0))
+    {
+      MetaMonitorPrivate *priv = meta_monitor_get_instance_private (monitor);
+      MetaMonitorPrivate *other_priv =
+        meta_monitor_get_instance_private (other_monitor);
+
+      return priv->winsys_id == other_priv->winsys_id;
+    }
+
+  if (g_strcmp0 (spec->vendor, other_spec->vendor) != 0)
+    return FALSE;
+
+  if (g_strcmp0 (spec->product, other_spec->product) != 0)
+    return FALSE;
+
+  if (g_strcmp0 (spec->serial, other_spec->serial) != 0)
+    return FALSE;
+
+  return TRUE;
 }
 
 void
@@ -460,6 +515,24 @@ meta_monitor_get_serial (MetaMonitor *monitor)
     meta_monitor_get_main_output_info (monitor);
 
   return output_info->serial;
+}
+
+const MetaEdidInfo *
+meta_monitor_get_edid_info (MetaMonitor *monitor)
+{
+  const MetaOutputInfo *output_info =
+    meta_monitor_get_main_output_info (monitor);
+
+  return output_info->edid_info;
+}
+
+const char *
+meta_monitor_get_edid_checksum_md5 (MetaMonitor *monitor)
+{
+  const MetaOutputInfo *output_info =
+    meta_monitor_get_main_output_info (monitor);
+
+  return output_info->edid_checksum_md5;
 }
 
 MetaConnectorType
@@ -540,17 +613,14 @@ static char *
 generate_mode_id (MetaMonitorModeSpec *monitor_mode_spec)
 {
   gboolean is_interlaced;
-  char refresh_rate_str[G_ASCII_DTOSTR_BUF_SIZE];
 
   is_interlaced = !!(monitor_mode_spec->flags & META_CRTC_MODE_FLAG_INTERLACE);
-  g_ascii_dtostr (refresh_rate_str, G_ASCII_DTOSTR_BUF_SIZE,
-                  monitor_mode_spec->refresh_rate);
 
-  return g_strdup_printf ("%dx%d%s@%s",
+  return g_strdup_printf ("%dx%d%s@%.3f",
                           monitor_mode_spec->width,
                           monitor_mode_spec->height,
                           is_interlaced ? "i" : "",
-                          refresh_rate_str);
+                          monitor_mode_spec->refresh_rate);
 }
 
 static gboolean
@@ -599,6 +669,67 @@ meta_monitor_create_spec (MetaMonitor  *monitor,
     .refresh_rate = crtc_mode_info->refresh_rate,
     .flags = crtc_mode_info->flags & HANDLED_CRTC_MODE_FLAGS
   };
+}
+
+/**
+ * meta_monitor_get_gamma_lut_size:
+ * @monitor: The MetaMonitor instance to retrieve the size from.
+ *
+ * Get the size of the look-up tables (LUTs) for the monitor.
+ *
+ * Retrieve the size of the LUT used to implement the encoding or decoding
+ * transfer functions ("gamma", "degamma") for the CRTC or CRTCs that backs
+ * this monitor.
+ *
+ * Returns: The number of look-up table entries possible for the monitor. It is
+ *   assumed that each CRTC of a monitor has identical gamma LUT sizes.
+ */
+size_t
+meta_monitor_get_gamma_lut_size (MetaMonitor *monitor)
+{
+  MetaOutput *output;
+  MetaCrtc *crtc;
+
+  output = meta_monitor_get_main_output (monitor);
+  crtc = meta_output_get_assigned_crtc (output);
+  return meta_crtc_get_gamma_lut_size (crtc);
+}
+
+static gboolean
+set_gamma_lut (MetaMonitor          *monitor,
+               MetaMonitorMode      *mode,
+               MetaMonitorCrtcMode  *monitor_crtc_mode,
+               gpointer              user_data,
+               GError              **error)
+{
+  const MetaGammaLut *lut = user_data;
+  MetaCrtc *crtc;
+
+  crtc = meta_output_get_assigned_crtc (monitor_crtc_mode->output);
+
+  meta_crtc_set_gamma_lut (crtc, lut);
+  return TRUE;
+}
+
+/**
+ * meta_monitor_set_gamma_lut:
+ *
+ * Set a new gamma look-up table (LUT) for the given monitor's CRTCs.
+ */
+void
+meta_monitor_set_gamma_lut (MetaMonitor        *monitor,
+                            const MetaGammaLut *lut)
+{
+  MetaMonitorMode *current_mode;
+
+  current_mode = meta_monitor_get_current_mode (monitor);
+  g_return_if_fail (current_mode);
+
+  meta_monitor_mode_foreach_crtc (monitor,
+                                  current_mode,
+                                  set_gamma_lut,
+                                  (gpointer) lut,
+                                  NULL);
 }
 
 static void
@@ -693,8 +824,7 @@ meta_monitor_normal_new (MetaMonitorManager *monitor_manager,
 
   meta_monitor_normal_generate_modes (monitor_normal);
 
-  monitor_priv->display_name = meta_monitor_make_display_name (monitor,
-                                                               monitor_manager);
+  monitor_priv->display_name = meta_monitor_make_display_name (monitor);
 
   return monitor_normal;
 }
@@ -1392,8 +1522,7 @@ meta_monitor_tiled_new (MetaMonitorManager *monitor_manager,
 
   meta_monitor_tiled_generate_modes (monitor_tiled);
 
-  monitor_priv->display_name = meta_monitor_make_display_name (monitor,
-                                                               monitor_manager);
+  monitor_priv->display_name = meta_monitor_make_display_name (monitor);
 
   return monitor_tiled;
 }
@@ -1540,6 +1669,24 @@ meta_monitor_get_mode_from_id (MetaMonitor *monitor,
   MetaMonitorPrivate *priv = meta_monitor_get_instance_private (monitor);
 
   return g_hash_table_lookup (priv->mode_ids, monitor_mode_id);
+}
+
+gboolean
+meta_monitor_mode_spec_has_similar_size (MetaMonitorModeSpec *monitor_mode_spec,
+                                         MetaMonitorModeSpec *other_monitor_mode_spec)
+{
+  const float target_ratio = 1.0;
+  /* The a size difference of 15% means e.g. 4K modes matches other 4K modes,
+   * FHD (2K) modes other FHD modes, and HD modes other HD modes, but not each
+   * other.
+   */
+  const float epsilon = 0.15;
+
+  return G_APPROX_VALUE (((float) monitor_mode_spec->width /
+                          other_monitor_mode_spec->width) *
+                         ((float) monitor_mode_spec->height /
+                          other_monitor_mode_spec->height),
+                         target_ratio, epsilon);
 }
 
 static gboolean

@@ -1,0 +1,23 @@
+From: Sebastian Wick <sebastian.wick@redhat.com>
+Date: Fri, 16 Sep 2022 15:43:46 +0200
+Subject: color-device: Always become ready no matter if we succeeded or not
+
+Part-of: <https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2627>
+(cherry picked from commit ed554615f80ab48a8ca904cc3367c64877e2acb6)
+---
+ src/backends/meta-color-device.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/backends/meta-color-device.c b/src/backends/meta-color-device.c
+index 519097f..2652737 100644
+--- a/src/backends/meta-color-device.c
++++ b/src/backends/meta-color-device.c
+@@ -342,7 +342,7 @@ static void
+ meta_color_device_notify_ready (MetaColorDevice *color_device,
+                                 gboolean         success)
+ {
+-  color_device->is_ready = success;
++  color_device->is_ready = TRUE;
+   g_signal_emit (color_device, signals[READY], 0, success);
+ }
+ 

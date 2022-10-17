@@ -54,13 +54,10 @@ void meta_barrier_emit_left_signal (MetaBarrier      *barrier,
 
 void meta_barrier_event_unref (MetaBarrierEvent *event);
 
-G_END_DECLS
+MetaBackend * meta_barrier_get_backend (MetaBarrier *barrier);
 
-struct _MetaBarrierPrivate
-{
-  MetaDisplay *display;
-  MetaBorder border;
-  MetaBarrierImpl *impl;
-};
+MetaBorder * meta_barrier_get_border (MetaBarrier *barrier);
+
+G_END_DECLS
 
 #endif /* META_BARRIER_PRIVATE_H */

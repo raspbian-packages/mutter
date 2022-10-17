@@ -84,6 +84,7 @@ struct _MetaWaylandPointer
   guint32 grab_button;
   guint32 grab_serial;
   guint32 grab_time;
+  GArray* grab_times;
   float grab_x, grab_y;
 
   ClutterInputDevice *device;

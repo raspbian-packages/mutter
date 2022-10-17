@@ -9,7 +9,7 @@ Applied-upstream: no
  1 file changed, 26 insertions(+), 6 deletions(-)
 
 diff --git a/src/ui/theme.c b/src/ui/theme.c
-index e84870f..c307113 100644
+index a4c8a0d..9d909d2 100644
 --- a/src/ui/theme.c
 +++ b/src/ui/theme.c
 @@ -860,14 +860,34 @@ meta_frame_layout_draw_with_style (MetaFrameLayout         *layout,

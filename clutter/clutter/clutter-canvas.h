@@ -44,15 +44,6 @@ typedef struct _ClutterCanvas           ClutterCanvas;
 typedef struct _ClutterCanvasPrivate    ClutterCanvasPrivate;
 typedef struct _ClutterCanvasClass      ClutterCanvasClass;
 
-/**
- * ClutterCanvas:
- *
- * The #ClutterCanvas structure contains
- * private data and should only be accessed using the provided
- * API.
- *
- * Since: 1.10
- */
 struct _ClutterCanvas
 {
   /*< private >*/
@@ -67,8 +58,6 @@ struct _ClutterCanvas
  *
  * The #ClutterCanvasClass structure contains
  * private data.
- *
- * Since: 1.10
  */
 struct _ClutterCanvasClass
 {

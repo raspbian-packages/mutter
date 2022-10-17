@@ -35,8 +35,6 @@
 
 #include <string.h>
 
-#include <test-fixtures/test-unit.h>
-
 #include "cogl-context-private.h"
 #include "cogl-pipeline-private.h"
 #include "driver/gl/cogl-util-gl-private.h"
@@ -51,7 +49,7 @@
 
 const CoglPipelineVertend _cogl_pipeline_glsl_vertend;
 
-typedef struct
+struct _CoglPipelineVertendShaderState
 {
   unsigned int ref_count;
 
@@ -59,33 +57,39 @@ typedef struct
   GString *header, *source;
 
   CoglPipelineCacheEntry *cache_entry;
-} CoglPipelineShaderState;
+};
 
 static CoglUserDataKey shader_state_key;
 
-static CoglPipelineShaderState *
+static CoglPipelineVertendShaderState *
 shader_state_new (CoglPipelineCacheEntry *cache_entry)
 {
-  CoglPipelineShaderState *shader_state;
+  CoglPipelineVertendShaderState *shader_state;
 
-  shader_state = g_new0 (CoglPipelineShaderState, 1);
+  shader_state = g_new0 (CoglPipelineVertendShaderState, 1);
   shader_state->ref_count = 1;
   shader_state->cache_entry = cache_entry;
 
   return shader_state;
 }
 
-static CoglPipelineShaderState *
+static CoglPipelineVertendShaderState *
 get_shader_state (CoglPipeline *pipeline)
 {
   return cogl_object_get_user_data (COGL_OBJECT (pipeline), &shader_state_key);
+}
+
+CoglPipelineVertendShaderState *
+cogl_pipeline_vertend_glsl_get_shader_state (CoglPipeline *pipeline)
+{
+  return get_shader_state (pipeline);
 }
 
 static void
 destroy_shader_state (void *user_data,
                       void *instance)
 {
-  CoglPipelineShaderState *shader_state = user_data;
+  CoglPipelineVertendShaderState *shader_state = user_data;
 
   _COGL_GET_CONTEXT (ctx, NO_RETVAL);
 
@@ -104,7 +108,7 @@ destroy_shader_state (void *user_data,
 
 static void
 set_shader_state (CoglPipeline *pipeline,
-                  CoglPipelineShaderState *shader_state)
+                  CoglPipelineVertendShaderState *shader_state)
 {
   if (shader_state)
     {
@@ -279,7 +283,7 @@ _cogl_glsl_shader_set_source_with_boilerplate (CoglContext *ctx,
 GLuint
 _cogl_pipeline_vertend_glsl_get_shader (CoglPipeline *pipeline)
 {
-  CoglPipelineShaderState *shader_state = get_shader_state (pipeline);
+  CoglPipelineVertendShaderState *shader_state = get_shader_state (pipeline);
 
   if (shader_state)
     return shader_state->gl_shader;
@@ -310,7 +314,7 @@ static gboolean
 add_layer_declaration_cb (CoglPipelineLayer *layer,
                           void *user_data)
 {
-  CoglPipelineShaderState *shader_state = user_data;
+  CoglPipelineVertendShaderState *shader_state = user_data;
 
   g_string_append_printf (shader_state->header,
                           "uniform sampler2D cogl_sampler%i;\n",
@@ -321,7 +325,7 @@ add_layer_declaration_cb (CoglPipelineLayer *layer,
 
 static void
 add_layer_declarations (CoglPipeline *pipeline,
-                        CoglPipelineShaderState *shader_state)
+                        CoglPipelineVertendShaderState *shader_state)
 {
   /* We always emit sampler uniforms in case there will be custom
    * layer snippets that want to sample arbitrary layers. */
@@ -333,7 +337,7 @@ add_layer_declarations (CoglPipeline *pipeline,
 
 static void
 add_global_declarations (CoglPipeline *pipeline,
-                         CoglPipelineShaderState *shader_state)
+                         CoglPipelineVertendShaderState *shader_state)
 {
   CoglSnippetHook hook = COGL_SNIPPET_HOOK_VERTEX_GLOBALS;
   CoglPipelineSnippetList *snippets = get_vertex_snippets (pipeline);
@@ -351,7 +355,7 @@ _cogl_pipeline_vertend_glsl_start (CoglPipeline *pipeline,
                                    int n_layers,
                                    unsigned long pipelines_difference)
 {
-  CoglPipelineShaderState *shader_state;
+  CoglPipelineVertendShaderState *shader_state;
   CoglPipelineCacheEntry *cache_entry = NULL;
   CoglProgram *user_program = cogl_pipeline_get_user_program (pipeline);
 
@@ -473,7 +477,7 @@ _cogl_pipeline_vertend_glsl_add_layer (CoglPipeline *pipeline,
                                        unsigned long layers_difference,
                                        CoglFramebuffer *framebuffer)
 {
-  CoglPipelineShaderState *shader_state;
+  CoglPipelineVertendShaderState *shader_state;
   CoglPipelineSnippetData snippet_data;
   int layer_index = layer->index;
 
@@ -544,7 +548,7 @@ static gboolean
 _cogl_pipeline_vertend_glsl_end (CoglPipeline *pipeline,
                                  unsigned long pipelines_difference)
 {
-  CoglPipelineShaderState *shader_state;
+  CoglPipelineVertendShaderState *shader_state;
 
   _COGL_GET_CONTEXT (ctx, FALSE);
 
@@ -712,7 +716,7 @@ _cogl_pipeline_vertend_glsl_layer_pre_change_notify (
                                                 CoglPipelineLayer *layer,
                                                 CoglPipelineLayerState change)
 {
-  CoglPipelineShaderState *shader_state;
+  CoglPipelineVertendShaderState *shader_state;
 
   shader_state = get_shader_state (owner);
   if (!shader_state)
@@ -737,58 +741,3 @@ const CoglPipelineVertend _cogl_pipeline_glsl_vertend =
     _cogl_pipeline_vertend_glsl_pre_change_notify,
     _cogl_pipeline_vertend_glsl_layer_pre_change_notify
   };
-
-UNIT_TEST (check_point_size_shader,
-           0 /* no requirements */,
-           0 /* no failure cases */)
-{
-  CoglPipeline *pipelines[4];
-  CoglPipelineShaderState *shader_states[G_N_ELEMENTS (pipelines)];
-  int i;
-
-  /* Default pipeline with zero point size */
-  pipelines[0] = cogl_pipeline_new (test_ctx);
-
-  /* Point size 1 */
-  pipelines[1] = cogl_pipeline_new (test_ctx);
-  cogl_pipeline_set_point_size (pipelines[1], 1.0f);
-
-  /* Point size 2 */
-  pipelines[2] = cogl_pipeline_new (test_ctx);
-  cogl_pipeline_set_point_size (pipelines[2], 2.0f);
-
-  /* Same as the first pipeline, but reached by restoring the old
-   * state from a copy */
-  pipelines[3] = cogl_pipeline_copy (pipelines[1]);
-  cogl_pipeline_set_point_size (pipelines[3], 0.0f);
-
-  /* Draw something with all of the pipelines to make sure their state
-   * is flushed */
-  for (i = 0; i < G_N_ELEMENTS (pipelines); i++)
-    cogl_framebuffer_draw_rectangle (test_fb,
-                                     pipelines[i],
-                                     0.0f, 0.0f,
-                                     10.0f, 10.0f);
-  cogl_framebuffer_finish (test_fb);
-
-  /* Get all of the shader states. These might be NULL if the driver
-   * is not using GLSL */
-  for (i = 0; i < G_N_ELEMENTS (pipelines); i++)
-    shader_states[i] = get_shader_state (pipelines[i]);
-
-  /* If the first two pipelines are using GLSL then they should have
-   * the same shader unless there is no builtin uniform for the point
-   * size */
-  if (shader_states[0])
-    {
-      g_assert (shader_states[0] != shader_states[1]);
-    }
-
-  /* The second and third pipelines should always have the same shader
-   * state because only toggling between zero and non-zero should
-   * change the shader */
-  g_assert (shader_states[1] == shader_states[2]);
-
-  /* The fourth pipeline should be exactly the same as the first */
-  g_assert (shader_states[0] == shader_states[3]);
-}

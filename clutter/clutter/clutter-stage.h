@@ -46,14 +46,6 @@ G_BEGIN_DECLS
 typedef struct _ClutterStageClass   ClutterStageClass;
 typedef struct _ClutterStagePrivate ClutterStagePrivate;
 
-/**
- * ClutterStage:
- *
- * The #ClutterStage structure contains only private data
- * and should be accessed using the provided API
- *
- * Since: 0.2
- */
 struct _ClutterStage
 {
   /*< private >*/
@@ -67,8 +59,6 @@ struct _ClutterStage
  * @deactivate: handler for the #ClutterStage::deactivate signal
  *
  * The #ClutterStageClass structure contains only private data
- *
- * Since: 0.2
  */
 
 struct _ClutterStageClass
@@ -104,8 +94,6 @@ struct _ClutterStageClass
  *   plane (always positive)
  *
  * Stage perspective definition.
- *
- * Since: 0.4
  */
 struct _ClutterPerspective
 {
@@ -179,10 +167,6 @@ CLUTTER_EXPORT
 void            clutter_stage_set_minimum_size                  (ClutterStage          *stage,
                                                                  guint                  width,
                                                                  guint                  height);
-CLUTTER_EXPORT
-void            clutter_stage_get_minimum_size                  (ClutterStage          *stage,
-                                                                 guint                 *width,
-                                                                 guint                 *height);
 CLUTTER_EXPORT
 void            clutter_stage_set_key_focus                     (ClutterStage          *stage,
                                                                  ClutterActor          *actor);

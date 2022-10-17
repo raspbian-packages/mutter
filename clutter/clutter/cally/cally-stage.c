@@ -21,18 +21,17 @@
  */
 
 /**
- * SECTION:cally-stage
- * @Title: CallyStage
- * @short_description: Implementation of the ATK interfaces for a #ClutterStage
- * @see_also: #ClutterStage
+ * CallyStage:
+ * 
+ * Implementation of the ATK interfaces for a #ClutterStage
  *
- * #CallyStage implements the required ATK interfaces for #ClutterStage
+ * #CallyStage implements the required ATK interfaces for [class@Clutter.Stage]
  *
  * Some implementation details: at this moment #CallyStage is used as
  * the most similar Window object in this toolkit (ie: emitting window
- * related signals), although the real purpose of #ClutterStage is
+ * related signals), although the real purpose of [class@Clutter.Stage] is
  * being a canvas. Anyway, this is required for applications using
- * just clutter, or directly #ClutterStage
+ * just clutter, or directly [class@Clutter.Stage]
  */
 #include "clutter-build-config.h"
 
@@ -93,11 +92,9 @@ cally_stage_init (CallyStage *cally_stage)
  * @actor: a #ClutterActor
  *
  * Creates a new #CallyStage for the given @actor. @actor should be a
- * #ClutterStage.
+ * [class@Clutter.Stage].
  *
  * Return value: the newly created #AtkObject
- *
- * Since: 1.4
  */
 AtkObject*
 cally_stage_new (ClutterActor *actor)

@@ -23,19 +23,18 @@
  */
 
 /**
- * SECTION:clutter-text
- * @short_description: An actor for displaying and editing text
+ * ClutterText:
+ * 
+ * An actor for displaying and editing text
  *
  * #ClutterText is an actor that displays custom text using Pango
  * as the text rendering engine.
  *
  * #ClutterText also allows inline editing of the text if the
- * actor is set editable using clutter_text_set_editable().
+ * actor is set editable using [method@Text.set_editable].
  *
  * Selection using keyboard or pointers can be enabled using
- * clutter_text_set_selectable().
- *
- * #ClutterText is available since Clutter 1.0
+ * [method@Text.set_selectable].
  */
 
 #include "clutter-build-config.h"
@@ -398,7 +397,8 @@ clutter_text_input_focus_commit_text (ClutterInputFocus *focus,
 static void
 clutter_text_input_focus_set_preedit_text (ClutterInputFocus *focus,
                                            const gchar       *preedit_text,
-                                           guint              cursor_pos)
+                                           unsigned int       cursor_pos,
+                                           unsigned int       anchor_pos)
 {
   ClutterText *clutter_text = CLUTTER_TEXT_INPUT_FOCUS (focus)->text;
 
@@ -1165,8 +1165,6 @@ maybe_create_text_layout_with_resource_scale (ClutterText *text,
  * Retrieves the position of the character at the given coordinates.
  *
  * Return: the position of the character
- *
- * Since: 1.10
  */
 gint
 clutter_text_coords_to_position (ClutterText *self,
@@ -1293,8 +1291,6 @@ clutter_text_position_to_coords_internal (ClutterText *self,
  * Retrieves the coordinates of the given @position.
  *
  * Return value: %TRUE if the conversion was successful
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_position_to_coords (ClutterText *self,
@@ -1398,8 +1394,6 @@ clutter_text_ensure_cursor_position (ClutterText *self,
  *
  * Return value: %TRUE if text was deleted or if the text actor
  *   is empty, and %FALSE otherwise
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_delete_selection (ClutterText *self)
@@ -3909,8 +3903,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * The buffer which stores the text for this #ClutterText.
    *
    * If set to %NULL, a default buffer will be created.
-   *
-   * Since: 1.8
    */
   pspec = g_param_spec_object ("buffer",
                                P_("Buffer"),
@@ -3924,11 +3916,9 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:font-name:
    *
    * The font to be used by the #ClutterText, as a string
-   * that can be parsed by pango_font_description_from_string().
+   * that can be parsed by [func@Pango.FontDescription.from_string].
    *
    * If set to %NULL, the default system font will be used instead.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_string ("font-name",
                                P_("Font Name"),
@@ -3941,12 +3931,10 @@ clutter_text_class_init (ClutterTextClass *klass)
   /**
    * ClutterText:font-description:
    *
-   * The #PangoFontDescription that should be used by the #ClutterText
+   * The [struct@Pango.FontDescription] that should be used by the #ClutterText
    *
    * If you have a string describing the font then you should look at
-   * #ClutterText:font-name instead
-   *
-   * Since: 1.2
+   * [property@Text:font-name] instead
    */
   pspec = g_param_spec_boxed ("font-description",
                               P_("Font Description"),
@@ -3962,8 +3950,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:text:
    *
    * The text to render inside the actor.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_string ("text",
                                P_("Text"),
@@ -3977,8 +3963,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:color:
    *
    * The color used to render the text.
-   *
-   * Since: 1.0
    */
   pspec = clutter_param_spec_color ("color",
                                     P_("Font Color"),
@@ -3993,8 +3977,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:editable:
    *
    * Whether key events delivered to the actor causes editing.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_boolean ("editable",
                                 P_("Editable"),
@@ -4010,10 +3992,8 @@ clutter_text_class_init (ClutterTextClass *klass)
    * Whether it is possible to select text, either using the pointer
    * or the keyboard.
    *
-   * This property depends on the #ClutterActor:reactive property being
+   * This property depends on the [property@Actor:reactive] property being
    * set to %TRUE.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_boolean ("selectable",
                                 P_("Selectable"),
@@ -4027,8 +4007,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:activatable:
    *
    * Toggles whether return invokes the activate signal or not.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_boolean ("activatable",
                                 P_("Activatable"),
@@ -4044,10 +4022,8 @@ clutter_text_class_init (ClutterTextClass *klass)
    * Whether the input cursor is visible or not.
    *
    * The cursor will only be visible if this property and either
-   * the #ClutterText:editable or the #ClutterText:selectable properties
+   * the [property@Text:editable] or the [property@Text:selectable] properties
    * are set to %TRUE.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_boolean ("cursor-visible",
                                 P_("Cursor Visible"),
@@ -4061,8 +4037,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:cursor-color:
    *
    * The color of the cursor.
-   *
-   * Since: 1.0
    */
   pspec = clutter_param_spec_color ("cursor-color",
                                     P_("Cursor Color"),
@@ -4076,9 +4050,7 @@ clutter_text_class_init (ClutterTextClass *klass)
   /**
    * ClutterText:cursor-color-set:
    *
-   * Will be set to %TRUE if #ClutterText:cursor-color has been set.
-   *
-   * Since: 1.0
+   * Will be set to %TRUE if [property@Text:cursor-color] has been set.
    */
   pspec = g_param_spec_boolean ("cursor-color-set",
                                 P_("Cursor Color Set"),
@@ -4093,8 +4065,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    *
    * The size of the cursor, in pixels. If set to -1 the size used will
    * be the default cursor size of 2 pixels.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_int ("cursor-size",
                             P_("Cursor Size"),
@@ -4109,9 +4079,7 @@ clutter_text_class_init (ClutterTextClass *klass)
    *
    * The current input cursor position. -1 is taken to be the end of the text
    *
-   * Since: 1.0
-   *
-   * Deprecated: 1.12: Use ClutterText:cursor-position instead.
+   * Deprecated: 1.12: Use [property@Text:cursor-position] instead.
    */
   pspec = g_param_spec_int ("position",
                             P_("Cursor Position"),
@@ -4128,8 +4096,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:cursor-position:
    *
    * The current input cursor position. -1 is taken to be the end of the text
-   *
-   * Since: 1.12
    */
   pspec = g_param_spec_int ("cursor-position",
                             P_("Cursor Position"),
@@ -4144,8 +4110,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:selection-bound:
    *
    * The current input cursor position. -1 is taken to be the end of the text
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_int ("selection-bound",
                             P_("Selection-bound"),
@@ -4160,8 +4124,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:selection-color:
    *
    * The color of the selection.
-   *
-   * Since: 1.0
    */
   pspec = clutter_param_spec_color ("selection-color",
                                     P_("Selection Color"),
@@ -4175,9 +4137,7 @@ clutter_text_class_init (ClutterTextClass *klass)
   /**
    * ClutterText:selection-color-set:
    *
-   * Will be set to %TRUE if #ClutterText:selection-color has been set.
-   *
-   * Since: 1.0
+   * Will be set to %TRUE if [property@Text:selection-color] has been set.
    */
   pspec = g_param_spec_boolean ("selection-color-set",
                                 P_("Selection Color Set"),
@@ -4190,10 +4150,8 @@ clutter_text_class_init (ClutterTextClass *klass)
   /**
    * ClutterText:attributes:
    *
-   * A list of #PangoStyleAttribute<!-- -->s to be applied to the
+   * A list of `PangoStyleAttribute`s to be applied to the
    * contents of the #ClutterText actor.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_boxed ("attributes",
                               P_("Attributes"),
@@ -4209,14 +4167,12 @@ clutter_text_class_init (ClutterTextClass *klass)
    * Whether the text includes Pango markup.
    *
    * For more information about the Pango markup format, see
-   * pango_layout_set_markup() in the Pango documentation.
+   * [method@Pango.Layout.set_markup] in the Pango documentation.
    *
    * It is not possible to round-trip this property between
    * %TRUE and %FALSE. Once a string with markup has been set on
-   * a #ClutterText actor with :use-markup set to %TRUE, the markup
+   * a #ClutterText actor with [property@Text:use-markup] set to %TRUE, the markup
    * is stripped from the string.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_boolean ("use-markup",
                                 P_("Use markup"),
@@ -4229,11 +4185,9 @@ clutter_text_class_init (ClutterTextClass *klass)
   /**
    * ClutterText:line-wrap:
    *
-   * Whether to wrap the lines of #ClutterText:text if the contents
+   * Whether to wrap the lines of [property@Text:text] if the contents
    * exceed the available allocation. The wrapping strategy is
-   * controlled by the #ClutterText:line-wrap-mode property.
-   *
-   * Since: 1.0
+   * controlled by the [property@Text:line-wrap-mode] property.
    */
   pspec = g_param_spec_boolean ("line-wrap",
                                 P_("Line wrap"),
@@ -4246,10 +4200,8 @@ clutter_text_class_init (ClutterTextClass *klass)
   /**
    * ClutterText:line-wrap-mode:
    *
-   * If #ClutterText:line-wrap is set to %TRUE, this property will
+   * If [property@Text:line-wrap] is set to %TRUE, this property will
    * control how the text is wrapped.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_enum ("line-wrap-mode",
                              P_("Line wrap mode"),
@@ -4264,8 +4216,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:ellipsize:
    *
    * The preferred place to ellipsize the contents of the #ClutterText actor
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_enum ("ellipsize",
                              P_("Ellipsize"),
@@ -4281,8 +4231,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    *
    * The preferred alignment for the text. This property controls
    * the alignment of multi-line paragraphs.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_enum ("line-alignment",
                              P_("Line Alignment"),
@@ -4298,8 +4246,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    *
    * Whether the contents of the #ClutterText should be justified
    * on both margins.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_boolean ("justify",
                                 P_("Justify"),
@@ -4314,8 +4260,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    *
    * If non-zero, the character that should be used in place of
    * the actual text in a password text actor.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_unichar ("password-char",
                                 P_("Password Character"),
@@ -4329,8 +4273,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:max-length:
    *
    * The maximum length of the contents of the #ClutterText actor.
-   *
-   * Since: 1.0
    */
   pspec = g_param_spec_int ("max-length",
                             P_("Max Length"),
@@ -4348,13 +4290,11 @@ clutter_text_class_init (ClutterTextClass *klass)
    * single line of text, scrolling it in case its length is bigger
    * than the allocated size.
    *
-   * Setting this property will also set the #ClutterText:activatable
+   * Setting this property will also set the [property@Text:activatable]
    * property as a side-effect.
    *
-   * The #ClutterText:single-line-mode property is used only if the
-   * #ClutterText:editable property is set to %TRUE.
-   *
-   * Since: 1.0
+   * The [property@Text:single-line-mode] property is used only if the
+   * [property@Text:editable] property is set to %TRUE.
    */
   pspec = g_param_spec_boolean ("single-line-mode",
                                 P_("Single Line Mode"),
@@ -4368,8 +4308,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText:selected-text-color:
    *
    * The color of selected text.
-   *
-   * Since: 1.8
    */
   pspec = clutter_param_spec_color ("selected-text-color",
                                     P_("Selected Text Color"),
@@ -4383,9 +4321,7 @@ clutter_text_class_init (ClutterTextClass *klass)
   /**
    * ClutterText:selected-text-color-set:
    *
-   * Will be set to %TRUE if #ClutterText:selected-text-color has been set.
-   *
-   * Since: 1.8
+   * Will be set to %TRUE if [property@Text:selected-text-color] has been set.
    */
   pspec = g_param_spec_boolean ("selected-text-color-set",
                                 P_("Selected Text Color Set"),
@@ -4415,9 +4351,7 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText::text-changed:
    * @self: the #ClutterText that emitted the signal
    *
-   * The ::text-changed signal is emitted after @actor's text changes
-   *
-   * Since: 1.0
+   * The signal is emitted after @actor's text changes
    */
   text_signals[TEXT_CHANGED] =
     g_signal_new (I_("text-changed"),
@@ -4440,8 +4374,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    *
    * This signal is emitted when text is inserted into the actor by
    * the user. It is emitted before @self text changes.
-   *
-   * Since: 1.2
    */
   text_signals[INSERT_TEXT] =
     g_signal_new (I_("insert-text"),
@@ -4463,8 +4395,6 @@ clutter_text_class_init (ClutterTextClass *klass)
    *
    * This signal is emitted when text is deleted from the actor by
    * the user. It is emitted before @self text changes.
-   *
-   * Since: 1.2
    */
   text_signals[DELETE_TEXT] =
     g_signal_new (I_("delete-text"),
@@ -4482,14 +4412,12 @@ clutter_text_class_init (ClutterTextClass *klass)
    * @self: the #ClutterText that emitted the signal
    * @rect: the coordinates of the cursor
    *
-   * The ::cursor-event signal is emitted whenever the cursor position
+   * The signal is emitted whenever the cursor position
    * changes inside a #ClutterText actor. Inside @rect it is stored
    * the current position and size of the cursor, relative to the actor
    * itself.
    *
-   * Since: 1.0
-   *
-   * Deprecated: 1.16: Use the #ClutterText::cursor-changed signal instead
+   * Deprecated: 1.16: Use the [signal@Text::cursor-changed] signal instead
    */
   text_signals[CURSOR_EVENT] =
     g_signal_new (I_("cursor-event"),
@@ -4504,10 +4432,8 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText::cursor-changed:
    * @self: the #ClutterText that emitted the signal
    *
-   * The ::cursor-changed signal is emitted whenever the cursor
+   * The signal is emitted whenever the cursor
    * position or size changes.
-   *
-   * Since: 1.16
    */
   text_signals[CURSOR_CHANGED] =
     g_signal_new (I_("cursor-changed"),
@@ -4521,11 +4447,9 @@ clutter_text_class_init (ClutterTextClass *klass)
    * ClutterText::activate:
    * @self: the #ClutterText that emitted the signal
    *
-   * The ::activate signal is emitted each time the actor is 'activated'
+   * The signal is emitted each time the actor is 'activated'
    * by the user, normally by pressing the 'Enter' key. The signal is
-   * emitted only if #ClutterText:activatable is set to %TRUE.
-   *
-   * Since: 1.0
+   * emitted only if [property@Text:activatable] is set to %TRUE.
    */
   text_signals[ACTIVATE] =
     g_signal_new (I_("activate"),
@@ -4718,8 +4642,6 @@ clutter_text_init (ClutterText *self)
  * display and edit text.
  *
  * Return value: the newly created #ClutterText actor
- *
- * Since: 1.0
  */
 ClutterActor *
 clutter_text_new (void)
@@ -4737,13 +4659,11 @@ clutter_text_new (void)
  * description; @text will be used to set the contents of the actor;
  * and @color will be used as the color to render @text.
  *
- * This function is equivalent to calling clutter_text_new(),
- * clutter_text_set_font_name(), clutter_text_set_text() and
- * clutter_text_set_color().
+ * This function is equivalent to calling [ctor@Text.new],
+ * [method@Text.set_font_name], [method@Text.set_text] and
+ * [method@Text.set_color].
  *
  * Return value: the newly created #ClutterText actor
- *
- * Since: 1.0
  */
 ClutterActor *
 clutter_text_new_full (const gchar        *font_name,
@@ -4765,12 +4685,10 @@ clutter_text_new_full (const gchar        *font_name,
  * Creates a new #ClutterText actor, using @font_name as the font
  * description; @text will be used to set the contents of the actor.
  *
- * This function is equivalent to calling clutter_text_new(),
- * clutter_text_set_font_name(), and clutter_text_set_text().
+ * This function is equivalent to calling [ctor@Text.new],
+ * [method@Text.set_font_name], and [method@Text.set_text].
  *
  * Return value: the newly created #ClutterText actor
- *
- * Since: 1.0
  */
 ClutterActor *
 clutter_text_new_with_text (const gchar *font_name,
@@ -4931,8 +4849,6 @@ buffer_disconnect_signals (ClutterText *self)
  * Creates a new entry with the specified text buffer.
  *
  * Return value: a new #ClutterText
- *
- * Since: 1.10
  */
 ClutterActor *
 clutter_text_new_with_buffer (ClutterTextBuffer *buffer)
@@ -4949,8 +4865,6 @@ clutter_text_new_with_buffer (ClutterTextBuffer *buffer)
  * this widget.
  *
  * Returns: (transfer none): A #GtkEntryBuffer object.
- *
- * Since: 1.10
  */
 ClutterTextBuffer*
 clutter_text_get_buffer (ClutterText *self)
@@ -4965,10 +4879,8 @@ clutter_text_get_buffer (ClutterText *self)
  * @self: a #ClutterText
  * @buffer: a #ClutterTextBuffer
  *
- * Set the #ClutterTextBuffer object which holds the text for
+ * Set the [class@TextBuffer] object which holds the text for
  * this widget.
- *
- * Since: 1.10
  */
 void
 clutter_text_set_buffer (ClutterText       *self,
@@ -5014,10 +4926,8 @@ clutter_text_set_buffer (ClutterText       *self,
  * Sets whether the #ClutterText actor should be editable.
  *
  * An editable #ClutterText with key focus set using
- * clutter_actor_grab_key_focus() or clutter_stage_set_key_focus()
+ * [method@Actor.grab_key_focus] or [method@Stage.set_key_focus]
  * will receive key events and will update its contents accordingly.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_editable (ClutterText *self,
@@ -5056,8 +4966,6 @@ clutter_text_set_editable (ClutterText *self,
  * Retrieves whether a #ClutterText is editable or not.
  *
  * Return value: %TRUE if the actor is editable
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_get_editable (ClutterText *self)
@@ -5076,8 +4984,6 @@ clutter_text_get_editable (ClutterText *self)
  *
  * A selectable #ClutterText will allow selecting its contents using
  * the pointer or the keyboard.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_selectable (ClutterText *self,
@@ -5106,8 +5012,6 @@ clutter_text_set_selectable (ClutterText *self,
  * Retrieves whether a #ClutterText is selectable or not.
  *
  * Return value: %TRUE if the actor is selectable
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_get_selectable (ClutterText *self)
@@ -5124,14 +5028,12 @@ clutter_text_get_selectable (ClutterText *self)
  *
  * Sets whether a #ClutterText actor should be activatable.
  *
- * An activatable #ClutterText actor will emit the #ClutterText::activate
+ * An activatable #ClutterText actor will emit the [signal@Text::activate]
  * signal whenever the 'Enter' (or 'Return') key is pressed; if it is not
  * activatable, a new line will be appended to the current content.
  *
  * An activatable #ClutterText must also be set as editable using
- * clutter_text_set_editable().
- *
- * Since: 1.0
+ * [method@Text.set_editable].
  */
 void
 clutter_text_set_activatable (ClutterText *self,
@@ -5160,8 +5062,6 @@ clutter_text_set_activatable (ClutterText *self,
  * Retrieves whether a #ClutterText is activatable or not.
  *
  * Return value: %TRUE if the actor is activatable
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_get_activatable (ClutterText *self)
@@ -5175,18 +5075,16 @@ clutter_text_get_activatable (ClutterText *self)
  * clutter_text_activate:
  * @self: a #ClutterText
  *
- * Emits the #ClutterText::activate signal, if @self has been set
- * as activatable using clutter_text_set_activatable().
+ * Emits the [signal@Text::activate] signal, if @self has been set
+ * as activatable using [method@Text.set_activatable].
  *
- * This function can be used to emit the ::activate signal inside
- * a #ClutterActor::captured-event or #ClutterActor::key-press-event
+ * This function can be used to emit the [signal@Text::activate] signal inside
+ * a [signal@Actor::captured-event] or [signal@Actor::key-press-event]
  * signal handlers before the default signal handler for the
  * #ClutterText is invoked.
  *
- * Return value: %TRUE if the ::activate signal has been emitted,
+ * Return value: %TRUE if the [signal@Text::activate] signal has been emitted,
  *   and %FALSE otherwise
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_activate (ClutterText *self)
@@ -5215,14 +5113,12 @@ clutter_text_activate (ClutterText *self)
  * visible or not.
  *
  * The color of the cursor will be the same as the text color
- * unless clutter_text_set_cursor_color() has been called.
+ * unless [method@Text.set_cursor_color] has been called.
  *
- * The size of the cursor can be set using clutter_text_set_cursor_size().
+ * The size of the cursor can be set using [method@Text.set_cursor_size].
  *
  * The position of the cursor can be changed programmatically using
- * clutter_text_set_cursor_position().
- *
- * Since: 1.0
+ * [method@Text.set_cursor_position].
  */
 void
 clutter_text_set_cursor_visible (ClutterText *self,
@@ -5253,8 +5149,6 @@ clutter_text_set_cursor_visible (ClutterText *self,
  * Retrieves whether the cursor of a #ClutterText actor is visible.
  *
  * Return value: %TRUE if the cursor is visible
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_get_cursor_visible (ClutterText *self)
@@ -5273,8 +5167,6 @@ clutter_text_get_cursor_visible (ClutterText *self)
  *
  * If @color is %NULL, the cursor color will be the same as the
  * text color.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_cursor_color (ClutterText        *self,
@@ -5291,8 +5183,6 @@ clutter_text_set_cursor_color (ClutterText        *self,
  * @color: (out): return location for a #ClutterColor
  *
  * Retrieves the color of the cursor of a #ClutterText actor.
- *
- * Since: 1.0
  */
 void
 clutter_text_get_cursor_color (ClutterText  *self,
@@ -5318,8 +5208,6 @@ clutter_text_get_cursor_color (ClutterText  *self,
  *
  * This function changes the position of the cursor to match
  * @start_pos and the selection bound to match @end_pos.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_selection (ClutterText *self,
@@ -5347,10 +5235,8 @@ clutter_text_set_selection (ClutterText *self,
  * Retrieves the currently selected text.
  *
  * Return value: a newly allocated string containing the currently
- *   selected text, or %NULL. Use g_free() to free the returned
+ *   selected text, or %NULL. Use [func@GLib.free] to free the returned
  *   string.
- *
- * Since: 1.0
  */
 gchar *
 clutter_text_get_selection (ClutterText *self)
@@ -5400,8 +5286,6 @@ clutter_text_get_selection (ClutterText *self)
  * cursor position.
  *
  * If @selection_bound is -1, the selection unset.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_selection_bound (ClutterText *self,
@@ -5436,8 +5320,6 @@ clutter_text_set_selection_bound (ClutterText *self,
  * in characters from the current cursor position.
  *
  * Return value: the position of the other end of the selection
- *
- * Since: 1.0
  */
 gint
 clutter_text_get_selection_bound (ClutterText *self)
@@ -5457,8 +5339,6 @@ clutter_text_get_selection_bound (ClutterText *self)
  * If @color is %NULL, the selection color will be the same as the
  * cursor color, or if no cursor color is set either then it will be
  * the same as the text color.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_selection_color (ClutterText        *self,
@@ -5476,8 +5356,6 @@ clutter_text_set_selection_color (ClutterText        *self,
  * @color: (out caller-allocates): return location for a #ClutterColor
  *
  * Retrieves the color of the selection of a #ClutterText actor.
- *
- * Since: 1.0
  */
 void
 clutter_text_get_selection_color (ClutterText  *self,
@@ -5502,8 +5380,6 @@ clutter_text_get_selection_color (ClutterText  *self,
  *
  * If @color is %NULL, the selected text color will be the same as the
  * selection color, which then falls back to cursor, and then text color.
- *
- * Since: 1.8
  */
 void
 clutter_text_set_selected_text_color (ClutterText        *self,
@@ -5518,11 +5394,9 @@ clutter_text_set_selected_text_color (ClutterText        *self,
 /**
  * clutter_text_get_selected_text_color:
  * @self: a #ClutterText
- * @color: (out caller-allocates): return location for a #ClutterColor
+ * @color: (out caller-allocates): return location for a [struct@Color]
  *
  * Retrieves the color of selected text of a #ClutterText actor.
- *
- * Since: 1.8
  */
 void
 clutter_text_get_selected_text_color (ClutterText  *self,
@@ -5546,10 +5420,8 @@ clutter_text_get_selected_text_color (ClutterText  *self,
  * Sets @font_desc as the font description for a #ClutterText
  *
  * The #PangoFontDescription is copied by the #ClutterText actor
- * so you can safely call pango_font_description_free() on it after
+ * so you can safely call [method@Pango.FontDescription.free] on it after
  * calling this function.
- *
- * Since: 1.2
  */
 void
 clutter_text_set_font_description (ClutterText          *self,
@@ -5565,12 +5437,10 @@ clutter_text_set_font_description (ClutterText          *self,
  * clutter_text_get_font_description:
  * @self: a #ClutterText
  *
- * Retrieves the #PangoFontDescription used by @self
+ * Retrieves the [struct@Pango.FontDescription] used by @self
  *
  * Return value: a #PangoFontDescription. The returned value is owned
  *   by the #ClutterText actor and it should not be modified or freed
- *
- * Since: 1.2
  */
 PangoFontDescription *
 clutter_text_get_font_description (ClutterText *self)
@@ -5584,13 +5454,11 @@ clutter_text_get_font_description (ClutterText *self)
  * clutter_text_get_font_name:
  * @self: a #ClutterText
  *
- * Retrieves the font name as set by clutter_text_set_font_name().
+ * Retrieves the font name as set by [method@Text.set_font_name].
  *
  * Return value: a string containing the font name. The returned
  *   string is owned by the #ClutterText actor and should not be
  *   modified or freed
- *
- * Since: 1.0
  */
 const gchar *
 clutter_text_get_font_name (ClutterText *text)
@@ -5607,11 +5475,11 @@ clutter_text_get_font_name (ClutterText *text)
  *
  * Sets the font used by a #ClutterText. The @font_name string
  * must either be %NULL, which means that the font name from the
- * default #ClutterBackend will be used; or be something that can
- * be parsed by the pango_font_description_from_string() function,
+ * default [class@Backend] will be used; or be something that can
+ * be parsed by the [func@Pango.FontDescription.from_string] function,
  * like:
  *
- * |[
+ * ```c
  *   // Set the font to the system's Sans, 10 points
  *   clutter_text_set_font_name (text, "Sans 10");
  *
@@ -5620,9 +5488,7 @@ clutter_text_get_font_name (ClutterText *text)
  *
  *   // Set the font to Helvetica, 10 points
  *   clutter_text_set_font_name (text, "Helvetica 10");
- * ]|
- *
- * Since: 1.0
+ * ```
  */
 void
 clutter_text_set_font_name (ClutterText *self,
@@ -5689,11 +5555,11 @@ out:
  * actor.
  *
  * If you need a copy of the contents for manipulating, either
- * use g_strdup() on the returned string, or use:
+ * use [func@GLib.strdup] on the returned string, or use:
  *
- * |[
+ * ```c
  *    copy = clutter_text_get_chars (text, 0, -1);
- * ]|
+ * ```
  *
  * Which will return a newly allocated string.
  *
@@ -5703,8 +5569,6 @@ out:
  * Return value: (transfer none): the contents of the actor. The returned
  *   string is owned by the #ClutterText actor and should never be modified
  *   or freed
- *
- * Since: 1.0
  */
 const gchar *
 clutter_text_get_text (ClutterText *self)
@@ -5751,12 +5615,10 @@ clutter_text_set_use_markup_internal (ClutterText *self,
  *
  * Sets the contents of a #ClutterText actor.
  *
- * If the #ClutterText:use-markup property was set to %TRUE it
+ * If the [property@Text:use-markup] property was set to %TRUE it
  * will be reset to %FALSE as a side effect. If you want to
- * maintain the #ClutterText:use-markup you should use the
- * clutter_text_set_markup() function instead
- *
- * Since: 1.0
+ * maintain the [property@Text:use-markup] you should use the
+ * [method@Text.set_markup] function instead
  */
 void
 clutter_text_set_text (ClutterText *self,
@@ -5789,13 +5651,11 @@ clutter_text_set_text (ClutterText *self,
  * This is a convenience function for setting a string containing
  * Pango markup, and it is logically equivalent to:
  *
- * |[
+ * ```c
  *   /&ast; the order is important &ast;/
  *   clutter_text_set_text (CLUTTER_TEXT (actor), markup);
  *   clutter_text_set_use_markup (CLUTTER_TEXT (actor), TRUE);
- * ]|
- *
- * Since: 1.0
+ * ```
  */
 void
 clutter_text_set_markup (ClutterText *self,
@@ -5818,8 +5678,6 @@ clutter_text_set_markup (ClutterText *self,
  *
  * Return value: (transfer none): a #PangoLayout. The returned object is owned by
  *   the #ClutterText actor and should not be modified or freed
- *
- * Since: 1.0
  */
 PangoLayout *
 clutter_text_get_layout (ClutterText *self)
@@ -5851,9 +5709,7 @@ clutter_text_get_layout (ClutterText *self)
  * The overall opacity of the #ClutterText actor will be the
  * result of the alpha value of @color and the composited
  * opacity of the actor itself on the scenegraph, as returned
- * by clutter_actor_get_paint_opacity().
- *
- * Since: 1.0
+ * by [method@Actor.get_paint_opacity].
  */
 void
 clutter_text_set_color (ClutterText        *self,
@@ -5868,11 +5724,9 @@ clutter_text_set_color (ClutterText        *self,
 /**
  * clutter_text_get_color:
  * @self: a #ClutterText
- * @color: (out caller-allocates): return location for a #ClutterColor
+ * @color: (out caller-allocates): return location for a [struct@Color]
  *
- * Retrieves the text color as set by clutter_text_set_color().
- *
- * Since: 1.0
+ * Retrieves the text color as set by [method@Text.set_color].
  */
 void
 clutter_text_get_color (ClutterText  *self,
@@ -5896,8 +5750,6 @@ clutter_text_get_color (ClutterText  *self,
  * Sets the mode used to ellipsize (add an ellipsis: "...") to the
  * text if there is not enough space to render the entire contents
  * of a #ClutterText actor
- *
- * Since: 1.0
  */
 void
 clutter_text_set_ellipsize (ClutterText        *self,
@@ -5928,11 +5780,9 @@ clutter_text_set_ellipsize (ClutterText        *self,
  * @self: a #ClutterText
  *
  * Returns the ellipsizing position of a #ClutterText actor, as
- * set by clutter_text_set_ellipsize().
+ * set by [method@Text.set_ellipsize].
  *
  * Return value: #PangoEllipsizeMode
- *
- * Since: 1.0
  */
 PangoEllipsizeMode
 clutter_text_get_ellipsize (ClutterText *self)
@@ -5946,12 +5796,10 @@ clutter_text_get_ellipsize (ClutterText *self)
  * clutter_text_get_line_wrap:
  * @self: a #ClutterText
  *
- * Retrieves the value set using clutter_text_set_line_wrap().
+ * Retrieves the value set using [method@Text.set_line_wrap].
  *
  * Return value: %TRUE if the #ClutterText actor should wrap
  *   its contents
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_get_line_wrap (ClutterText *self)
@@ -5968,8 +5816,6 @@ clutter_text_get_line_wrap (ClutterText *self)
  *
  * Sets whether the contents of a #ClutterText actor should wrap,
  * if they don't fit the size assigned to the actor.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_line_wrap (ClutterText *self,
@@ -5998,11 +5844,9 @@ clutter_text_set_line_wrap (ClutterText *self,
  * @self: a #ClutterText
  * @wrap_mode: the line wrapping mode
  *
- * If line wrapping is enabled (see clutter_text_set_line_wrap()) this
+ * If line wrapping is enabled (see [method@Text.set_line_wrap]) this
  * function controls how the line wrapping is performed. The default is
  * %PANGO_WRAP_WORD which means wrap on word boundaries.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_line_wrap_mode (ClutterText   *self,
@@ -6032,11 +5876,9 @@ clutter_text_set_line_wrap_mode (ClutterText   *self,
  *
  * Retrieves the line wrap mode used by the #ClutterText actor.
  *
- * See clutter_text_set_line_wrap_mode ().
+ * See [method@Text.set_line_wrap_mode].
  *
  * Return value: the wrap mode used by the #ClutterText
- *
- * Since: 1.0
  */
 PangoWrapMode
 clutter_text_get_line_wrap_mode (ClutterText *self)
@@ -6054,10 +5896,8 @@ clutter_text_get_line_wrap_mode (ClutterText *self)
  * Sets the attributes list that are going to be applied to the
  * #ClutterText contents.
  *
- * The #ClutterText actor will take a reference on the #PangoAttrList
+ * The #ClutterText actor will take a reference on the [struct@Pango.AttrList]
  * passed to this function.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_attributes (ClutterText   *self,
@@ -6098,12 +5938,10 @@ clutter_text_set_attributes (ClutterText   *self,
  * @self: a #ClutterText
  *
  * Gets the attribute list that was set on the #ClutterText actor
- * clutter_text_set_attributes(), if any.
+ * [method@Text.set_attributes], if any.
  *
  * Return value: (transfer none): the attribute list, or %NULL if none was set. The
  *  returned value is owned by the #ClutterText and should not be unreferenced.
- *
- * Since: 1.0
  */
 PangoAttrList *
 clutter_text_get_attributes (ClutterText *self)
@@ -6124,8 +5962,6 @@ clutter_text_get_attributes (ClutterText *self)
  *
  * To align a #ClutterText actor you should add it to a container
  * that supports alignment, or use the anchor point.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_line_alignment (ClutterText    *self,
@@ -6152,11 +5988,9 @@ clutter_text_set_line_alignment (ClutterText    *self,
  * @self: a #ClutterText
  *
  * Retrieves the alignment of a #ClutterText, as set by
- * clutter_text_set_line_alignment().
+ * [method@Text.set_line_alignment].
  *
- * Return value: a #PangoAlignment
- *
- * Since: 1.0
+ * Return value: a [enum@Pango.Alignment]
  */
 PangoAlignment
 clutter_text_get_line_alignment (ClutterText *self)
@@ -6172,14 +6006,12 @@ clutter_text_get_line_alignment (ClutterText *self)
  * @setting: %TRUE if the text should be parsed for markup.
  *
  * Sets whether the contents of the #ClutterText actor contains markup
- * in <link linkend="PangoMarkupFormat">Pango's text markup language</link>.
+ * in [Pango's text markup language](https://docs.gtk.org/Pango/pango_markup.html#pango-markup).
  *
- * Setting #ClutterText:use-markup on an editable #ClutterText will
+ * Setting [property@Text:use-markup] on an editable #ClutterText will
  * not have any effect except hiding the markup.
  *
- * See also #ClutterText:use-markup.
- *
- * Since: 1.0
+ * See also [property@Text:use-markup].
  */
 void
 clutter_text_set_use_markup (ClutterText *self,
@@ -6207,8 +6039,6 @@ clutter_text_set_use_markup (ClutterText *self,
  * parsed for the Pango text markup.
  *
  * Return value: %TRUE if the contents will be parsed for markup
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_get_use_markup (ClutterText *self)
@@ -6226,8 +6056,6 @@ clutter_text_get_use_markup (ClutterText *self)
  * Sets whether the text of the #ClutterText actor should be justified
  * on both margins. This setting is ignored if Clutter is compiled
  * against Pango &lt; 1.18.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_justify (ClutterText *self,
@@ -6257,8 +6085,6 @@ clutter_text_set_justify (ClutterText *self,
  * on both margins.
  *
  * Return value: %TRUE if the text should be justified
- *
- * Since: 0.6
  */
 gboolean
 clutter_text_get_justify (ClutterText *self)
@@ -6275,8 +6101,6 @@ clutter_text_get_justify (ClutterText *self)
  * Retrieves the cursor position.
  *
  * Return value: the cursor position, in characters
- *
- * Since: 1.0
  */
 gint
 clutter_text_get_cursor_position (ClutterText *self)
@@ -6294,8 +6118,6 @@ clutter_text_get_cursor_position (ClutterText *self)
  * Sets the cursor of a #ClutterText actor at @position.
  *
  * The position is expressed in characters, not in bytes.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_cursor_position (ClutterText *self,
@@ -6337,10 +6159,8 @@ clutter_text_set_cursor_position (ClutterText *self,
  *   default value
  *
  * Sets the size of the cursor of a #ClutterText. The cursor
- * will only be visible if the #ClutterText:cursor-visible property
+ * will only be visible if the [property@Text:cursor-visible] property
  * is set to %TRUE.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_cursor_size (ClutterText *self,
@@ -6372,8 +6192,6 @@ clutter_text_set_cursor_size (ClutterText *self,
  * Retrieves the size of the cursor of a #ClutterText actor.
  *
  * Return value: the size of the cursor, in pixels
- *
- * Since: 1.0
  */
 guint
 clutter_text_get_cursor_size (ClutterText *self)
@@ -6393,8 +6211,6 @@ clutter_text_get_cursor_size (ClutterText *self)
  *
  * If @wc is 0 the text will be displayed as it is entered in the
  * #ClutterText actor.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_password_char (ClutterText *self,
@@ -6422,12 +6238,10 @@ clutter_text_set_password_char (ClutterText *self,
  * @self: a #ClutterText
  *
  * Retrieves the character to use in place of the actual text
- * as set by clutter_text_set_password_char().
+ * as set by [method@Text.set_password_char].
  *
  * Return value: a Unicode character or 0 if the password
  *   character is not set
- *
- * Since: 1.0
  */
 gunichar
 clutter_text_get_password_char (ClutterText *self)
@@ -6446,8 +6260,6 @@ clutter_text_get_password_char (ClutterText *self)
  * Sets the maximum allowed length of the contents of the actor. If the
  * current contents are longer than the given length, then they will be
  * truncated to fit.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_max_length (ClutterText *self,
@@ -6463,11 +6275,9 @@ clutter_text_set_max_length (ClutterText *self,
  *
  * Gets the maximum length of text that can be set into a text actor.
  *
- * See clutter_text_set_max_length().
+ * See [method@Text.set_max_length].
  *
  * Return value: the maximum number of characters.
- *
- * Since: 1.0
  */
 gint
 clutter_text_get_max_length (ClutterText *self)
@@ -6511,8 +6321,6 @@ clutter_text_real_insert_text (ClutterText *self,
  *
  * Inserts @wc at the current cursor position of a
  * #ClutterText actor.
- *
- * Since: 1.0
  */
 void
 clutter_text_insert_unichar (ClutterText *self,
@@ -6538,14 +6346,12 @@ clutter_text_insert_unichar (ClutterText *self,
  * @text: the text to be inserted
  * @position: the position of the insertion, or -1
  *
- * Inserts @text into a #ClutterActor at the given position.
+ * Inserts @text into a [class@Actor] at the given position.
  *
  * If @position is a negative number, the text will be appended
  * at the end of the current contents of the #ClutterText.
  *
  * The position is expressed in characters, not in bytes.
- *
- * Since: 1.0
  */
 void
 clutter_text_insert_text (ClutterText *self,
@@ -6592,8 +6398,6 @@ void clutter_text_real_delete_text (ClutterText *self,
  *
  * The starting and ending positions are expressed in characters,
  * not in bytes.
- *
- * Since: 1.0
  */
 void
 clutter_text_delete_text (ClutterText *self,
@@ -6615,8 +6419,6 @@ clutter_text_delete_text (ClutterText *self,
  *
  * Somewhat awkwardly, the cursor position is decremented by the same
  * number of characters you've deleted.
- *
- * Since: 1.0
  */
 void
 clutter_text_delete_chars (ClutterText *self,
@@ -6646,10 +6448,8 @@ clutter_text_delete_chars (ClutterText *self,
  * The positions are specified in characters, not in bytes.
  *
  * Return value: a newly allocated string with the contents of
- *   the text actor between the specified positions. Use g_free()
+ *   the text actor between the specified positions. Use [func@GLib.free]
  *   to free the resources when done
- *
- * Since: 1.0
  */
 gchar *
 clutter_text_get_chars (ClutterText *self,
@@ -6683,7 +6483,7 @@ clutter_text_get_chars (ClutterText *self,
  * @single_line: whether to enable single line mode
  *
  * Sets whether a #ClutterText actor should be in single line mode
- * or not. Only editable #ClutterText<!-- -->s can be in single line
+ * or not. Only editable `ClutterText`s can be in single line
  * mode.
  *
  * A text actor in single line mode will not wrap text and will clip
@@ -6691,12 +6491,10 @@ clutter_text_get_chars (ClutterText *self,
  * text actor will scroll to display the end of the text if its length
  * is bigger than the allocated width.
  *
- * When setting the single line mode the #ClutterText:activatable
+ * When setting the single line mode the [property@Text:activatable]
  * property is also set as a side effect. Instead of entering a new
- * line character, the text actor will emit the #ClutterText::activate
+ * line character, the text actor will emit the [signal@Text::activate]
  * signal.
- *
- * Since: 1.0
  */
 void
 clutter_text_set_single_line_mode (ClutterText *self,
@@ -6737,8 +6535,6 @@ clutter_text_set_single_line_mode (ClutterText *self,
  * Retrieves whether the #ClutterText actor is in single line mode.
  *
  * Return value: %TRUE if the #ClutterText actor is in single line mode
- *
- * Since: 1.0
  */
 gboolean
 clutter_text_get_single_line_mode (ClutterText *self)
@@ -6764,8 +6560,6 @@ clutter_text_get_single_line_mode (ClutterText *self)
  * actor is not editable.
  *
  * This function should not be used by applications
- *
- * Since: 1.2
  */
 void
 clutter_text_set_preedit_string (ClutterText   *self,
@@ -6821,10 +6615,8 @@ clutter_text_set_preedit_string (ClutterText   *self,
  * @x: (out): location to store X offset of layout, or %NULL
  * @y: (out): location to store Y offset of layout, or %NULL
  *
- * Obtains the coordinates where the #ClutterText will draw the #PangoLayout
+ * Obtains the coordinates where the #ClutterText will draw the [class@Pango.Layout]
  * representing the text.
- *
- * Since: 1.8
  */
 void
 clutter_text_get_layout_offsets (ClutterText *self,
@@ -6853,8 +6645,6 @@ clutter_text_get_layout_offsets (ClutterText *self,
  *
  * The coordinates of the rectangle's origin are in actor-relative
  * coordinates.
- *
- * Since: 1.16
  */
 void
 clutter_text_get_cursor_rect (ClutterText     *self,

@@ -14,21 +14,19 @@
  * @x_2: X coordinate of the bottom right point
  * @y_2: Y coordinate of the bottom right point
  *
- * Allocates a new #ClutterActorBox using the passed coordinates
+ * Allocates a new [struct@ActorBox] using the passed coordinates
  * for the top left and bottom right points.
  *
  * This function is the logical equivalent of:
  *
- * |[
+ * ```c
  *   clutter_actor_box_init (clutter_actor_box_alloc (),
  *                           x_1, y_1,
  *                           x_2, y_2);
- * ]|
+ * ```
  *
  * Return value: (transfer full): the newly allocated #ClutterActorBox.
- *   Use clutter_actor_box_free() to free the resources
- *
- * Since: 1.0
+ *   Use [method@ActorBox.free] to free the resources
  */
 ClutterActorBox *
 clutter_actor_box_new (gfloat x_1,
@@ -44,12 +42,10 @@ clutter_actor_box_new (gfloat x_1,
 /**
  * clutter_actor_box_alloc:
  *
- * Allocates a new #ClutterActorBox.
+ * Allocates a new [struct@ActorBox].
  *
  * Return value: (transfer full): the newly allocated #ClutterActorBox.
- *   Use clutter_actor_box_free() to free its resources
- *
- * Since: 1.12
+ *   Use [method@ActorBox.free] to free its resources
  */
 ClutterActorBox *
 clutter_actor_box_alloc (void)
@@ -68,8 +64,6 @@ clutter_actor_box_alloc (void)
  * Initializes @box with the given coordinates.
  *
  * Return value: (transfer none): the initialized #ClutterActorBox
- *
- * Since: 1.10
  */
 ClutterActorBox *
 clutter_actor_box_init (ClutterActorBox *box,
@@ -97,8 +91,6 @@ clutter_actor_box_init (ClutterActorBox *box,
  * @height: height of the box
  *
  * Initializes @box with the given origin and size.
- *
- * Since: 1.10
  */
 void
 clutter_actor_box_init_rect (ClutterActorBox *box,
@@ -122,9 +114,7 @@ clutter_actor_box_init_rect (ClutterActorBox *box,
  * Copies @box
  *
  * Return value: a newly allocated copy of #ClutterActorBox. Use
- *   clutter_actor_box_free() to free the allocated resources
- *
- * Since: 1.0
+ *   [method@ActorBox.free] to free the allocated resources
  */
 ClutterActorBox *
 clutter_actor_box_copy (const ClutterActorBox *box)
@@ -139,10 +129,8 @@ clutter_actor_box_copy (const ClutterActorBox *box)
  * clutter_actor_box_free:
  * @box: a #ClutterActorBox
  *
- * Frees a #ClutterActorBox allocated using clutter_actor_box_new()
- * or clutter_actor_box_copy()
- *
- * Since: 1.0
+ * Frees a #ClutterActorBox allocated using [ctor@ActorBox.new]
+ * or [method@ActorBox.copy].
  */
 void
 clutter_actor_box_free (ClutterActorBox *box)
@@ -159,8 +147,6 @@ clutter_actor_box_free (ClutterActorBox *box)
  * Checks @box_a and @box_b for equality
  *
  * Return value: %TRUE if the passed #ClutterActorBox are equal
- *
- * Since: 1.0
  */
 gboolean
 clutter_actor_box_equal (const ClutterActorBox *box_a,
@@ -182,8 +168,6 @@ clutter_actor_box_equal (const ClutterActorBox *box_a,
  * Retrieves the X coordinate of the origin of @box
  *
  * Return value: the X coordinate of the origin
- *
- * Since: 1.0
  */
 gfloat
 clutter_actor_box_get_x (const ClutterActorBox *box)
@@ -200,8 +184,6 @@ clutter_actor_box_get_x (const ClutterActorBox *box)
  * Retrieves the Y coordinate of the origin of @box
  *
  * Return value: the Y coordinate of the origin
- *
- * Since: 1.0
  */
 gfloat
 clutter_actor_box_get_y (const ClutterActorBox *box)
@@ -218,8 +200,6 @@ clutter_actor_box_get_y (const ClutterActorBox *box)
  * Retrieves the width of the @box
  *
  * Return value: the width of the box
- *
- * Since: 1.0
  */
 gfloat
 clutter_actor_box_get_width (const ClutterActorBox *box)
@@ -236,8 +216,6 @@ clutter_actor_box_get_width (const ClutterActorBox *box)
  * Retrieves the height of the @box
  *
  * Return value: the height of the box
- *
- * Since: 1.0
  */
 gfloat
 clutter_actor_box_get_height (const ClutterActorBox *box)
@@ -254,8 +232,6 @@ clutter_actor_box_get_height (const ClutterActorBox *box)
  * @y: (out) (allow-none): return location for the Y coordinate, or %NULL
  *
  * Retrieves the origin of @box
- *
- * Since: 1.0
  */
 void
 clutter_actor_box_get_origin (const ClutterActorBox *box,
@@ -278,8 +254,6 @@ clutter_actor_box_get_origin (const ClutterActorBox *box,
  * @height: (out) (allow-none): return location for the height, or %NULL
  *
  * Retrieves the size of @box
- *
- * Since: 1.0
  */
 void
 clutter_actor_box_get_size (const ClutterActorBox *box,
@@ -302,8 +276,6 @@ clutter_actor_box_get_size (const ClutterActorBox *box,
  * Retrieves the area of @box
  *
  * Return value: the area of a #ClutterActorBox, in pixels
- *
- * Since: 1.0
  */
 gfloat
 clutter_actor_box_get_area (const ClutterActorBox *box)
@@ -323,8 +295,6 @@ clutter_actor_box_get_area (const ClutterActorBox *box)
  * within @box
  *
  * Return value: %TRUE if the point is contained by the #ClutterActorBox
- *
- * Since: 1.0
  */
 gboolean
 clutter_actor_box_contains (const ClutterActorBox *box,
@@ -343,9 +313,7 @@ clutter_actor_box_contains (const ClutterActorBox *box,
  * @verts: (array fixed-size=4): array of four #graphene_point3d_t
  *
  * Calculates the bounding box represented by the four vertices; for details
- * of the vertex array see clutter_actor_get_abs_allocation_vertices().
- *
- * Since: 1.0
+ * of the vertex array see [method@Actor.get_abs_allocation_vertices].
  */
 void
 clutter_actor_box_from_vertices (ClutterActorBox          *box,
@@ -412,10 +380,8 @@ clutter_actor_box_from_vertices (ClutterActorBox          *box,
  * @progress: the interpolation progress
  * @result: (out): return location for the interpolation
  *
- * Interpolates between @initial and @final #ClutterActorBox<!-- -->es
+ * Interpolates between @initial and @final `ClutterActorBox`es
  * using @progress
- *
- * Since: 1.2
  */
 void
 clutter_actor_box_interpolate (const ClutterActorBox *initial,
@@ -438,8 +404,6 @@ clutter_actor_box_interpolate (const ClutterActorBox *initial,
  * @box: (inout): the #ClutterActorBox to clamp
  *
  * Clamps the components of @box to the nearest integer
- *
- * Since: 1.2
  */
 void
 clutter_actor_box_clamp_to_pixel (ClutterActorBox *box)
@@ -460,8 +424,6 @@ clutter_actor_box_clamp_to_pixel (ClutterActorBox *box)
  *   of @a and @b
  *
  * Unions the two boxes @a and @b and stores the result in @result.
- *
- * Since: 1.4
  */
 void
 clutter_actor_box_union (const ClutterActorBox *a,
@@ -504,8 +466,6 @@ clutter_actor_box_progress (const GValue *a,
  * @y: the Y coordinate of the new origin
  *
  * Changes the origin of @box, maintaining the size of the #ClutterActorBox.
- *
- * Since: 1.6
  */
 void
 clutter_actor_box_set_origin (ClutterActorBox *box,
@@ -529,8 +489,6 @@ clutter_actor_box_set_origin (ClutterActorBox *box,
  * @height: the new height
  *
  * Sets the size of @box, maintaining the origin of the #ClutterActorBox.
- *
- * Since: 1.6
  */
 void
 clutter_actor_box_set_size (ClutterActorBox *box,
@@ -600,8 +558,6 @@ _clutter_actor_box_enlarge_for_effects (ClutterActorBox *box)
  * @scale: scale factor for resizing this box
  *
  * Rescale the @box by provided @scale factor.
- *
- * Since: 1.6
  */
 void
 clutter_actor_box_scale (ClutterActorBox *box,

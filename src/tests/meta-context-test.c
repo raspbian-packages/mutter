@@ -136,8 +136,6 @@ meta_context_test_setup (MetaContext  *context,
     settings,
     META_EXPERIMENTAL_FEATURE_SCALE_MONITOR_FRAMEBUFFER);
 
-  meta_set_syncing (!!g_getenv ("MUTTER_SYNC"));
-
   return TRUE;
 }
 
@@ -202,6 +200,14 @@ static void
 meta_context_test_notify_ready (MetaContext *context)
 {
 }
+
+#ifdef HAVE_X11
+static gboolean
+meta_context_test_is_x11_sync (MetaContext *context)
+{
+  return !!g_getenv ("MUTTER_SYNC");
+}
+#endif
 
 static gboolean
 run_tests_idle (gpointer user_data)
@@ -329,6 +335,9 @@ meta_context_test_class_init (MetaContextTestClass *klass)
   context_class->setup = meta_context_test_setup;
   context_class->create_backend = meta_context_test_create_backend;
   context_class->notify_ready = meta_context_test_notify_ready;
+#ifdef HAVE_X11
+  context_class->is_x11_sync = meta_context_test_is_x11_sync;
+#endif
 
   signals[BEFORE_TESTS] =
     g_signal_new ("before-tests",
@@ -359,4 +368,30 @@ meta_context_test_class_init (MetaContextTestClass *klass)
 static void
 meta_context_test_init (MetaContextTest *context_test)
 {
+  GDBusProxy *proxy;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GVariant) ret = NULL;
+
+  proxy =
+    g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+                                   G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START |
+                                   G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS,
+                                   NULL,
+                                   "org.freedesktop.ColorManager",
+                                   "/org/freedesktop/ColorManager",
+                                   "org.freedesktop.DBus.Mock",
+                                   NULL, &error);
+  if (!proxy)
+    {
+      g_warning ("Failed to find mocked color manager system service, %s",
+                 error->message);
+      return;
+    }
+
+  if (!g_dbus_proxy_call_sync (proxy,
+                               "Reset",
+                               NULL,
+                               G_DBUS_CALL_FLAGS_NO_AUTO_START, -1, NULL,
+                               &error))
+    g_warning ("Failed to clear mocked color devices: %s", error->message);
 }

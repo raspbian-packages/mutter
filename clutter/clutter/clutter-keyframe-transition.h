@@ -43,14 +43,6 @@ G_BEGIN_DECLS
 typedef struct _ClutterKeyframeTransitionPrivate        ClutterKeyframeTransitionPrivate;
 typedef struct _ClutterKeyframeTransitionClass          ClutterKeyframeTransitionClass;
 
-/**
- * ClutterKeyframeTransition:
- *
- * The `ClutterKeyframeTransition` structure contains only private
- * data and should be accessed using the provided API.
- *
- * Since: 1.12
- */
 struct _ClutterKeyframeTransition
 {
   /*< private >*/
@@ -64,8 +56,6 @@ struct _ClutterKeyframeTransition
  *
  * The `ClutterKeyframeTransitionClass` structure contains only
  * private data.
- *
- * Since: 1.12
  */
 struct _ClutterKeyframeTransitionClass
 {

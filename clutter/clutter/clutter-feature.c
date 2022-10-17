@@ -104,8 +104,6 @@ clutter_feature_init (ClutterMainContext  *context,
  * OR of #ClutterFeatureFlags.
  *
  * Return value: %TRUE if a feature is available
- *
- * Since: 0.2
  */
 gboolean
 clutter_feature_available (ClutterFeatureFlags feature)
@@ -125,8 +123,6 @@ clutter_feature_available (ClutterFeatureFlags feature)
  * Returns all the supported features.
  *
  * Return value: a logical OR of all the supported features.
- *
- * Since: 0.2
  */
 ClutterFeatureFlags
 clutter_feature_get_all (void)

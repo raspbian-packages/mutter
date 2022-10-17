@@ -41,14 +41,6 @@ G_BEGIN_DECLS
 typedef struct _ClutterScrollActorPrivate       ClutterScrollActorPrivate;
 typedef struct _ClutterScrollActorClass         ClutterScrollActorClass;
 
-/**
- * ClutterScrollActor:
- *
- * The #ClutterScrollActor structure contains only
- * private data, and should be accessed using the provided API.
- *
- * Since: 1.12
- */
 struct _ClutterScrollActor
 {
   /*< private >*/
@@ -62,8 +54,6 @@ struct _ClutterScrollActor
  *
  * The #ClutterScrollActor structure contains only
  * private data.
- *
- * Since: 1.12
  */
 struct _ClutterScrollActorClass
 {

@@ -23,6 +23,7 @@
 
 #include <glib-object.h>
 
+#include "backends/edid.h"
 #include "backends/meta-backend-types.h"
 #include "backends/meta-gpu.h"
 #include "core/util-private.h"
@@ -60,6 +61,10 @@ typedef enum
   META_CONNECTOR_TYPE_eDP = 14,
   META_CONNECTOR_TYPE_VIRTUAL = 15,
   META_CONNECTOR_TYPE_DSI = 16,
+  META_CONNECTOR_TYPE_DPI = 17,
+  META_CONNECTOR_TYPE_WRITEBACK = 18,
+  META_CONNECTOR_TYPE_SPI = 19,
+  META_CONNECTOR_TYPE_USB = 20,
 
   META_CONNECTOR_TYPE_META = 1000,
 } MetaConnectorType;
@@ -76,10 +81,16 @@ typedef struct _MetaOutputInfo
 {
   grefcount ref_count;
 
+  gboolean is_virtual;
+
   char *name;
   char *vendor;
   char *product;
   char *serial;
+
+  char *edid_checksum_md5;
+  MetaEdidInfo *edid_info;
+
   int width_mm;
   int height_mm;
   CoglSubpixelOrder subpixel_order;
@@ -102,6 +113,9 @@ typedef struct _MetaOutputInfo
 
   gboolean supports_underscanning;
   gboolean supports_color_transform;
+
+  unsigned int max_bpc_min;
+  unsigned int max_bpc_max;
 
   /*
    * Get a new preferred mode on hotplug events, to handle dynamic guest
@@ -177,6 +191,10 @@ gboolean meta_output_is_presentation (MetaOutput *output);
 
 META_EXPORT_TEST
 gboolean meta_output_is_underscanning (MetaOutput *output);
+
+META_EXPORT_TEST
+gboolean meta_output_get_max_bpc (MetaOutput   *output,
+                                  unsigned int *max_bpc);
 
 void meta_output_set_backlight (MetaOutput *output,
                                 int         backlight);

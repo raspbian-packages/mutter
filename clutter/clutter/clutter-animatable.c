@@ -23,18 +23,17 @@
  */
 
 /**
- * SECTION:clutter-animatable
- * @short_description: Interface for animatable classes
+ * ClutterAnimatable:
+ * 
+ * Interface for animatable classes
  *
- * #ClutterAnimatable is an interface that allows a #GObject class
+ * #ClutterAnimatable is an interface that allows a [class@GObject.Object] class
  * to control how an actor will animate a property.
  *
  * Each #ClutterAnimatable should implement the
- * #ClutterAnimatableInterface.interpolate_property() virtual function of the
+ * [vfunc@Animatable.interpolate_value] virtual function of the
  * interface to compute the animation state between two values of an interval
  * depending on a progress factor, expressed as a floating point value.
- *
- * #ClutterAnimatable is available since Clutter 1.0
  */
 
 #include "clutter-build-config.h"
@@ -56,12 +55,10 @@ clutter_animatable_default_init (ClutterAnimatableInterface *iface)
  * @animatable: a #ClutterAnimatable
  * @property_name: the name of the animatable property to find
  *
- * Finds the #GParamSpec for @property_name
+ * Finds the [class@GObject.ParamSpec] for @property_name
  *
  * Return value: (transfer none): The #GParamSpec for the given property
  *   or %NULL
- *
- * Since: 1.4
  */
 GParamSpec *
 clutter_animatable_find_property (ClutterAnimatable *animatable,
@@ -89,8 +86,6 @@ clutter_animatable_find_property (ClutterAnimatable *animatable,
  * @value: a #GValue initialized to the type of the property to retrieve
  *
  * Retrieves the current state of @property_name and sets @value with it
- *
- * Since: 1.4
  */
 void
 clutter_animatable_get_initial_state (ClutterAnimatable *animatable,
@@ -118,8 +113,6 @@ clutter_animatable_get_initial_state (ClutterAnimatable *animatable,
  * @value: the value of the animatable property to set
  *
  * Sets the current state of @property_name to @value
- *
- * Since: 1.4
  */
 void
 clutter_animatable_set_final_state (ClutterAnimatable *animatable,
@@ -156,14 +149,12 @@ clutter_animatable_set_final_state (ClutterAnimatable *animatable,
  * value, and store the result inside @value.
  *
  * This function should be used for every property animation
- * involving #ClutterAnimatable<!-- -->s.
+ * involving `ClutterAnimatable`s.
  *
  * This function replaces clutter_animatable_animate_property().
  *
  * Return value: %TRUE if the interpolation was successful,
  *   and %FALSE otherwise
- *
- * Since: 1.8
  */
 gboolean
 clutter_animatable_interpolate_value (ClutterAnimatable *animatable,

@@ -7,6 +7,7 @@
 
 #include "clutter/clutter-mutter.h"
 #include "clutter/clutter.h"
+#include "compositor/meta-compositor-view.h"
 #include "compositor/meta-plugin-manager.h"
 #include "compositor/meta-window-actor-private.h"
 #include "meta/compositor.h"
@@ -24,16 +25,19 @@ struct _MetaCompositorClass
   gboolean (* manage) (MetaCompositor  *compositor,
                        GError         **error);
   void (* unmanage) (MetaCompositor *compositor);
-  void (* before_paint) (MetaCompositor   *compositor,
-                         ClutterStageView *stage_view);
-  void (* after_paint) (MetaCompositor   *compositor,
-                        ClutterStageView *stage_view);
+  void (* before_paint) (MetaCompositor     *compositor,
+                         MetaCompositorView *compositor_view);
+  void (* after_paint) (MetaCompositor     *compositor,
+                        MetaCompositorView *compositor_view);
   void (* remove_window) (MetaCompositor *compositor,
                           MetaWindow     *window);
   int64_t (* monotonic_to_high_res_xserver_time) (MetaCompositor *compositor,
                                                   int64_t         time_us);
   void (* grab_begin) (MetaCompositor *compositor);
   void (* grab_end) (MetaCompositor *compositor);
+
+  MetaCompositorView * (* create_view) (MetaCompositor   *compositor,
+                                        ClutterStageView *stage_view);
 };
 
 gboolean meta_compositor_do_manage (MetaCompositor  *compositor,
@@ -41,6 +45,8 @@ gboolean meta_compositor_do_manage (MetaCompositor  *compositor,
 
 void meta_compositor_remove_window_actor (MetaCompositor  *compositor,
                                           MetaWindowActor *window_actor);
+
+void meta_compositor_window_actor_stage_views_changed (MetaCompositor *compositor);
 
 void meta_switch_workspace_completed (MetaCompositor *compositor);
 

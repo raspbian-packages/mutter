@@ -30,6 +30,11 @@
 #include "meta-logical-monitor.h"
 #include "meta-backend-private.h"
 
+#include "meta-dbus-input-mapping.h"
+
+#define META_INPUT_MAPPING_DBUS_SERVICE "org.gnome.Mutter.InputMapping"
+#define META_INPUT_MAPPING_DBUS_PATH "/org/gnome/Mutter/InputMapping"
+
 #define MAX_SIZE_MATCH_DIFF 0.05
 
 typedef struct _MetaMapperInputInfo MetaMapperInputInfo;
@@ -40,7 +45,7 @@ typedef struct _DeviceMatch DeviceMatch;
 
 struct _MetaInputMapper
 {
-  GObject parent_instance;
+  MetaDBusInputMappingSkeleton parent_instance;
   MetaMonitorManager *monitor_manager;
   ClutterSeat *seat;
   GHashTable *input_devices; /* ClutterInputDevice -> MetaMapperInputInfo */
@@ -48,6 +53,7 @@ struct _MetaInputMapper
 #ifdef HAVE_LIBGUDEV
   GUdevClient *udev_client;
 #endif
+  guint dbus_name_id;
 };
 
 typedef enum
@@ -112,7 +118,12 @@ static void mapper_output_info_remove_input (MetaMapperOutputInfo *output,
 static void mapper_recalculate_input (MetaInputMapper     *mapper,
                                       MetaMapperInputInfo *input);
 
-G_DEFINE_TYPE (MetaInputMapper, meta_input_mapper, G_TYPE_OBJECT)
+static void meta_input_mapping_init_iface (MetaDBusInputMappingIface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (MetaInputMapper, meta_input_mapper,
+                         META_DBUS_TYPE_INPUT_MAPPING_SKELETON,
+                         G_IMPLEMENT_INTERFACE (META_DBUS_TYPE_INPUT_MAPPING,
+                                                meta_input_mapping_init_iface))
 
 static GSettings *
 get_device_settings (ClutterInputDevice *device)
@@ -306,32 +317,42 @@ match_edid (MetaMapperInputInfo  *input,
             MetaMonitor          *monitor,
             MetaOutputMatchType  *match_type)
 {
-  const gchar *dev_name;
+  const char *dev_name;
+  const char *vendor;
+  const char *serial;
 
   dev_name = clutter_input_device_get_device_name (input->device);
 
-  if (strcasestr (dev_name, meta_monitor_get_vendor (monitor)) == NULL)
+  vendor = meta_monitor_get_vendor (monitor);
+  if (!vendor || strcasestr (dev_name, vendor) == NULL)
     return FALSE;
 
   *match_type = META_MATCH_EDID_VENDOR;
 
-  if (strcasestr (dev_name, meta_monitor_get_product (monitor)) != NULL)
+  serial = meta_monitor_get_serial (monitor);
+  if (!serial || strcasestr (dev_name, serial) != NULL)
     {
       *match_type = META_MATCH_EDID_FULL;
     }
   else
     {
-      int i;
-      g_auto (GStrv) split = NULL;
+      const char *product;
 
-      split = g_strsplit (meta_monitor_get_product (monitor), " ", -1);
-
-      for (i = 0; split[i]; i++)
+      product = meta_monitor_get_product (monitor);
+      if (product)
         {
-          if (strcasestr (dev_name, split[i]) != NULL)
+          g_auto (GStrv) split = NULL;
+          int i;
+
+          split = g_strsplit (product, " ", -1);
+
+          for (i = 0; split[i]; i++)
             {
-              *match_type = META_MATCH_EDID_PARTIAL;
-              break;
+              if (strcasestr (dev_name, split[i]) != NULL)
+                {
+                  *match_type = META_MATCH_EDID_PARTIAL;
+                  break;
+                }
             }
         }
     }
@@ -699,6 +720,8 @@ meta_input_mapper_finalize (GObject *object)
 {
   MetaInputMapper *mapper = META_INPUT_MAPPER (object);
 
+  g_clear_handle_id (&mapper->dbus_name_id, g_bus_unown_name);
+
   g_signal_handlers_disconnect_by_func (mapper->monitor_manager,
                                         input_mapper_monitors_changed_cb,
                                         mapper);
@@ -783,6 +806,39 @@ meta_input_mapper_class_init (MetaInputMapperClass *klass)
 }
 
 static void
+on_bus_acquired (GDBusConnection *connection,
+                 const char      *name,
+                 gpointer         user_data)
+{
+  MetaRemoteDesktop *remote_desktop = user_data;
+  GDBusInterfaceSkeleton *interface_skeleton =
+    G_DBUS_INTERFACE_SKELETON (remote_desktop);
+  g_autoptr (GError) error = NULL;
+
+  if (!g_dbus_interface_skeleton_export (interface_skeleton,
+                                         connection,
+                                         META_INPUT_MAPPING_DBUS_PATH,
+                                         &error))
+    g_warning ("Failed to export input mapping object: %s", error->message);
+}
+
+static void
+on_name_acquired (GDBusConnection *connection,
+                  const char      *name,
+                  gpointer         user_data)
+{
+  g_info ("Acquired name %s", name);
+}
+
+static void
+on_name_lost (GDBusConnection *connection,
+              const char      *name,
+              gpointer         user_data)
+{
+  g_info ("Lost or failed to acquire name %s", name);
+}
+
+static void
 meta_input_mapper_init (MetaInputMapper *mapper)
 {
   mapper->input_devices =
@@ -791,7 +847,82 @@ meta_input_mapper_init (MetaInputMapper *mapper)
   mapper->output_devices =
     g_hash_table_new_full (NULL, NULL, NULL,
                            (GDestroyNotify) mapper_output_info_free);
+
+  mapper->dbus_name_id =
+    g_bus_own_name (G_BUS_TYPE_SESSION,
+                    META_INPUT_MAPPING_DBUS_SERVICE,
+                    G_BUS_NAME_OWNER_FLAGS_NONE,
+                    on_bus_acquired,
+                    on_name_acquired,
+                    on_name_lost,
+                    mapper,
+                    NULL);
 }
+
+static gboolean
+handle_get_device_mapping (MetaDBusInputMapping  *skeleton,
+                           GDBusMethodInvocation *invocation,
+                           const char            *device_node)
+{
+  MetaInputMapper *input_mapper = META_INPUT_MAPPER (skeleton);
+  ClutterInputDevice *device = NULL;
+  g_autoptr (GList) devices = NULL;
+  MetaLogicalMonitor *logical_monitor;
+  GList *l;
+
+  devices = clutter_seat_list_devices (input_mapper->seat);
+
+  for (l = devices; l; l = l->next)
+    {
+      if (g_strcmp0 (clutter_input_device_get_device_node (l->data),
+                     device_node) == 0)
+        {
+          device = l->data;
+          break;
+        }
+    }
+
+  if (!device)
+    {
+      g_dbus_method_invocation_return_error (invocation,
+                                             G_IO_ERROR,
+                                             G_IO_ERROR_INVALID_DATA,
+                                             "Device does not exist");
+      return G_DBUS_METHOD_INVOCATION_HANDLED;
+    }
+
+  logical_monitor =
+    meta_input_mapper_get_device_logical_monitor (input_mapper, device);
+
+  if (logical_monitor)
+    {
+      MetaRectangle rect;
+
+      rect = meta_logical_monitor_get_layout (logical_monitor);
+      g_dbus_method_invocation_return_value (invocation,
+                                             g_variant_new ("((iiii))",
+                                                            rect.x,
+                                                            rect.y,
+                                                            rect.width,
+                                                            rect.height));
+      return G_DBUS_METHOD_INVOCATION_HANDLED;
+    }
+  else
+    {
+      g_dbus_method_invocation_return_error (invocation,
+                                             G_IO_ERROR,
+                                             G_IO_ERROR_NOT_FOUND,
+                                             "Device is not mapped to any output");
+      return G_DBUS_METHOD_INVOCATION_HANDLED;
+    }
+}
+
+static void
+meta_input_mapping_init_iface (MetaDBusInputMappingIface *iface)
+{
+  iface->handle_get_device_mapping = handle_get_device_mapping;
+}
+
 
 MetaInputMapper *
 meta_input_mapper_new (void)

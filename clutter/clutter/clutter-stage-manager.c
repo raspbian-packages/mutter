@@ -22,18 +22,17 @@
  */
 
 /**
- * SECTION:clutter-stage-manager
- * @short_description: Maintains the list of stages
+ * ClutterStageManager:
+ * 
+ * Maintains the list of stages
  *
  * #ClutterStageManager is a singleton object, owned by Clutter, which
  * maintains the list of currently active stages
  *
- * Every newly-created #ClutterStage will cause the emission of the
- * #ClutterStageManager::stage-added signal; once a #ClutterStage has
- * been destroyed, the #ClutterStageManager::stage-removed signal will
+ * Every newly-created [class@Stage] will cause the emission of the
+ * [signal@StageManager::stage-added] signal; once a [class@Stage] has
+ * been destroyed, the [signal@StageManager::stage-removed] signal will
  * be emitted
- *
- * #ClutterStageManager is available since Clutter 0.8
  */
 
 #include "clutter-build-config.h"
@@ -106,8 +105,6 @@ clutter_stage_manager_class_init (ClutterStageManagerClass *klass)
    * ClutterStageManager:default-stage:
    *
    * The default stage used by Clutter.
-   *
-   * Since: 0.8
    */
   g_object_class_install_property (gobject_class,
                                    PROP_DEFAULT_STAGE,
@@ -122,10 +119,8 @@ clutter_stage_manager_class_init (ClutterStageManagerClass *klass)
    * @stage_manager: the object which received the signal
    * @stage: the added stage
    *
-   * The ::stage-added signal is emitted each time a new #ClutterStage
+   * The signal is emitted each time a new #ClutterStage
    * has been added to the stage manager.
-   *
-   * Since: 0.8
    */
   manager_signals[STAGE_ADDED] =
     g_signal_new ("stage-added",
@@ -140,10 +135,8 @@ clutter_stage_manager_class_init (ClutterStageManagerClass *klass)
    * @stage_manager: the object which received the signal
    * @stage: the removed stage
    *
-   * The ::stage-removed signal is emitted each time a #ClutterStage
+   * The signal is emitted each time a #ClutterStage
    * has been removed from the stage manager.
-   *
-   * Since: 0.8
    */
   manager_signals[STAGE_REMOVED] =
     g_signal_new ("stage-removed",
@@ -167,8 +160,6 @@ clutter_stage_manager_init (ClutterStageManager *stage_manager)
  *
  * Return value: (transfer none): the default stage manager instance. The returned
  *   object is owned by Clutter and you should not reference or unreference it.
- *
- * Since: 0.8
  */
 ClutterStageManager *
 clutter_stage_manager_get_default (void)
@@ -213,8 +204,6 @@ _clutter_stage_manager_set_default_stage (ClutterStageManager *stage_manager,
  *
  * Return value: (transfer none): the default stage. The returned object
  *   is owned by Clutter and you should never reference or unreference it
- *
- * Since: 0.8
  */
 ClutterStage *
 clutter_stage_manager_get_default_stage (ClutterStageManager *stage_manager)
@@ -231,8 +220,6 @@ clutter_stage_manager_get_default_stage (ClutterStageManager *stage_manager)
  * Return value: (transfer container) (element-type Clutter.Stage): a newly
  *   allocated list of #ClutterStage objects. Use g_slist_free() to
  *   deallocate it when done.
- *
- * Since: 0.8
  */
 GSList *
 clutter_stage_manager_list_stages (ClutterStageManager *stage_manager)
@@ -250,8 +237,6 @@ clutter_stage_manager_list_stages (ClutterStageManager *stage_manager)
  *   to the internal list of #ClutterStage objects. The returned list
  *   is owned by the #ClutterStageManager and should never be modified
  *   or freed
- *
- * Since: 1.0
  */
 const GSList *
 clutter_stage_manager_peek_stages (ClutterStageManager *stage_manager)

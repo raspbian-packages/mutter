@@ -59,7 +59,7 @@ Copyright:
    2005-2007  Olivier Fourdan
    2006-2008  OpenedHand Ltd
    1995-1997  Peter Mattis
-   2001-2021  Red Hat Inc
+   2001-2022  Red Hat Inc
    2014  Rico Tzschichholz
    2003-2004  Rob Adams
    2011  Robert Bosch Car Multimedia GmbH
@@ -101,6 +101,12 @@ Copyright:
  1970-2003 Wm. Randolph Franklin
  2011 Intel Corporation
 License: WRF-BSD-variant
+
+Files:
+ src/tests/share/icc/vx239-calibrated.icc
+Copyright: none
+License:
+ This profile is free of known copyright restrictions
 
 Files:
  src/x11/mutter-Xatomtype.h

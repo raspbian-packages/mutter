@@ -297,6 +297,68 @@ meta_crtc_xrandr_new (MetaGpuXrandr      *gpu_xrandr,
   return crtc_xrandr;
 }
 
+static MetaGammaLut *
+meta_crtc_xrandr_get_gamma_lut (MetaCrtc *crtc)
+{
+  MetaGpu *gpu = meta_crtc_get_gpu (crtc);
+  MetaBackend *backend = meta_gpu_get_backend (gpu);
+  Display *xdisplay =
+    meta_backend_x11_get_xdisplay (META_BACKEND_X11 (backend));
+  XRRCrtcGamma *gamma;
+  MetaGammaLut *lut;
+
+  gamma = XRRGetCrtcGamma (xdisplay, (XID) meta_crtc_get_id (crtc));
+
+  lut = g_new0 (MetaGammaLut, 1);
+  lut->size = gamma->size;
+  lut->red = g_memdup2 (gamma->red, sizeof (unsigned short) * gamma->size);
+  lut->green = g_memdup2 (gamma->green, sizeof (unsigned short) * gamma->size);
+  lut->blue = g_memdup2 (gamma->blue, sizeof (unsigned short) * gamma->size);
+
+  XRRFreeGamma (gamma);
+
+  return lut;
+}
+
+static size_t
+meta_crtc_xrandr_get_gamma_lut_size (MetaCrtc *crtc)
+{
+  MetaGpu *gpu = meta_crtc_get_gpu (crtc);
+  MetaBackend *backend = meta_gpu_get_backend (gpu);
+  Display *xdisplay =
+    meta_backend_x11_get_xdisplay (META_BACKEND_X11 (backend));
+  XRRCrtcGamma *gamma;
+  size_t size;
+
+  gamma = XRRGetCrtcGamma (xdisplay, (XID) meta_crtc_get_id (crtc));
+
+  size = gamma->size;
+
+  XRRFreeGamma (gamma);
+
+  return size;
+}
+
+static void
+meta_crtc_xrandr_set_gamma_lut (MetaCrtc           *crtc,
+                                const MetaGammaLut *lut)
+{
+  MetaGpu *gpu = meta_crtc_get_gpu (crtc);
+  MetaBackend *backend = meta_gpu_get_backend (gpu);
+  Display *xdisplay =
+    meta_backend_x11_get_xdisplay (META_BACKEND_X11 (backend));
+  XRRCrtcGamma *gamma;
+
+  gamma = XRRAllocGamma (lut->size);
+  memcpy (gamma->red, lut->red, sizeof (uint16_t) * lut->size);
+  memcpy (gamma->green, lut->green, sizeof (uint16_t) * lut->size);
+  memcpy (gamma->blue, lut->blue, sizeof (uint16_t) * lut->size);
+
+  XRRSetCrtcGamma (xdisplay, (XID) meta_crtc_get_id (crtc), gamma);
+
+  XRRFreeGamma (gamma);
+}
+
 static void
 meta_crtc_xrandr_init (MetaCrtcXrandr *crtc_xrandr)
 {
@@ -305,4 +367,9 @@ meta_crtc_xrandr_init (MetaCrtcXrandr *crtc_xrandr)
 static void
 meta_crtc_xrandr_class_init (MetaCrtcXrandrClass *klass)
 {
+  MetaCrtcClass *crtc_class = META_CRTC_CLASS (klass);
+
+  crtc_class->get_gamma_lut_size = meta_crtc_xrandr_get_gamma_lut_size;
+  crtc_class->get_gamma_lut = meta_crtc_xrandr_get_gamma_lut;
+  crtc_class->set_gamma_lut = meta_crtc_xrandr_set_gamma_lut;
 }

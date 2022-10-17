@@ -43,14 +43,6 @@ G_BEGIN_DECLS
 typedef struct _ClutterFixedLayout              ClutterFixedLayout;
 typedef struct _ClutterFixedLayoutClass         ClutterFixedLayoutClass;
 
-/**
- * ClutterFixedLayout:
- *
- * The #ClutterFixedLayout structure contains only private data and
- * it should be accessed using the provided API
- *
- * Since: 1.2
- */
 struct _ClutterFixedLayout
 {
   /*< private >*/
@@ -62,8 +54,6 @@ struct _ClutterFixedLayout
  *
  * The #ClutterFixedLayoutClass structure contains only private data
  * and it should be accessed using the provided API
- *
- * Since: 1.2
  */
 struct _ClutterFixedLayoutClass
 {

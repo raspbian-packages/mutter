@@ -108,6 +108,7 @@ typedef struct _MetaCompositorPrivate
   gulong before_paint_handler_id;
   gulong after_paint_handler_id;
   gulong window_visibility_updated_id;
+  gulong monitors_changed_internal_id;
 
   int64_t server_time_query_time;
   int64_t server_time_offset;
@@ -122,12 +123,16 @@ typedef struct _MetaCompositorPrivate
 
   CoglContext *context;
 
+  gboolean needs_update_top_window_actors;
+
   MetaWindowActor *top_window_actor;
   gulong top_window_actor_destroy_id;
 
   int disable_unredirect_count;
 
   int switch_workspace_in_progress;
+
+  gboolean frame_in_progress;
 
   MetaPluginManager *plugin_mgr;
 
@@ -136,6 +141,8 @@ typedef struct _MetaCompositorPrivate
 
 G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (MetaCompositor, meta_compositor,
                                      G_TYPE_OBJECT)
+
+static GQuark quark_compositor_view;
 
 static void
 on_presented (ClutterStage     *stage,
@@ -410,6 +417,14 @@ meta_compositor_redirect_x11_windows (MetaCompositor *compositor)
     redirect_windows (display->x11_display);
 }
 
+static MetaCompositorView *
+meta_compositor_create_view (MetaCompositor   *compositor,
+                             ClutterStageView *stage_view)
+{
+  return META_COMPOSITOR_GET_CLASS (compositor)->create_view (compositor,
+                                                              stage_view);
+}
+
 gboolean
 meta_compositor_do_manage (MetaCompositor  *compositor,
                            GError         **error)
@@ -585,6 +600,23 @@ meta_compositor_window_opacity_changed (MetaCompositor *compositor,
     return;
 
   meta_window_actor_update_opacity (window_actor);
+}
+
+static void
+invalidate_top_window_actor_for_views (MetaCompositor *compositor)
+{
+  MetaCompositorPrivate *priv =
+    meta_compositor_get_instance_private (compositor);
+
+  g_assert (!priv->frame_in_progress);
+
+  priv->needs_update_top_window_actors = TRUE;
+}
+
+void
+meta_compositor_window_actor_stage_views_changed (MetaCompositor *compositor)
+{
+  invalidate_top_window_actor_for_views (compositor);
 }
 
 gboolean
@@ -908,6 +940,7 @@ meta_compositor_sync_stack (MetaCompositor  *compositor,
   sync_actor_stacking (compositor);
 
   update_top_window_actor (compositor);
+  invalidate_top_window_actor_for_views (compositor);
 }
 
 void
@@ -924,6 +957,69 @@ meta_compositor_sync_window_geometry (MetaCompositor *compositor,
 
   if (changes & META_WINDOW_ACTOR_CHANGE_SIZE)
     meta_plugin_manager_event_size_changed (priv->plugin_mgr, window_actor);
+}
+
+static void
+maybe_update_top_window_actor_for_views (MetaCompositor *compositor)
+{
+  MetaCompositorPrivate *priv =
+    meta_compositor_get_instance_private (compositor);
+  ClutterStage *stage;
+  GList *l;
+
+  if (!priv->needs_update_top_window_actors)
+    return;
+
+  priv->needs_update_top_window_actors = FALSE;
+
+  COGL_TRACE_BEGIN_SCOPED (UpdateTopWindowActorForViews,
+                           "Compositor (update top window actors)");
+
+  stage = CLUTTER_STAGE (meta_backend_get_stage (priv->backend));
+
+  for (l = clutter_stage_peek_stage_views (stage); l; l = l->next)
+    {
+      ClutterStageView *stage_view = l->data;
+      MetaCompositorView *compositor_view;
+
+      compositor_view = g_object_get_qdata (G_OBJECT (stage_view),
+                                            quark_compositor_view);
+
+      g_assert (compositor_view != NULL);
+
+      meta_compositor_view_update_top_window_actor (compositor_view,
+                                                    priv->windows);
+    }
+}
+
+static void
+meta_compositor_ensure_compositor_views (MetaCompositor *compositor)
+{
+  MetaCompositorPrivate *priv =
+    meta_compositor_get_instance_private (compositor);
+  ClutterStage *stage =
+    CLUTTER_STAGE (meta_backend_get_stage (priv->backend));
+  GList *l;
+
+  for (l = clutter_stage_peek_stage_views (stage); l; l = l->next)
+    {
+      ClutterStageView *stage_view = l->data;
+      MetaCompositorView *compositor_view;
+
+      compositor_view = g_object_get_qdata (G_OBJECT (stage_view),
+                                            quark_compositor_view);
+
+      if (compositor_view)
+        continue;
+
+      compositor_view = meta_compositor_create_view (compositor,
+                                                     stage_view);
+
+      g_object_set_qdata_full (G_OBJECT (stage_view),
+                               quark_compositor_view,
+                               compositor_view,
+                               g_object_unref);
+    }
 }
 
 static void
@@ -953,34 +1049,46 @@ on_presented (ClutterStage     *stage,
 }
 
 static void
-meta_compositor_real_before_paint (MetaCompositor   *compositor,
-                                   ClutterStageView *stage_view)
+meta_compositor_real_before_paint (MetaCompositor     *compositor,
+                                   MetaCompositorView *compositor_view)
 {
   MetaCompositorPrivate *priv =
     meta_compositor_get_instance_private (compositor);
+  ClutterStageView *stage_view;
   GList *l;
+
+  stage_view = meta_compositor_view_get_stage_view (compositor_view);
 
   for (l = priv->windows; l; l = l->next)
     meta_window_actor_before_paint (l->data, stage_view);
 }
 
 static void
-meta_compositor_before_paint (MetaCompositor   *compositor,
-                              ClutterStageView *stage_view)
+meta_compositor_before_paint (MetaCompositor     *compositor,
+                              MetaCompositorView *compositor_view)
 {
+  MetaCompositorPrivate *priv =
+    meta_compositor_get_instance_private (compositor);
+
   COGL_TRACE_BEGIN_SCOPED (MetaCompositorPrePaint,
                            "Compositor (before-paint)");
-  META_COMPOSITOR_GET_CLASS (compositor)->before_paint (compositor, stage_view);
+
+  maybe_update_top_window_actor_for_views (compositor);
+
+  priv->frame_in_progress = TRUE;
+
+  META_COMPOSITOR_GET_CLASS (compositor)->before_paint (compositor, compositor_view);
 }
 
 static void
-meta_compositor_real_after_paint (MetaCompositor   *compositor,
-                                  ClutterStageView *stage_view)
+meta_compositor_real_after_paint (MetaCompositor     *compositor,
+                                  MetaCompositorView *compositor_view)
 {
   MetaCompositorPrivate *priv =
     meta_compositor_get_instance_private (compositor);
   ClutterActor *stage_actor = meta_backend_get_stage (priv->backend);
   CoglGraphicsResetStatus status;
+  ClutterStageView *stage_view;
   GList *l;
 
   status = cogl_get_graphics_reset_status (priv->context);
@@ -1003,9 +1111,11 @@ meta_compositor_real_after_paint (MetaCompositor   *compositor,
          a wayland compositor but in that case we shouldn't get here
          since we don't enable robustness in that case. */
       g_assert (!meta_is_wayland_compositor ());
-      meta_restart (NULL);
+      meta_restart (NULL, meta_display_get_context (priv->display));
       break;
     }
+
+  stage_view = meta_compositor_view_get_stage_view (compositor_view);
 
   for (l = priv->windows; l; l = l->next)
     {
@@ -1019,12 +1129,17 @@ meta_compositor_real_after_paint (MetaCompositor   *compositor,
 }
 
 static void
-meta_compositor_after_paint (MetaCompositor   *compositor,
-                             ClutterStageView *stage_view)
+meta_compositor_after_paint (MetaCompositor     *compositor,
+                             MetaCompositorView *compositor_view)
 {
+  MetaCompositorPrivate *priv =
+    meta_compositor_get_instance_private (compositor);
+
   COGL_TRACE_BEGIN_SCOPED (MetaCompositorPostPaint,
                            "Compositor (after-paint)");
-  META_COMPOSITOR_GET_CLASS (compositor)->after_paint (compositor, stage_view);
+  META_COMPOSITOR_GET_CLASS (compositor)->after_paint (compositor, compositor_view);
+
+  priv->frame_in_progress = FALSE;
 }
 
 static void
@@ -1032,7 +1147,14 @@ on_before_paint (ClutterStage     *stage,
                  ClutterStageView *stage_view,
                  MetaCompositor   *compositor)
 {
-  meta_compositor_before_paint (compositor, stage_view);
+  MetaCompositorView *compositor_view;
+
+  compositor_view = g_object_get_qdata (G_OBJECT (stage_view),
+                                        quark_compositor_view);
+
+  g_assert (compositor_view != NULL);
+
+  meta_compositor_before_paint (compositor, compositor_view);
 }
 
 static void
@@ -1040,7 +1162,14 @@ on_after_paint (ClutterStage     *stage,
                 ClutterStageView *stage_view,
                 MetaCompositor   *compositor)
 {
-  meta_compositor_after_paint (compositor, stage_view);
+  MetaCompositorView *compositor_view;
+
+  compositor_view = g_object_get_qdata (G_OBJECT (stage_view),
+                                        quark_compositor_view);
+
+  g_assert (compositor_view != NULL);
+
+  meta_compositor_after_paint (compositor, compositor_view);
 }
 
 static void
@@ -1051,6 +1180,14 @@ on_window_visibility_updated (MetaDisplay    *display,
                               MetaCompositor *compositor)
 {
   update_top_window_actor (compositor);
+  invalidate_top_window_actor_for_views (compositor);
+}
+
+static void
+on_monitors_changed_internal (MetaMonitorManager *monitor_manager,
+                              MetaCompositor     *compositor)
+{
+  meta_compositor_ensure_compositor_views (compositor);
 }
 
 static void
@@ -1102,6 +1239,7 @@ meta_compositor_get_property (GObject    *object,
 static void
 meta_compositor_init (MetaCompositor *compositor)
 {
+  invalidate_top_window_actor_for_views (compositor);
 }
 
 static void
@@ -1113,6 +1251,8 @@ meta_compositor_constructed (GObject *object)
   ClutterBackend *clutter_backend =
     meta_backend_get_clutter_backend (priv->backend);
   ClutterActor *stage = meta_backend_get_stage (priv->backend);
+  MetaMonitorManager *monitor_manager =
+    meta_backend_get_monitor_manager (priv->backend);
 
   priv->context = clutter_backend->cogl_context;
 
@@ -1133,9 +1273,17 @@ meta_compositor_constructed (GObject *object)
                       G_CALLBACK (on_window_visibility_updated),
                       compositor);
 
+  priv->monitors_changed_internal_id =
+    g_signal_connect (monitor_manager,
+                      "monitors-changed-internal",
+                      G_CALLBACK (on_monitors_changed_internal),
+                      compositor);
+
   priv->laters = meta_laters_new (compositor);
 
   G_OBJECT_CLASS (meta_compositor_parent_class)->constructed (object);
+
+  meta_compositor_ensure_compositor_views (compositor);
 }
 
 static void
@@ -1190,6 +1338,9 @@ meta_compositor_class_init (MetaCompositorClass *klass)
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
   g_object_class_install_properties (object_class, N_PROPS, obj_props);
+
+  quark_compositor_view =
+    g_quark_from_static_string ("-meta-compositor-view");
 }
 
 /**

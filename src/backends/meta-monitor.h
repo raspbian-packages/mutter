@@ -116,9 +116,16 @@ gboolean meta_monitor_is_primary (MetaMonitor *monitor);
 
 gboolean meta_monitor_supports_underscanning (MetaMonitor *monitor);
 
+gboolean meta_monitor_supports_color_transform (MetaMonitor *monitor);
+
 gboolean meta_monitor_is_underscanning (MetaMonitor *monitor);
 
+gboolean meta_monitor_get_max_bpc (MetaMonitor  *monitor,
+                                   unsigned int *max_bpc);
+
 gboolean meta_monitor_is_laptop_panel (MetaMonitor *monitor);
+
+gboolean meta_monitor_is_virtual (MetaMonitor *monitor);
 
 gboolean meta_monitor_is_same_as (MetaMonitor *monitor,
                                   MetaMonitor *other_monitor);
@@ -153,6 +160,12 @@ META_EXPORT_TEST
 const char * meta_monitor_get_serial (MetaMonitor *monitor);
 
 META_EXPORT_TEST
+const MetaEdidInfo * meta_monitor_get_edid_info (MetaMonitor *monitor);
+
+META_EXPORT_TEST
+const char * meta_monitor_get_edid_checksum_md5 (MetaMonitor *monitor);
+
+META_EXPORT_TEST
 MetaConnectorType meta_monitor_get_connector_type (MetaMonitor *monitor);
 
 /* This function returns the transform corrected for the panel orientation */
@@ -181,6 +194,10 @@ MetaLogicalMonitor * meta_monitor_get_logical_monitor (MetaMonitor *monitor);
 META_EXPORT_TEST
 MetaMonitorMode * meta_monitor_get_mode_from_id (MetaMonitor *monitor,
                                                  const char  *monitor_mode_id);
+
+META_EXPORT_TEST
+gboolean meta_monitor_mode_spec_has_similar_size (MetaMonitorModeSpec *monitor_mode_spec,
+                                                  MetaMonitorModeSpec *other_monitor_mode_spec);
 
 META_EXPORT_TEST
 MetaMonitorMode * meta_monitor_get_mode_from_spec (MetaMonitor         *monitor,
@@ -285,5 +302,11 @@ MetaPrivacyScreenState meta_monitor_get_privacy_screen_state (MetaMonitor *monit
 gboolean meta_monitor_set_privacy_screen_enabled (MetaMonitor  *monitor,
                                                   gboolean      enabled,
                                                   GError      **error);
+
+META_EXPORT_TEST
+size_t meta_monitor_get_gamma_lut_size (MetaMonitor *monitor);
+
+void meta_monitor_set_gamma_lut (MetaMonitor        *monitor,
+                                 const MetaGammaLut *lut);
 
 #endif /* META_MONITOR_H */

@@ -40,6 +40,7 @@
 
 #include <stdlib.h>
 
+#include "backends/meta-color-manager.h"
 #include "backends/meta-cursor-tracker-private.h"
 #include "backends/meta-idle-manager.h"
 #include "backends/meta-keymap-utils.h"
@@ -54,6 +55,7 @@
 #include "backends/native/meta-kms-device.h"
 #include "backends/native/meta-launcher.h"
 #include "backends/native/meta-monitor-manager-native.h"
+#include "backends/native/meta-render-device-gbm.h"
 #include "backends/native/meta-renderer-native.h"
 #include "backends/native/meta-seat-native.h"
 #include "backends/native/meta-stage-native.h"
@@ -64,6 +66,10 @@
 
 #ifdef HAVE_REMOTE_DESKTOP
 #include "backends/meta-screen-cast.h"
+#endif
+
+#ifdef HAVE_EGL_DEVICE
+#include "backends/native/meta-render-device-egl-stream.h"
 #endif
 
 #include "meta-private-enum-types.h"
@@ -88,6 +94,8 @@ struct _MetaBackendNative
   MetaUdev *udev;
   MetaKms *kms;
 
+  GHashTable *startup_render_devices;
+
   MetaBackendNativeMode mode;
 };
 
@@ -110,6 +118,7 @@ meta_backend_native_dispose (GObject *object)
 
   G_OBJECT_CLASS (meta_backend_native_parent_class)->dispose (object);
 
+  g_clear_pointer (&native->startup_render_devices, g_hash_table_unref);
   g_clear_object (&native->kms);
   g_clear_object (&native->udev);
   g_clear_object (&native->device_pool);
@@ -205,6 +214,7 @@ update_viewports (MetaBackend *backend)
 static void
 meta_backend_native_post_init (MetaBackend *backend)
 {
+  MetaBackendNative *backend_native = META_BACKEND_NATIVE (backend);
   MetaSettings *settings = meta_backend_get_settings (backend);
 
   META_BACKEND_CLASS (meta_backend_native_parent_class)->post_init (backend);
@@ -245,10 +255,19 @@ meta_backend_native_post_init (MetaBackend *backend)
     }
 
 #ifdef HAVE_REMOTE_DESKTOP
-  maybe_disable_screen_cast_dma_bufs (META_BACKEND_NATIVE (backend));
+  maybe_disable_screen_cast_dma_bufs (backend_native);
 #endif
 
+  g_clear_pointer (&backend_native->startup_render_devices,
+                   g_hash_table_unref);
+
   update_viewports (backend);
+}
+
+static MetaBackendCapabilities
+meta_backend_native_get_capabilities (MetaBackend *backend)
+{
+  return META_BACKEND_CAPABILITY_BARRIERS;
 }
 
 static MetaMonitorManager *
@@ -271,6 +290,14 @@ meta_backend_native_create_monitor_manager (MetaBackend *backend,
                             G_CALLBACK (update_viewports), backend);
 
   return manager;
+}
+
+static MetaColorManager *
+meta_backend_native_create_color_manager (MetaBackend *backend)
+{
+  return g_object_new (META_TYPE_COLOR_MANAGER,
+                       "backend", backend,
+                       NULL);
 }
 
 static MetaCursorRenderer *
@@ -407,9 +434,14 @@ meta_backend_native_set_pointer_constraint (MetaBackend           *backend,
 
   if (constraint)
     {
+      double min_edge_distance;
+
       region = meta_pointer_constraint_get_region (constraint);
+      min_edge_distance =
+        meta_pointer_constraint_get_min_edge_distance (constraint);
       constraint_impl = meta_pointer_constraint_impl_native_new (constraint,
-                                                                 region);
+                                                                 region,
+                                                                 min_edge_distance);
     }
 
   meta_seat_native_set_pointer_constraint (META_SEAT_NATIVE (seat),
@@ -430,14 +462,129 @@ meta_backend_native_update_screen_size (MetaBackend *backend,
   clutter_actor_set_size (stage, width, height);
 }
 
-static MetaGpuKms *
-create_gpu_from_udev_device (MetaBackendNative  *native,
-                             GUdevDevice        *device,
-                             GError            **error)
+static MetaRenderDevice *
+create_render_device (MetaBackendNative  *backend_native,
+                      const char         *device_path,
+                      GError            **error)
+{
+  MetaBackend *backend = META_BACKEND (backend_native);
+  MetaDevicePool *device_pool =
+    meta_backend_native_get_device_pool (backend_native);
+  g_autoptr (MetaDeviceFile) device_file = NULL;
+  MetaDeviceFileFlags device_file_flags;
+  g_autoptr (MetaRenderDeviceGbm) render_device_gbm = NULL;
+  g_autoptr (GError) gbm_error = NULL;
+#ifdef HAVE_EGL_DEVICE
+  g_autoptr (MetaRenderDeviceEglStream) render_device_egl_stream = NULL;
+  g_autoptr (GError) egl_stream_error = NULL;
+#endif
+
+  if (meta_backend_is_headless (backend))
+    device_file_flags = META_DEVICE_FILE_FLAG_NONE;
+  else
+    device_file_flags = META_DEVICE_FILE_FLAG_TAKE_CONTROL;
+
+  device_file = meta_device_pool_open (device_pool,
+                                       device_path,
+                                       device_file_flags,
+                                       error);
+  if (!device_file)
+    return NULL;
+
+  if (meta_backend_is_headless (backend))
+    {
+      int fd;
+      g_autofree char *render_node_path = NULL;
+      g_autoptr (MetaDeviceFile) render_node_device_file = NULL;
+
+      fd = meta_device_file_get_fd (device_file);
+      render_node_path = drmGetRenderDeviceNameFromFd (fd);
+
+      if (!render_node_path)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Couldn't find render node device for '%s'",
+                       meta_device_file_get_path (device_file));
+          return NULL;
+        }
+
+      meta_topic (META_DEBUG_KMS, "Found render node '%s' from '%s'",
+                  render_node_path,
+                  meta_device_file_get_path (device_file));
+
+      render_node_device_file =
+        meta_device_pool_open (device_pool, render_node_path,
+                               META_DEVICE_FILE_FLAG_NONE,
+                               error);
+      if (!render_node_device_file)
+        return NULL;
+
+      g_clear_pointer (&device_file, meta_device_file_release);
+      device_file = g_steal_pointer (&render_node_device_file);
+    }
+
+#ifdef HAVE_EGL_DEVICE
+  if (g_strcmp0 (getenv ("MUTTER_DEBUG_FORCE_EGL_STREAM"), "1") != 0)
+#endif
+    {
+      render_device_gbm = meta_render_device_gbm_new (backend, device_file,
+                                                      &gbm_error);
+      if (render_device_gbm)
+        {
+          MetaRenderDevice *render_device =
+            META_RENDER_DEVICE (render_device_gbm);
+
+          if (meta_render_device_is_hardware_accelerated (render_device))
+            return META_RENDER_DEVICE (g_steal_pointer (&render_device_gbm));
+        }
+    }
+#ifdef HAVE_EGL_DEVICE
+  else
+    {
+      g_set_error (&gbm_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "GBM backend was disabled using env var");
+    }
+#endif
+
+#ifdef HAVE_EGL_DEVICE
+  render_device_egl_stream =
+    meta_render_device_egl_stream_new (backend,
+                                       device_file,
+                                       &egl_stream_error);
+  if (render_device_egl_stream)
+    return META_RENDER_DEVICE (g_steal_pointer (&render_device_egl_stream));
+#endif
+
+  if (render_device_gbm)
+    return META_RENDER_DEVICE (g_steal_pointer (&render_device_gbm));
+
+  g_set_error (error, G_IO_ERROR,
+               G_IO_ERROR_FAILED,
+               "Failed to initialize render device for %s: "
+               "%s"
+#ifdef HAVE_EGL_DEVICE
+               ", %s"
+#endif
+               , device_path
+               , gbm_error->message
+#ifdef HAVE_EGL_DEVICE
+               , egl_stream_error->message
+#endif
+               );
+
+  return NULL;
+}
+
+static gboolean
+add_drm_device (MetaBackendNative  *backend_native,
+                GUdevDevice        *device,
+                GError            **error)
 {
   MetaKmsDeviceFlag flags = META_KMS_DEVICE_FLAG_NONE;
   const char *device_path;
+  g_autoptr (MetaRenderDevice) render_device = NULL;
   MetaKmsDevice *kms_device;
+  MetaGpuKms *gpu_kms;
 
   if (meta_is_udev_device_platform_device (device))
     flags |= META_KMS_DEVICE_FLAG_PLATFORM_DEVICE;
@@ -453,12 +600,27 @@ create_gpu_from_udev_device (MetaBackendNative  *native,
 
   device_path = g_udev_device_get_device_file (device);
 
-  kms_device = meta_kms_create_device (native->kms, device_path, flags,
+  render_device = create_render_device (backend_native, device_path, error);
+  if (!render_device)
+    return FALSE;
+
+#ifdef HAVE_EGL_DEVICE
+  if (META_IS_RENDER_DEVICE_EGL_STREAM (render_device))
+    flags |= META_KMS_DEVICE_FLAG_FORCE_LEGACY;
+#endif
+
+  kms_device = meta_kms_create_device (backend_native->kms, device_path, flags,
                                        error);
   if (!kms_device)
-    return NULL;
+    return FALSE;
 
-  return meta_gpu_kms_new (native, kms_device, error);
+  g_hash_table_insert (backend_native->startup_render_devices,
+                       g_strdup (device_path),
+                       g_steal_pointer (&render_device));
+
+  gpu_kms = meta_gpu_kms_new (backend_native, kms_device, error);
+  meta_backend_add_gpu (META_BACKEND (backend_native), META_GPU (gpu_kms));
+  return TRUE;
 }
 
 static gboolean
@@ -484,7 +646,6 @@ on_udev_device_added (MetaUdev          *udev,
   MetaBackend *backend = META_BACKEND (native);
   g_autoptr (GError) error = NULL;
   const char *device_path;
-  MetaGpuKms *new_gpu_kms;
   GList *gpus, *l;
 
   if (!meta_udev_is_drm_device (udev, device))
@@ -511,15 +672,22 @@ on_udev_device_added (MetaUdev          *udev,
       return;
     }
 
-  new_gpu_kms = create_gpu_from_udev_device (native, device, &error);
-  if (!new_gpu_kms)
+  if (!add_drm_device (native, device, &error))
     {
-      g_warning ("Failed to hotplug secondary gpu '%s': %s",
-                 device_path, error->message);
-      return;
+      if (meta_backend_is_headless (backend) &&
+          g_error_matches (error, G_IO_ERROR,
+                           G_IO_ERROR_PERMISSION_DENIED))
+        {
+          meta_topic (META_DEBUG_BACKEND,
+                      "Ignoring unavailable secondary gpu '%s': %s",
+                      device_path, error->message);
+        }
+      else
+        {
+          g_warning ("Failed to hotplug secondary gpu '%s': %s",
+                     device_path, error->message);
+        }
     }
-
-  meta_backend_add_gpu (backend, META_GPU (new_gpu_kms));
 }
 
 static gboolean
@@ -538,7 +706,6 @@ init_gpus (MetaBackendNative  *native,
   for (l = devices; l; l = l->next)
     {
       GUdevDevice *device = l->data;
-      MetaGpuKms *gpu_kms;
       GError *local_error = NULL;
 
       if (should_ignore_device (native, device))
@@ -548,18 +715,27 @@ init_gpus (MetaBackendNative  *native,
           continue;
         }
 
-      gpu_kms = create_gpu_from_udev_device (native, device, &local_error);
-
-      if (!gpu_kms)
+      if (!add_drm_device (native, device, &local_error))
         {
-          g_warning ("Failed to open gpu '%s': %s",
-                     g_udev_device_get_device_file (device),
-                     local_error->message);
+          if (meta_backend_is_headless (backend) &&
+              g_error_matches (local_error, G_IO_ERROR,
+                               G_IO_ERROR_PERMISSION_DENIED))
+            {
+              meta_topic (META_DEBUG_BACKEND,
+                          "Ignoring unavailable gpu '%s': %s'",
+                          g_udev_device_get_device_file (device),
+                          local_error->message);
+            }
+          else
+            {
+              g_warning ("Failed to open gpu '%s': %s",
+                         g_udev_device_get_device_file (device),
+                         local_error->message);
+            }
+
           g_clear_error (&local_error);
           continue;
         }
-
-      meta_backend_add_gpu (backend, META_GPU (gpu_kms));
     }
 
   g_list_free_full (devices, g_object_unref);
@@ -675,8 +851,10 @@ meta_backend_native_class_init (MetaBackendNativeClass *klass)
   backend_class->create_default_seat = meta_backend_native_create_default_seat;
 
   backend_class->post_init = meta_backend_native_post_init;
+  backend_class->get_capabilities = meta_backend_native_get_capabilities;
 
   backend_class->create_monitor_manager = meta_backend_native_create_monitor_manager;
+  backend_class->create_color_manager = meta_backend_native_create_color_manager;
   backend_class->get_cursor_renderer = meta_backend_native_get_cursor_renderer;
   backend_class->create_renderer = meta_backend_native_create_renderer;
   backend_class->get_input_settings = meta_backend_native_get_input_settings;
@@ -706,8 +884,11 @@ meta_backend_native_class_init (MetaBackendNativeClass *klass)
 }
 
 static void
-meta_backend_native_init (MetaBackendNative *native)
+meta_backend_native_init (MetaBackendNative *backend_native)
 {
+  backend_native->startup_render_devices =
+    g_hash_table_new_full (g_str_hash, g_str_equal,
+                           g_free, g_object_unref);
 }
 
 MetaLauncher *
@@ -812,4 +993,19 @@ void meta_backend_native_resume (MetaBackendNative *native)
   meta_input_settings_maybe_restore_numlock_state (input_settings);
 
   clutter_seat_ensure_a11y_state (CLUTTER_SEAT (seat));
+}
+
+MetaRenderDevice *
+meta_backend_native_take_render_device (MetaBackendNative *backend_native,
+                                        const char        *device_path)
+{
+  MetaRenderDevice *render_device;
+
+  if (g_hash_table_steal_extended (backend_native->startup_render_devices,
+                                   device_path,
+                                   NULL,
+                                   (gpointer *) &render_device))
+    return render_device;
+  else
+    return NULL;
 }

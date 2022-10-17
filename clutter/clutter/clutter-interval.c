@@ -23,8 +23,9 @@
  */
 
 /**
- * SECTION:clutter-interval
- * @short_description: An object holding an interval of two values
+ * ClutterInterval:
+ * 
+ * An object holding an interval of two values
  *
  * #ClutterInterval is a simple object that can hold two values
  * defining an interval. #ClutterInterval can hold any value that
@@ -39,8 +40,6 @@
  *
  * #ClutterInterval can be subclassed to override the validation
  * and value computation.
- *
- * #ClutterInterval is available since Clutter 1.0
  */
 
 #include "clutter-build-config.h"
@@ -524,8 +523,6 @@ clutter_interval_class_init (ClutterIntervalClass *klass)
    * ClutterInterval:value-type:
    *
    * The type of the values in the interval.
-   *
-   * Since: 1.0
    */
   obj_props[PROP_VALUE_TYPE] =
     g_param_spec_gtype ("value-type",
@@ -540,8 +537,6 @@ clutter_interval_class_init (ClutterIntervalClass *klass)
    * ClutterInterval:initial:
    *
    * The initial value of the interval.
-   *
-   * Since: 1.12
    */
   obj_props[PROP_INITIAL] =
     g_param_spec_boxed ("initial",
@@ -555,8 +550,6 @@ clutter_interval_class_init (ClutterIntervalClass *klass)
    * ClutterInterval:final:
    *
    * The final value of the interval.
-   *
-   * Since: 1.12
    */
   obj_props[PROP_FINAL] =
     g_param_spec_boxed ("final",
@@ -744,15 +737,13 @@ clutter_interval_get_interval_valist (ClutterInterval *interval,
  * This function avoids using a #GValue for the initial and final values
  * of the interval:
  *
- * |[
+ * ```c
  *   interval = clutter_interval_new (G_TYPE_FLOAT, 0.0, 1.0);
  *   interval = clutter_interval_new (G_TYPE_BOOLEAN, FALSE, TRUE);
  *   interval = clutter_interval_new (G_TYPE_INT, 0, 360);
- * ]|
+ * ```
  *
  * Return value: the newly created #ClutterInterval
- *
- * Since: 1.0
  */
 ClutterInterval *
 clutter_interval_new (GType gtype,
@@ -790,8 +781,6 @@ out:
  * This function is useful for language bindings.
  *
  * Return value: the newly created #ClutterInterval
- *
- * Since: 1.0
  */
 ClutterInterval *
 clutter_interval_new_with_values (GType         gtype,
@@ -816,8 +805,6 @@ clutter_interval_new_with_values (GType         gtype,
  * Creates a copy of @interval.
  *
  * Return value: (transfer full): the newly created #ClutterInterval
- *
- * Since: 1.0
  */
 ClutterInterval *
 clutter_interval_clone (ClutterInterval *interval)
@@ -848,8 +835,6 @@ clutter_interval_clone (ClutterInterval *interval)
  * Retrieves the #GType of the values inside @interval.
  *
  * Return value: the type of the value, or G_TYPE_INVALID
- *
- * Since: 1.0
  */
 GType
 clutter_interval_get_value_type (ClutterInterval *interval)
@@ -866,8 +851,6 @@ clutter_interval_get_value_type (ClutterInterval *interval)
  *
  * Sets the initial value of @interval to @value. The value is copied
  * inside the #ClutterInterval.
- *
- * Since: 1.0
  */
 void
 clutter_interval_set_initial_value (ClutterInterval *interval,
@@ -890,8 +873,6 @@ clutter_interval_set_initial_value (ClutterInterval *interval,
  *
  * Language bindings should use clutter_interval_set_initial_value()
  * instead.
- *
- * Since: 1.10
  */
 void
 clutter_interval_set_initial (ClutterInterval *interval,
@@ -916,8 +897,6 @@ clutter_interval_set_initial (ClutterInterval *interval,
  *
  * The passed #GValue must be initialized to the value held by
  * the #ClutterInterval.
- *
- * Since: 1.0
  */
 void
 clutter_interval_get_initial_value (ClutterInterval *interval,
@@ -938,8 +917,6 @@ clutter_interval_get_initial_value (ClutterInterval *interval,
  * Return value: (transfer none): the initial value of the interval.
  *   The value is owned by the #ClutterInterval and it should not be
  *   modified or freed
- *
- * Since: 1.0
  */
 GValue *
 clutter_interval_peek_initial_value (ClutterInterval *interval)
@@ -956,8 +933,6 @@ clutter_interval_peek_initial_value (ClutterInterval *interval)
  *
  * Sets the final value of @interval to @value. The value is
  * copied inside the #ClutterInterval.
- *
- * Since: 1.0
  */
 void
 clutter_interval_set_final_value (ClutterInterval *interval,
@@ -979,8 +954,6 @@ clutter_interval_set_final_value (ClutterInterval *interval,
  *
  * The passed #GValue must be initialized to the value held by
  * the #ClutterInterval.
- *
- * Since: 1.0
  */
 void
 clutter_interval_get_final_value (ClutterInterval *interval,
@@ -1002,8 +975,6 @@ clutter_interval_get_final_value (ClutterInterval *interval,
  * This function is meant as a convenience for the C API.
  *
  * Language bindings should use clutter_interval_set_final_value() instead.
- *
- * Since: 1.10
  */
 void
 clutter_interval_set_final (ClutterInterval *interval,
@@ -1027,8 +998,6 @@ clutter_interval_set_final (ClutterInterval *interval,
  * Return value: (transfer none): the final value of the interval.
  *   The value is owned by the #ClutterInterval and it should not be
  *   modified or freed
- *
- * Since: 1.0
  */
 GValue *
 clutter_interval_peek_final_value (ClutterInterval *interval)
@@ -1047,16 +1016,14 @@ clutter_interval_peek_final_value (ClutterInterval *interval)
  * and clutter_interval_set_final_value() that avoids using the
  * #GValue arguments:
  *
- * |[
+ * ```c
  *   clutter_interval_set_interval (interval, 0, 50);
  *   clutter_interval_set_interval (interval, 1.0, 0.0);
  *   clutter_interval_set_interval (interval, FALSE, TRUE);
- * ]|
+ * ```
  *
  * This function is meant for the convenience of the C API; bindings
  * should reimplement this function using the #GValue-based API.
- *
- * Since: 1.0
  */
 void
 clutter_interval_set_interval (ClutterInterval *interval,
@@ -1088,15 +1055,13 @@ out:
  * and clutter_interval_get_final_value() that avoids using the
  * #GValue arguments:
  *
- * |[
+ * ```c
  *   gint a = 0, b = 0;
  *   clutter_interval_get_interval (interval, &a, &b);
- * ]|
+ * ```
  *
  * This function is meant for the convenience of the C API; bindings
  * should reimplement this function using the #GValue-based API.
- *
- * Since: 1.0
  */
 void
 clutter_interval_get_interval (ClutterInterval *interval,
@@ -1121,8 +1086,6 @@ clutter_interval_get_interval (ClutterInterval *interval,
  * a #GParamSpec.
  *
  * Return value: %TRUE if the #ClutterInterval is valid, %FALSE otherwise
- *
- * Since: 1.0
  */
 gboolean
 clutter_interval_validate (ClutterInterval *interval,
@@ -1144,8 +1107,6 @@ clutter_interval_validate (ClutterInterval *interval,
  * progress @factor and copies it into @value.
  *
  * Return value: %TRUE if the operation was successful
- *
- * Since: 1.0
  */
 gboolean
 clutter_interval_compute_value (ClutterInterval *interval,
@@ -1177,8 +1138,6 @@ clutter_interval_compute_value (ClutterInterval *interval,
  *
  * Return value: (transfer none): a pointer to the computed value,
  *   or %NULL if the computation was not successful
- *
- * Since: 1.4
  */
 const GValue *
 clutter_interval_compute (ClutterInterval *interval,
@@ -1212,8 +1171,6 @@ clutter_interval_compute (ClutterInterval *interval,
  *
  * Return value: %TRUE if the #ClutterInterval has an initial and
  *   final values, and %FALSE otherwise
- *
- * Since: 1.12
  */
 gboolean
 clutter_interval_is_valid (ClutterInterval *interval)

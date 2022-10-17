@@ -23,14 +23,12 @@
  */
 
 /**
- * SECTION:clutter-brightness-contrast-effect
- * @short_description: Increase/decrease brightness and/or contrast of actor.
- * @see_also: #ClutterEffect, #ClutterOffscreenEffect
+ * ClutterBrightnessContrastEffect:
+ * 
+ * Increase/decrease brightness and/or contrast of actor.
  *
  * #ClutterBrightnessContrastEffect is a sub-class of #ClutterEffect that
  * changes the overall brightness of a #ClutterActor.
- *
- * #ClutterBrightnessContrastEffect is available since Clutter 1.10
  */
 
 #define CLUTTER_BRIGHTNESS_CONTRAST_EFFECT_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), CLUTTER_TYPE_BRIGHTNESS_CONTRAST_EFFECT, ClutterBrightnessContrastEffectClass))
@@ -146,19 +144,6 @@ clutter_brightness_contrast_effect_pre_paint (ClutterEffect       *effect,
 
   if (will_have_no_effect (self))
     return FALSE;
-
-  if (!clutter_feature_available (CLUTTER_FEATURE_SHADERS_GLSL))
-    {
-      /* if we don't have support for GLSL shaders then we
-       * forcibly disable the ActorMeta
-       */
-      g_warning ("Unable to use the ClutterBrightnessContrastEffect: the "
-                 "graphics hardware or the current GL driver does not "
-                 "implement support for the GLSL shading language. The "
-                 "effect will be disabled.");
-      clutter_actor_meta_set_enabled (CLUTTER_ACTOR_META (effect), FALSE);
-      return FALSE;
-    }
 
   parent_class =
     CLUTTER_EFFECT_CLASS (clutter_brightness_contrast_effect_parent_class);
@@ -281,8 +266,6 @@ clutter_brightness_contrast_effect_class_init (ClutterBrightnessContrastEffectCl
    * to indicate no change; values smaller than 127 indicate a decrease
    * in brightness, and values larger than 127 indicate an increase in
    * brightness.
-   *
-   * Since: 1.10
    */
   obj_props[PROP_BRIGHTNESS] =
     clutter_param_spec_color ("brightness",
@@ -301,8 +284,6 @@ clutter_brightness_contrast_effect_class_init (ClutterBrightnessContrastEffectCl
    * to indicate no change; values smaller than 127 indicate a decrease
    * in contrast, and values larger than 127 indicate an increase in
    * contrast.
-   *
-   * Since: 1.10
    */
   obj_props[PROP_CONTRAST] =
     clutter_param_spec_color ("contrast",
@@ -433,8 +414,6 @@ clutter_brightness_contrast_effect_init (ClutterBrightnessContrastEffect *self)
  * Return value: (transfer full): the newly created
  *   #ClutterBrightnessContrastEffect or %NULL.  Use g_object_unref() when
  *   done.
- *
- * Since: 1.10
  */
 ClutterEffect *
 clutter_brightness_contrast_effect_new (void)
@@ -452,8 +431,6 @@ clutter_brightness_contrast_effect_new (void)
  * The range for each component is [-1.0, 1.0] where 0.0 designates no change,
  * values below 0.0 mean a decrease in brightness, and values above indicate
  * an increase.
- *
- * Since: 1.10
  */
 void
 clutter_brightness_contrast_effect_set_brightness_full (ClutterBrightnessContrastEffect *effect,
@@ -490,8 +467,6 @@ clutter_brightness_contrast_effect_set_brightness_full (ClutterBrightnessContras
  *    change in brightness
  *
  * Retrieves the change in brightness used by @effect.
- *
- * Since: 1.10
  */
 void
 clutter_brightness_contrast_effect_get_brightness (ClutterBrightnessContrastEffect *effect,
@@ -519,8 +494,6 @@ clutter_brightness_contrast_effect_get_brightness (ClutterBrightnessContrastEffe
  * The range of @brightness is [-1.0, 1.0], where 0.0 designates no change;
  * a value below 0.0 indicates a decrease in brightness; and a value
  * above 0.0 indicates an increase of brightness.
- *
- * Since: 1.10
  */
 void
 clutter_brightness_contrast_effect_set_brightness (ClutterBrightnessContrastEffect *effect,
@@ -542,8 +515,6 @@ clutter_brightness_contrast_effect_set_brightness (ClutterBrightnessContrastEffe
  * The range for each component is [-1.0, 1.0] where 0.0 designates no change,
  * values below 0.0 mean a decrease in contrast, and values above indicate
  * an increase.
- *
- * Since: 1.10
  */
 void
 clutter_brightness_contrast_effect_set_contrast_full (ClutterBrightnessContrastEffect *effect,
@@ -580,8 +551,6 @@ clutter_brightness_contrast_effect_set_contrast_full (ClutterBrightnessContrastE
  *    change in contrast
  *
  * Retrieves the contrast value used by @effect.
- *
- * Since: 1.10
  */
 void
 clutter_brightness_contrast_effect_get_contrast (ClutterBrightnessContrastEffect *effect,
@@ -609,8 +578,6 @@ clutter_brightness_contrast_effect_get_contrast (ClutterBrightnessContrastEffect
  * The range for @contrast is [-1.0, 1.0], where 0.0 designates no change;
  * a value below 0.0 indicates a decrease in contrast; and a value above
  * 0.0 indicates an increase.
- *
- * Since: 1.10
  */
 void
 clutter_brightness_contrast_effect_set_contrast (ClutterBrightnessContrastEffect *effect,
