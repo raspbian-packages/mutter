@@ -1,0 +1,76 @@
+From: Sebastian Wick <sebastian.wick@redhat.com>
+Date: Fri, 16 Sep 2022 01:33:25 +0200
+Subject: color-device: Don't create profiles from obvious garbage data
+
+This just checks for any chromaticity being zero and gamma being in
+range but we could do a better job at detecting bad data in the future.
+
+Also check the return value of cmsCreateRGBProfileTHR which can be NULL.
+
+Fixes gnome-shell#5875
+
+Part-of: <https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2627>
+(cherry picked from commit a8259240ae3009fd3cd7df4deccefb105b37ba6e)
+---
+ src/backends/meta-color-device.c | 38 ++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 36 insertions(+), 2 deletions(-)
+
+diff --git a/src/backends/meta-color-device.c b/src/backends/meta-color-device.c
+index 53b5865..8676cb2 100644
+--- a/src/backends/meta-color-device.c
++++ b/src/backends/meta-color-device.c
+@@ -817,6 +817,31 @@ create_icc_profile_from_edid (MetaColorDevice     *color_device,
+   g_autofree char *vendor_name = NULL;
+   cmsHPROFILE lcms_profile;
+ 
++  if (G_APPROX_VALUE (edid_info->red_x, 0.0, FLT_EPSILON) ||
++      G_APPROX_VALUE (edid_info->red_y, 0.0, FLT_EPSILON) ||
++      G_APPROX_VALUE (edid_info->green_x, 0.0, FLT_EPSILON) ||
++      G_APPROX_VALUE (edid_info->green_y, 0.0, FLT_EPSILON) ||
++      G_APPROX_VALUE (edid_info->blue_x, 0.0, FLT_EPSILON) ||
++      G_APPROX_VALUE (edid_info->blue_y, 0.0, FLT_EPSILON) ||
++      G_APPROX_VALUE (edid_info->white_x, 0.0, FLT_EPSILON) ||
++      G_APPROX_VALUE (edid_info->white_y, 0.0, FLT_EPSILON))
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
++                   "EDID for %s contains bogus Color Characteristics",
++                   meta_color_device_get_id (color_device));
++      return NULL;
++    }
++
++  if (edid_info->gamma + FLT_EPSILON < 1.0 ||
++      edid_info->gamma > 4.0)
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
++                   "EDID for %s contains bogus Display Transfer "
++                   "Characteristics (GAMMA)",
++                   meta_color_device_get_id (color_device));
++      return NULL;
++    }
++
+   cd_icc = cd_icc_new ();
+ 
+   chroma.Red.x = edid_info->red_x;
+@@ -839,11 +864,20 @@ create_icc_profile_from_edid (MetaColorDevice     *color_device,
+                                          &white_point,
+                                          &chroma,
+                                          transfer_curve);
+-  cmsSetHeaderRenderingIntent (lcms_profile, INTENT_PERCEPTUAL);
+-  cmsSetDeviceClass (lcms_profile, cmsSigDisplayClass);
+ 
+   cmsFreeToneCurve (transfer_curve[0]);
+ 
++  if (!lcms_profile)
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
++                   "cmsCreateRGBProfileTHR for %s failed",
++                   meta_color_device_get_id (color_device));
++      return NULL;
++    }
++
++  cmsSetHeaderRenderingIntent (lcms_profile, INTENT_PERCEPTUAL);
++  cmsSetDeviceClass (lcms_profile, cmsSigDisplayClass);
++
+   if (!cd_icc_load_handle (cd_icc, lcms_profile,
+                            CD_ICC_LOAD_FLAGS_PRIMARIES, error))
+     {
