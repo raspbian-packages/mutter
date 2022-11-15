@@ -435,7 +435,6 @@ stacking_tests = [
   'override-redirect',
   'set-override-redirect-parent',
   'set-parent-exported',
-  'restore-size',
   'unmaximize-new-size',
   'fullscreen-maximize',
   'unfullscreen-strut-change',
