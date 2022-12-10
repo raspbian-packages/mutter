@@ -4551,6 +4551,14 @@ meta_window_focus (MetaWindow  *window,
               "Setting input focus to window %s, input: %d focusable: %d",
               window->desc, window->input, meta_window_is_focusable (window));
 
+  if (window->in_workspace_change)
+    {
+      meta_topic (META_DEBUG_FOCUS,
+                  "Window %s is currently changing workspaces, not focusing it after all",
+                  window->desc);
+      return;
+    }
+
   if (window->display->grab_window &&
       window->display->grab_window != window &&
       window->display->grab_window->all_keys_grabbed &&
@@ -4670,6 +4678,8 @@ set_workspace_state (MetaWindow    *window,
       !window->constructing)
     return;
 
+  window->in_workspace_change = TRUE;
+
   if (window->workspace)
     meta_workspace_remove_window (window->workspace, window);
   else if (window->on_all_workspaces)
@@ -4696,6 +4706,8 @@ set_workspace_state (MetaWindow    *window,
           meta_workspace_add_window (ws, window);
         }
     }
+
+  window->in_workspace_change = FALSE;
 
   if (!window->constructing)
     meta_window_update_appears_focused (window);
@@ -6021,6 +6033,7 @@ queue_update_move (MetaWindow              *window,
   MetaCompositor *compositor;
   MetaLaters *laters;
 
+  window->display->grab_last_edge_resistance_flags = flags;
   window->display->grab_latest_motion_x = x;
   window->display->grab_latest_motion_y = y;
 
@@ -6166,6 +6179,7 @@ queue_update_resize (MetaWindow              *window,
   MetaCompositor *compositor;
   MetaLaters *laters;
 
+  window->display->grab_last_edge_resistance_flags = flags;
   window->display->grab_latest_motion_x = x;
   window->display->grab_latest_motion_y = y;
 

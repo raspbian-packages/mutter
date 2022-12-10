@@ -44,7 +44,6 @@ libmutter-test-11.so libmutter-test-11 #MINVER#
  meta_test_client_find_window@Base 41.0
  meta_test_client_get_id@Base 41.0
  meta_test_client_new@Base 41.0
- meta_test_client_process_x11_event@Base 41.0
  meta_test_client_quit@Base 41.0
  meta_test_client_wait@Base 41.0
  meta_test_client_wait_for_window_shown@Base 41.0
