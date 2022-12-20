@@ -370,6 +370,7 @@ if have_native_tests
     {
       'name': 'xwayland',
       'suite': 'wayland',
+      'flaky': host_machine.cpu_family() == 'arm',
       'sources': [
         'xwayland-tests.c',
       ],
