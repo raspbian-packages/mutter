@@ -14,3 +14,4 @@ debian/tests-Disable-restore-size-test.patch
 workspace-Don-t-crash-on-invalid-argument-to-meta_workspa.patch
 tests-Break-up-stacking-installed-tests-into-more-smaller.patch
 Mark-xwayland-test-case-as-known-to-be-flaky-on-32-bit-AR.patch
+cursor-renderer-native-Workaround-broken-arm64-drivers.patch

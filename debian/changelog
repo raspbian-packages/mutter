@@ -1,3 +1,14 @@
+mutter (43.2-5) unstable; urgency=medium
+
+  [ Daniel van Vugt ]
+  * Update Support-Dynamic-triple-double-buffering.patch.
+    Fix tearing on monitors attached to secondary GPUs (LP: #1999216)
+  * Add patch for cursor-renderer-native to workaround broken arm64 drivers.
+    By forcing cursors to use dumb buffers. At least until Mesa gets fixed
+    for panfrost, vc4, v3d... (LP: #1988859)
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Mon, 23 Jan 2023 11:30:06 -0500
+
 mutter (43.2-4) unstable; urgency=medium
 
   * Team upload
