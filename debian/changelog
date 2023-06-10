@@ -1,3 +1,9 @@
+mutter (43.6-1~deb12u1) bookworm; urgency=medium
+
+  * Rebuild for bookworm
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 10 Jun 2023 22:59:13 +0100
+
 mutter (43.6-1) unstable; urgency=medium
 
   * New upstream stable release 43.5
