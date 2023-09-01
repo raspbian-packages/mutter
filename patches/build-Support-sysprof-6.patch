@@ -1,0 +1,33 @@
+From: =?utf-8?q?Florian_M=C3=BCllner?= <fmuellner@gnome.org>
+Date: Wed, 16 Aug 2023 18:38:53 +0200
+Subject: build: Support sysprof-6
+
+Sysprof 45 changed the API version of the main library. We mainly
+depend on sysprof-capture which is *not* affected, except for
+looking up the datadir where sysprof's D-Bus interfaces are
+installed.
+
+That lookup doesn't care whether we are using sysprof-6 or
+sysprof-4, so accept either dependency.
+
+https://gitlab.gnome.org/GNOME/mutter/-/issues/2962
+
+Origin: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/3187
+Applied-upstream: 45.rc
+---
+ meson.build | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/meson.build b/meson.build
+index 3b6c368..c9a8252 100644
+--- a/meson.build
++++ b/meson.build
+@@ -428,7 +428,7 @@ if have_profiler
+   )
+ 
+   if libsysprof_capture_dep.type_name() == 'pkgconfig'
+-    sysprof_dep = dependency('sysprof-4')
++    sysprof_dep = dependency('sysprof-6', 'sysprof-4')
+     sysprof_dbus_interfaces_dir = join_paths(sysprof_dep.get_variable('datadir'), 'dbus-1', 'interfaces')
+   else
+     sysprof_dbus_interfaces_dir = join_paths(mutter_srcdir, 'subprojects', 'sysprof', 'src')
