@@ -1,0 +1,2 @@
+usr/lib/${DEB_HOST_MULTIARCH}/mutter-${env:MUTTER_API_VERSION}/C*.typelib
+usr/lib/${DEB_HOST_MULTIARCH}/mutter-${env:MUTTER_API_VERSION}/Meta-${env:MUTTER_API_VERSION}.typelib
